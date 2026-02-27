@@ -16,9 +16,9 @@ Requirements for initial release. Migrate existing React+Vite SPA to Next.js App
 
 ### UI Components
 
-- [ ] **UI-01**: Login form renders with email/password inputs and glassmorphism styling
-- [ ] **UI-02**: Registration form renders with all fields (name, surname, email, school dropdown, DOB, password)
-- [ ] **UI-03**: School dropdown includes Rimini schools list with "Altro" + custom input logic
+- [x] **UI-01**: Login form renders with email/password inputs and glassmorphism styling
+- [x] **UI-02**: Registration form renders with all fields (name, surname, email, school dropdown, DOB, password)
+- [x] **UI-03**: School dropdown includes Rimini schools list with "Altro" + custom input logic
 - [ ] **UI-04**: Dashboard displays user profile card (read-only) with glassmorphism styling
 - [ ] **UI-05**: QR scanner opens camera overlay and scans QR codes via html5-qrcode
 - [ ] **UI-06**: Check-in success feedback displays (green checkmark / animation)
@@ -94,9 +94,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MIG-02 | Phase 2 | Complete |
 | MIG-03 | Phase 1 | Pending |
 | MIG-04 | Phase 1 | Pending |
-| UI-01 | Phase 2 | Pending |
-| UI-02 | Phase 2 | Pending |
-| UI-03 | Phase 2 | Pending |
+| UI-01 | Phase 2 | Complete |
+| UI-02 | Phase 2 | Complete |
+| UI-03 | Phase 2 | Complete |
 | UI-04 | Phase 2 | Pending |
 | UI-05 | Phase 2 | Pending |
 | UI-06 | Phase 2 | Pending |
