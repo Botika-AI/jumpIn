@@ -10,33 +10,34 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 1 of 4 (Next.js Foundation)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-27 — Completed Phase 01 Plan 01
+Last activity: 2026-02-27 — Completed Phase 01 Plan 02
 
-Progress: [███░░░░░░░] 33%
+Progress: [██████░░░░] 67%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 16.2 minutes
-- Total execution time: 0.27 hours
+- Total plans completed: 2
+- Average duration: 13.3 minutes
+- Total execution time: 0.44 hours
 
 **By Phase:**
 
 | Phase                  | Plans | Total    | Avg/Plan  |
 |------------------------|-------|----------|-----------|
-| 01-next-js-foundation | 1     | 16.2 min | 16.2 min  |
+| 01-next-js-foundation | 2     | 26.6 min | 13.3 min  |
 
 **Recent Trend:**
-- Last 5 plans: 16.2m
-- Trend: —
+- Last 5 plans: 13.3m average
+- Trend: Improving
 
 **Recent Executions:**
 | Phase Plan | Duration | Tasks | Files |
 |------------|----------|-------|-------|
 | 01-01      | 971s     | 3     | 9     |
+| 01-02      | 625s     | 2     | 2     |
 
 *Updated after each plan completion*
 
@@ -54,6 +55,9 @@ Recent decisions affecting current work:
 - **01-01:** Used SPA mode (output: 'export') to preserve client-side behavior during migration
 - **01-01:** Used next/font/google for self-hosted fonts instead of CDN
 - **01-01:** Configured CSS variables (--font-inter, --font-montserrat) for Tailwind integration
+- [Phase 01-02]: Used CSS variables (--font-inter, --font-montserrat) for font-family references in body and heading styles
+- [Phase 01-02]: Configured @/* path aliases to map to project root (.) matching Vite behavior
+- [Phase 01-02]: Updated jsx to 'preserve' for Next.js App Router compatibility
 
 ### Pending Todos
 
@@ -66,7 +70,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-27 (plan execution)
-Stopped at: Completed Phase 01 Plan 01 - Next.js Foundation Scaffold
+Stopped at: Completed Phase 01 Plan 02 - CSS and Path Configuration
 Resume file: None
 
 ---
