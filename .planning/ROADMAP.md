@@ -12,7 +12,7 @@ This roadmap guides the migration from React+Vite to Next.js App Router while pr
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Next.js Foundation** - Scaffold project and configure build tooling
+- [x] **Phase 1: Next.js Foundation** - Scaffold project and configure build tooling ✓
 - [ ] **Phase 2: UI Component Migration** - Port all components with glassmorphism styling
 - [ ] **Phase 3: Mock Auth & State** - Wire up localStorage-based authentication flows
 - [ ] **Phase 4: Integration & Verification** - End-to-end testing and build validation
@@ -33,9 +33,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans in 3 waves
 
 Plans:
-- [ ] 01-01-PLAN.md — Scaffold Next.js with Tailwind and Google Fonts
-- [ ] 01-02-PLAN.md — Migrate custom CSS and configure path aliases
-- [ ] 01-03-PLAN.md — Verify dev server and production build
+- [x] 01-01-PLAN.md — Scaffold Next.js with Tailwind and Google Fonts ✓
+- [x] 01-02-PLAN.md — Migrate custom CSS and configure path aliases ✓
+- [x] 01-03-PLAN.md — Verify dev server and production build ✓
 
 ---
 
@@ -102,7 +102,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Next.js Foundation | 0/TBD | Not started | - |
+| 1. Next.js Foundation | 3/3 | Complete ✓ | 2026-02-27 |
 | 2. UI Component Migration | 0/TBD | Not started | - |
 | 3. Mock Auth & State | 0/TBD | Not started | - |
 | 4. Integration & Verification | 0/TBD | Not started | - |
@@ -110,4 +110,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 ---
 
 *Roadmap created: 2026-02-13*
-*Last updated: 2026-02-13*
+*Last updated: 2026-02-27*
