@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { AuthState, UserProfile } from './types';
 import { RIMINI_SCHOOLS } from './constants';
 import { GlassCard } from './components/GlassCard';
-import { Dashboard } from './components/Dashboard';
+import Dashboard from './components/Dashboard';
 import { AlertCircle, ChevronRight } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -279,7 +279,7 @@ const App: React.FC = () => {
       )}
 
       {authState === 'dashboard' && user && (
-        <Dashboard user={user} onLogout={handleLogout} onCheckIn={handleCheckIn} />
+        <Dashboard />
       )}
     </div>
   );
