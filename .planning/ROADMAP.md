@@ -51,10 +51,12 @@ Plans:
   5. QR scanner button opens camera overlay (html5-qrcode initialized)
   6. Mesh gradient background displays behind all glass elements
 
-**Plans**: TBD
+**Plans**: 3 plans in 2 waves
 
 Plans:
-- [ ] 02-01: [TBD during plan-phase]
+- [ ] 02-01-PLAN.md — Infrastructure prep: Tailwind content paths, layout mesh-bg, lib/schools.ts, page.tsx entry point
+- [ ] 02-02-PLAN.md — Auth forms: LoginForm.tsx and RegisterForm.tsx with glassmorphism styling
+- [ ] 02-03-PLAN.md — Dashboard and QR scanner: Dashboard.tsx with profile card, QrScanner.tsx with html5-qrcode
 
 ---
 
@@ -103,7 +105,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Next.js Foundation | 3/3 | Complete ✓ | 2026-02-27 |
-| 2. UI Component Migration | 0/TBD | Not started | - |
+| 2. UI Component Migration | 0/3 | Not started | - |
 | 3. Mock Auth & State | 0/TBD | Not started | - |
 | 4. Integration & Verification | 0/TBD | Not started | - |
 
