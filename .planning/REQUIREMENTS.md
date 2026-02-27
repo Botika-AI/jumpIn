@@ -10,7 +10,7 @@ Requirements for initial release. Migrate existing React+Vite SPA to Next.js App
 ### Migration
 
 - [ ] **MIG-01**: Project scaffolded as Next.js App Router with TypeScript
-- [ ] **MIG-02**: Existing glassmorphism CSS and styles ported to Next.js (mesh background, glass cards, glass inputs)
+- [x] **MIG-02**: Existing glassmorphism CSS and styles ported to Next.js (mesh background, glass cards, glass inputs)
 - [ ] **MIG-03**: Tailwind CSS configured via package (replace CDN)
 - [ ] **MIG-04**: Google Fonts (Montserrat, Inter) loaded via Next.js font optimization
 
@@ -91,7 +91,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | MIG-01 | Phase 1 | Pending |
-| MIG-02 | Phase 2 | Pending |
+| MIG-02 | Phase 2 | Complete |
 | MIG-03 | Phase 1 | Pending |
 | MIG-04 | Phase 1 | Pending |
 | UI-01 | Phase 2 | Pending |
