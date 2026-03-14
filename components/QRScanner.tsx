@@ -72,7 +72,7 @@ export default function QrScanner({ onScan, onClose }: QrScannerProps) {
         <X size={28} />
       </button>
 
-      <div className="w-full max-w-lg overflow-hidden rounded-2xl liquid-glass">
+      <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-black">
         <div id="qr-reader" className="w-full" />
       </div>
 
