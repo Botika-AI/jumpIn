@@ -1,37 +1,28 @@
 'use client';
 
-import { useState, useEffect, useLayoutEffect } from 'react';
+import { useState } from 'react';
 import LoginForm from '@/components/LoginForm';
 import RegisterForm from '@/components/RegisterForm';
 import Dashboard from '@/components/Dashboard';
 import type { AuthState, UserProfile } from '@/types';
 
-// Isomorphic pattern: useLayoutEffect on the client (fires before paint, prevents flash),
-// useEffect on the server (avoids SSR warning since localStorage is not available there).
-const useIsomorphicLayoutEffect =
-  typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+function readSession(): { authState: AuthState; user: UserProfile | null } {
+  if (typeof window === 'undefined') return { authState: 'login', user: null };
+  try {
+    const saved = localStorage.getItem('jumpin_user');
+    if (saved) {
+      return { authState: 'dashboard', user: JSON.parse(saved) as UserProfile };
+    }
+  } catch {
+    localStorage.removeItem('jumpin_user');
+  }
+  return { authState: 'login', user: null };
+}
 
 export default function AuthController() {
-  const [authState, setAuthState] = useState<AuthState>('login');
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const [authState, setAuthState] = useState<AuthState>(() => readSession().authState);
+  const [user, setUser] = useState<UserProfile | null>(() => readSession().user);
   const [isLoading, setIsLoading] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
-
-  useIsomorphicLayoutEffect(() => {
-    try {
-      const savedUser = localStorage.getItem('jumpin_user');
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
-        setAuthState('dashboard');
-      }
-    } catch {
-      localStorage.removeItem('jumpin_user'); // Clear corrupted data
-    } finally {
-      setHydrated(true);
-    }
-  }, []);
-
-  if (!hydrated) return null;
 
   const handleLogin = (email: string, password: string, onError: (msg: string) => void) => {
     setIsLoading(true);
