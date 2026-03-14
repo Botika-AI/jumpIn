@@ -3,27 +3,25 @@
 import { useState } from 'react';
 import { Camera, LogOut, CheckCircle, Clock, MapPin, Mail, User, ShieldCheck } from 'lucide-react';
 import QrScanner from '@/components/QRScanner';
+import type { UserProfile } from '@/types';
 
-const PLACEHOLDER_USER = {
-  first_name: 'Mario',
-  last_name: 'Rossi',
-  email: 'mario.rossi@example.com',
-  school: 'Liceo Scientifico A. Einstein',
-  last_checkin: undefined as string | undefined,
-};
+interface DashboardProps {
+  user: UserProfile;
+  onLogout: () => void;
+  onCheckIn: () => void;
+}
 
-export default function Dashboard() {
+export default function Dashboard({ user, onLogout, onCheckIn }: DashboardProps) {
   const [showScanner, setShowScanner] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [lastCheckin, setLastCheckin] = useState<string | undefined>(undefined);
 
-  const initials = `${PLACEHOLDER_USER.first_name[0]}${PLACEHOLDER_USER.last_name[0]}`.toUpperCase();
+  const initials = `${user.first_name[0]}${user.last_name[0]}`.toUpperCase();
 
   const handleScan = (decodedText: string) => {
     console.log('QR scanned:', decodedText);
     setShowScanner(false);
     setSuccess(true);
-    setLastCheckin(new Date().toISOString());
+    onCheckIn();  // AUTH-05: persists last_checkin to localStorage via AuthController
     if ('vibrate' in navigator) navigator.vibrate(200);
     setTimeout(() => setSuccess(false), 4000);
   };
@@ -42,7 +40,7 @@ export default function Dashboard() {
           </div>
         </div>
         <button
-          onClick={() => console.log('Logout clicked — Phase 2 placeholder')}
+          onClick={onLogout}
           className="p-3 rounded-2xl bg-white/60 hover:bg-red-50 hover:text-red-500 transition-all text-gray-400 border border-white shadow-sm"
           aria-label="Logout"
         >
@@ -66,7 +64,7 @@ export default function Dashboard() {
 
           {/* Name */}
           <h2 className="text-3xl font-bold font-montserrat mb-1 text-gray-900 tracking-tight">
-            {PLACEHOLDER_USER.first_name} {PLACEHOLDER_USER.last_name}
+            {user.first_name} {user.last_name}
           </h2>
 
           {/* Active pill */}
@@ -84,7 +82,7 @@ export default function Dashboard() {
               <div className="flex-1">
                 <p className="text-[10px] uppercase tracking-[0.15em] text-gray-400 font-bold mb-0.5">Studente</p>
                 <p className="text-sm font-bold text-gray-800">
-                  {PLACEHOLDER_USER.first_name} {PLACEHOLDER_USER.last_name}
+                  {user.first_name} {user.last_name}
                 </p>
               </div>
             </div>
@@ -95,7 +93,7 @@ export default function Dashboard() {
               </div>
               <div className="flex-1">
                 <p className="text-[10px] uppercase tracking-[0.15em] text-gray-400 font-bold mb-0.5">Istituto Scolastico</p>
-                <p className="text-sm font-bold text-gray-800 leading-tight">{PLACEHOLDER_USER.school}</p>
+                <p className="text-sm font-bold text-gray-800 leading-tight">{user.school}</p>
               </div>
             </div>
 
@@ -105,7 +103,7 @@ export default function Dashboard() {
               </div>
               <div className="flex-1 truncate">
                 <p className="text-[10px] uppercase tracking-[0.15em] text-gray-400 font-bold mb-0.5">Contatti</p>
-                <p className="text-sm font-bold text-gray-800 truncate">{PLACEHOLDER_USER.email}</p>
+                <p className="text-sm font-bold text-gray-800 truncate">{user.email}</p>
               </div>
             </div>
           </div>
@@ -137,12 +135,12 @@ export default function Dashboard() {
         )}
 
         {/* Last check-in timestamp */}
-        {lastCheckin && !success && (
+        {user.last_checkin && !success && (
           <div className="mt-6 px-6 py-3 rounded-2xl bg-white/30 border border-white/50 backdrop-blur-sm flex items-center gap-2.5 text-gray-400 text-[11px] font-bold uppercase tracking-widest">
             <Clock size={16} className="text-orange-300" />
             <span>
               Ultimo:{' '}
-              {new Date(lastCheckin).toLocaleString('it-IT', {
+              {new Date(user.last_checkin).toLocaleString('it-IT', {
                 hour: '2-digit',
                 minute: '2-digit',
                 day: '2-digit',

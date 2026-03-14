@@ -279,7 +279,11 @@ const App: React.FC = () => {
       )}
 
       {authState === 'dashboard' && user && (
-        <Dashboard />
+        <Dashboard
+          user={user}
+          onLogout={handleLogout}
+          onCheckIn={handleCheckIn}
+        />
       )}
     </div>
   );
