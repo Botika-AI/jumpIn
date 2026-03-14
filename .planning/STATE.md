@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-02-27T17:05:19.164Z"
+last_updated: "2026-03-14T10:10:12.804Z"
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 8
+  completed_plans: 7
 ---
 
 ---
@@ -31,16 +31,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Users can scan a QR code to instantly check in, with their attendance reliably recorded in both Supabase and Google Sheets
-**Current focus:** Phase 2 - UI Component Migration
+**Current focus:** Phase 3 - Mock Auth and State
 
 ## Current Position
 
-Phase: 2 of 4 (UI Component Migration)
-Plan: 3 of 3 in current phase
-Status: Complete
-Last activity: 2026-02-27 — Completed Phase 02 Plan 03
+Phase: 3 of 4 (Mock Auth and State)
+Plan: 1 of 2 in current phase
+Status: In Progress
+Last activity: 2026-03-14 — Completed Phase 03 Plan 01
 
-Progress: [██████░░░░] 67%
+Progress: [███████░░░] 78%
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ Progress: [██████░░░░] 67%
 | 02-03      | 372s     | 2     | 3     |
 
 *Updated after each plan completion*
+| Phase 03-mock-auth-and-state P01 | 116 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,9 @@ Recent decisions affecting current work:
 - [Phase 02-03]: Used dynamic import('html5-qrcode') inside useEffect to prevent SSR build errors
 - [Phase 02-03]: Empty dep array [] for scanner init useEffect — avoids re-initialization bug from old [onScan] dep
 - [Phase 02-03]: Dashboard.tsx uses static PLACEHOLDER_USER with no props in Phase 2 — Phase 3 will add real user data
+- [Phase 03-01]: AuthController uses 'use client' directive — page.tsx stays Server Component, client boundary scoped to AuthController only
+- [Phase 03-01]: Hydration guard (return null when \!hydrated) prevents login form flash when user refreshes on dashboard
+- [Phase 03-01]: TypeScript prop errors on child component JSX are intentional — resolved in Plan 02
 
 ### Pending Todos
 
@@ -110,11 +114,11 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-27 (plan execution)
-Stopped at: Completed Phase 02 Plan 03 - Dashboard and QrScanner Components
+Last session: 2026-03-14 (plan execution)
+Stopped at: Completed Phase 03 Plan 01 - AuthController and page.tsx update
 Resume file: None
 
-**Phase 2 Complete:** All plans (02-01, 02-02, 02-03) complete. Phase 3 (check-in backend) is next.
+**Phase 3 In Progress:** Plan 03-01 complete. Plan 03-02 (wire child component props) is next.
 
 ---
 
