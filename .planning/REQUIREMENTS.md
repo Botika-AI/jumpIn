@@ -29,7 +29,7 @@ Requirements for initial release. Migrate existing React+Vite SPA to Next.js App
 - [x] **AUTH-02**: Mock registration creates user profile and transitions to dashboard
 - [x] **AUTH-03**: User session persists across browser refresh via localStorage
 - [x] **AUTH-04**: Logout clears session and returns to login view
-- [ ] **AUTH-05**: QR scan updates last_checkin timestamp in localStorage user object
+- [x] **AUTH-05**: QR scan updates last_checkin timestamp in localStorage user object
 
 ### Infrastructure
 
@@ -104,7 +104,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-02 | Phase 3 | Complete |
 | AUTH-03 | Phase 3 | Complete |
 | AUTH-04 | Phase 3 | Complete |
-| AUTH-05 | Phase 3 | Pending |
+| AUTH-05 | Phase 3 | Complete |
 | INF-01 | Phase 1 | Pending |
 | INF-02 | Phase 1 | Pending |
 | INF-03 | Phase 1 | Pending |
