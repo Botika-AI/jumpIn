@@ -18,7 +18,6 @@ export default function Dashboard({ user, onLogout, onCheckIn }: DashboardProps)
   const initials = `${user.first_name[0]}${user.last_name[0]}`.toUpperCase();
 
   const handleScan = (decodedText: string) => {
-    console.log('QR scanned:', decodedText);
     setShowScanner(false);
     setSuccess(true);
     onCheckIn();  // AUTH-05: persists last_checkin to localStorage via AuthController
