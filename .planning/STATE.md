@@ -170,6 +170,11 @@ Recent decisions affecting current work:
 - [Phase 04-integration-verification]: cancelled flag checked before Html5Qrcode instantiation and inside startScanner() — covers both async timing windows
 - [Phase 04-integration-verification]: viewport exported as separate named export from layout.tsx per Next.js App Router requirement (not inside metadata)
 
+### Roadmap Evolution
+
+- Phase 5 added: Supabase Authentication
+- Phase 6 added: Google Sheets Check-in
+
 ### Pending Todos
 
 None yet.
