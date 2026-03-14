@@ -62,8 +62,8 @@ export default function QrScanner({ onScan, onClose }: QrScannerProps) {
               started = false;
               scannerRef.current?.stop().catch(() => {});
             },
-            (errorMsg: unknown) => {
-              handleError(errorMsg);
+            () => {
+              // Per-frame "no QR code found" — not a real error, ignore
             }
           )
           .then(() => { started = true; })
