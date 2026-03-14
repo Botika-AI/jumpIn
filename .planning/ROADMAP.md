@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Next.js Foundation** - Scaffold project and configure build tooling ✓
 - [x] **Phase 2: UI Component Migration** - Port all components with glassmorphism styling (completed 2026-02-27)
 - [x] **Phase 3: Mock Auth & State** - Wire up localStorage-based authentication flows (completed 2026-03-14)
-- [x] **Phase 4: Integration & Verification** - End-to-end testing and build validation (completed 2026-03-14)
+- [ ] **Phase 4: Integration & Verification** - End-to-end testing and build validation (gap closure in progress)
 
 ## Phase Details
 
@@ -91,11 +91,13 @@ Plans:
   4. Camera permissions work on mobile devices (https required)
   5. Italian text displays correctly on all forms and feedback messages
 
-**Plans**: 2 plans in 2 waves
+**Plans**: 4 plans in 2 waves
 
 Plans:
-- [ ] 04-01-PLAN.md — Pre-flight: build verification, lang="it" fix, camera error handling fix
-- [ ] 04-02-PLAN.md — UAT checklist creation and human walkthrough on live Vercel URL
+- [x] 04-01-PLAN.md — Pre-flight: build verification, lang="it" fix, camera error handling fix ✓
+- [x] 04-02-PLAN.md — UAT checklist creation and human walkthrough on live Vercel URL ✓
+- [ ] 04-03-PLAN.md — Gap closure: fix login form flash on hard refresh (hydration guard)
+- [ ] 04-04-PLAN.md — Gap closure: fix QR scanner mobile overlay (error detection, race guard, viewport)
 
 ---
 
@@ -109,7 +111,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Next.js Foundation | 3/3 | Complete ✓ | 2026-02-27 |
 | 2. UI Component Migration | 3/3 | Complete    | 2026-02-27 |
 | 3. Mock Auth & State | 2/2 | Complete   | 2026-03-14 |
-| 4. Integration & Verification | 2/2 | Complete   | 2026-03-14 |
+| 4. Integration & Verification | 2/4 | In Progress (gap closure) | — |
 
 ---
 
