@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import type { Html5QrcodeScanner as Html5QrcodeScannerType } from 'html5-qrcode';
 
@@ -12,6 +12,7 @@ interface QrScannerProps {
 export default function QrScanner({ onScan, onClose }: QrScannerProps) {
   const scannerRef = useRef<Html5QrcodeScannerType | null>(null);
   const onScanRef = useRef(onScan);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   // Keep ref in sync with latest onScan prop
   useEffect(() => {
@@ -32,13 +33,18 @@ export default function QrScanner({ onScan, onClose }: QrScannerProps) {
           onScanRef.current(decodedText);
           scannerRef.current?.clear();
         },
-        () => {
-          // Ignore per-frame errors (no QR in frame)
+        (errorMsg: unknown) => {
+          // Per-frame "no QR found" errors come as plain strings — ignore them
+          // Hardware/permission errors come as Error objects with a .name property
+          if (errorMsg && typeof errorMsg !== 'string' && (errorMsg as Error).name) {
+            setCameraError('Impossibile accedere alla fotocamera. Verifica i permessi del browser.');
+          }
         }
       );
     });
 
     return () => {
+      setCameraError(null);
       scannerRef.current?.clear().catch(console.error);
     };
   }, []); // empty — initialize once
@@ -60,6 +66,9 @@ export default function QrScanner({ onScan, onClose }: QrScannerProps) {
       <p className="mt-8 text-center text-gray-400 animate-pulse font-medium">
         Inquadra il QR Code JumpIn per effettuare il Check-in
       </p>
+      {cameraError && (
+        <p className="text-red-400 text-sm text-center mt-2 px-4">{cameraError}</p>
+      )}
     </div>
   );
 }

@@ -26,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${montserrat.variable}`}>
+    <html lang="it" className={`${inter.variable} ${montserrat.variable}`}>
       <body className={`font-inter mesh-bg min-h-screen`}>
         {children}
       </body>
