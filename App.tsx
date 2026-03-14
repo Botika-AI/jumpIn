@@ -49,7 +49,7 @@ const App: React.FC = () => {
         localStorage.setItem('jumpin_user', JSON.stringify(mockUser));
         setAuthState('dashboard');
       } else {
-        setLoginError('Credenziali non valide. Usa demo@example.com / password123');
+        setLoginError('Credenziali non valide.');
       }
       setIsLoading(false);
     }, 1200);
