@@ -13,7 +13,7 @@ This roadmap guides the migration from React+Vite to Next.js App Router while pr
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Next.js Foundation** - Scaffold project and configure build tooling ✓
-- [x] **Phase 2: UI Component Migration** - Port all components with glassmorphism styling (completed 2026-02-27)
+- [x] **Phase 2: UI Component Migration** - Port all components with glassmorphism styling (completed 2026-02-27)
 - [ ] **Phase 3: Mock Auth & State** - Wire up localStorage-based authentication flows
 - [ ] **Phase 4: Integration & Verification** - End-to-end testing and build validation
 
@@ -72,10 +72,11 @@ Plans:
   5. User scans any QR code and sees check-in success feedback (green checkmark)
   6. Dashboard displays updated last_checkin timestamp after QR scan
 
-**Plans**: TBD
+**Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 03-01: [TBD during plan-phase]
+- [ ] 03-01-PLAN.md — AuthController and page.tsx wiring: central auth state hub with all handlers
+- [ ] 03-02-PLAN.md — Component props wiring: LoginForm, RegisterForm, Dashboard accept callbacks
 
 ---
 
@@ -106,10 +107,10 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Next.js Foundation | 3/3 | Complete ✓ | 2026-02-27 |
 | 2. UI Component Migration | 3/3 | Complete    | 2026-02-27 |
-| 3. Mock Auth & State | 0/TBD | Not started | - |
+| 3. Mock Auth & State | 0/2 | Not started | - |
 | 4. Integration & Verification | 0/TBD | Not started | - |
 
 ---
 
 *Roadmap created: 2026-02-13*
-*Last updated: 2026-02-27*
+*Last updated: 2026-03-14*
