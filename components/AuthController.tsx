@@ -33,6 +33,11 @@ export default function AuthController() {
     setIsLoading(true);
     setTimeout(() => {
       if (email === 'demo@example.com' && password === 'password123') {
+        let previousCheckin: string | undefined;
+        try {
+          const stored = localStorage.getItem('jumpin_user');
+          if (stored) previousCheckin = (JSON.parse(stored) as UserProfile).last_checkin;
+        } catch { /* ignore */ }
         const mockUser: UserProfile = {
           id: 'demo-123',
           first_name: 'Demo',
@@ -40,7 +45,7 @@ export default function AuthController() {
           email: 'demo@example.com',
           school: 'JumpIn Testing School',
           dob: '2000-01-01',
-          last_checkin: undefined,
+          last_checkin: previousCheckin,
         };
         setUser(mockUser);
         localStorage.setItem('jumpin_user', JSON.stringify(mockUser));
@@ -68,8 +73,18 @@ export default function AuthController() {
   };
 
   const handleLogout = () => {
+    // Preserve last_checkin so it survives logout and reappears after re-login
+    let lastCheckin: string | undefined;
+    try {
+      const stored = localStorage.getItem('jumpin_user');
+      if (stored) lastCheckin = (JSON.parse(stored) as UserProfile).last_checkin;
+    } catch { /* ignore */ }
+    if (lastCheckin) {
+      localStorage.setItem('jumpin_user', JSON.stringify({ last_checkin: lastCheckin }));
+    } else {
+      localStorage.removeItem('jumpin_user');
+    }
     setUser(null);
-    localStorage.removeItem('jumpin_user');
     setAuthState('login');
   };
 
