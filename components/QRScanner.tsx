@@ -20,6 +20,7 @@ export default function QrScanner({ onScan, onClose }: QrScannerProps) {
 
   useEffect(() => {
     let cancelled = false;
+    let started = false;
 
     const handleError = (err: unknown) => {
       const msg = String(err);
@@ -58,12 +59,14 @@ export default function QrScanner({ onScan, onClose }: QrScannerProps) {
             { fps: 10, qrbox: { width: 250, height: 250 } },
             (decodedText) => {
               onScanRef.current(decodedText);
-              scannerRef.current?.stop().catch(console.error);
+              started = false;
+              scannerRef.current?.stop().catch(() => {});
             },
             (errorMsg: unknown) => {
               handleError(errorMsg);
             }
           )
+          .then(() => { started = true; })
           .catch(handleError);
       };
       startScanner();
@@ -71,7 +74,10 @@ export default function QrScanner({ onScan, onClose }: QrScannerProps) {
 
     return () => {
       cancelled = true;
-      scannerRef.current?.stop().catch(console.error);
+      if (started) {
+        started = false;
+        scannerRef.current?.stop().catch(() => {});
+      }
     };
   }, []);
 
