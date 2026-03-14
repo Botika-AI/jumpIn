@@ -3,8 +3,15 @@
 import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { RIMINI_SCHOOLS } from '@/lib/schools';
+import type { UserProfile } from '@/types';
 
-export default function RegisterForm() {
+interface RegisterFormProps {
+  onRegister: (profile: Omit<UserProfile, 'id' | 'last_checkin'>) => void;
+  isLoading: boolean;
+  onNavigateLogin: () => void;
+}
+
+export default function RegisterForm({ onRegister, isLoading, onNavigateLogin }: RegisterFormProps) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -15,7 +22,13 @@ export default function RegisterForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log({ firstName, lastName, email, school, customSchool, dob, password });
+    onRegister({
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      school: school === 'altro' ? customSchool : school,
+      dob,
+    });
   };
 
   return (
@@ -126,9 +139,10 @@ export default function RegisterForm() {
           {/* Submit button */}
           <button
             type="submit"
+            disabled={isLoading}
             className="w-full py-5 rounded-2xl btn-primary-liquid font-bold mt-6 disabled:opacity-70 transition-all"
           >
-            Registrati ora
+            {isLoading ? 'Registrazione...' : 'Registrati ora'}
           </button>
 
           {/* Login link */}
@@ -136,7 +150,7 @@ export default function RegisterForm() {
             Hai un account?{' '}
             <button
               type="button"
-              onClick={() => console.log('navigate to login')}
+              onClick={() => onNavigateLogin()}
               className="text-orange-600 font-bold hover:underline"
             >
               Effettua l&apos;accesso

@@ -3,14 +3,20 @@
 import { useState } from 'react';
 import { AlertCircle, ChevronRight } from 'lucide-react';
 
-export default function LoginForm() {
+interface LoginFormProps {
+  onLogin: (email: string, password: string, onError: (msg: string) => void) => void;
+  isLoading: boolean;
+  onNavigateRegister: () => void;
+}
+
+export default function LoginForm({ onLogin, isLoading, onNavigateRegister }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log({ email, password });
+    onLogin(email, password, (msg) => setLoginError(msg));
   };
 
   return (
@@ -69,10 +75,11 @@ export default function LoginForm() {
           {/* Submit button */}
           <button
             type="submit"
-            className="w-full py-5 rounded-2xl btn-primary-liquid flex items-center justify-center gap-2 group mt-6"
+            disabled={isLoading}
+            className="w-full py-5 rounded-2xl btn-primary-liquid flex items-center justify-center gap-2 group mt-6 disabled:opacity-70 transition-all"
           >
-            <span>Continua</span>
-            <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            <span>{isLoading ? 'Attendere...' : 'Continua'}</span>
+            {!isLoading && <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />}
           </button>
 
           {/* Divider */}
@@ -87,7 +94,7 @@ export default function LoginForm() {
             Nuovo qui?{' '}
             <button
               type="button"
-              onClick={() => console.log('navigate to register')}
+              onClick={() => onNavigateRegister()}
               className="text-orange-600 font-bold hover:text-orange-700 underline-offset-4 decoration-orange-200/50 hover:underline transition-all"
             >
               Crea un account
