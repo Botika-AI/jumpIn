@@ -1,28 +1,33 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import LoginForm from '@/components/LoginForm';
 import RegisterForm from '@/components/RegisterForm';
 import Dashboard from '@/components/Dashboard';
 import type { AuthState, UserProfile } from '@/types';
 
-function readSession(): { authState: AuthState; user: UserProfile | null } {
-  if (typeof window === 'undefined') return { authState: 'login', user: null };
-  try {
-    const saved = localStorage.getItem('jumpin_user');
-    if (saved) {
-      return { authState: 'dashboard', user: JSON.parse(saved) as UserProfile };
-    }
-  } catch {
-    localStorage.removeItem('jumpin_user');
-  }
-  return { authState: 'login', user: null };
-}
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 export default function AuthController() {
-  const [authState, setAuthState] = useState<AuthState>(() => readSession().authState);
-  const [user, setUser] = useState<UserProfile | null>(() => readSession().user);
+  const [authState, setAuthState] = useState<AuthState>('loading');
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useIsomorphicLayoutEffect(() => {
+    try {
+      const saved = localStorage.getItem('jumpin_user');
+      if (saved) {
+        const parsed = JSON.parse(saved) as UserProfile;
+        setUser(parsed);
+        setAuthState('dashboard');
+      } else {
+        setAuthState('login');
+      }
+    } catch {
+      localStorage.removeItem('jumpin_user');
+      setAuthState('login');
+    }
+  }, []);
 
   const handleLogin = (email: string, password: string, onError: (msg: string) => void) => {
     setIsLoading(true);
@@ -74,6 +79,10 @@ export default function AuthController() {
     setUser(updatedUser);
     localStorage.setItem('jumpin_user', JSON.stringify(updatedUser));
   };
+
+  if (authState === 'loading') {
+    return null;
+  }
 
   if (authState === 'login') {
     return (

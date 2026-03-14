@@ -9,7 +9,7 @@ export interface UserProfile {
   last_checkin?: string;
 }
 
-export type AuthState = 'login' | 'register' | 'dashboard';
+export type AuthState = 'login' | 'register' | 'dashboard' | 'loading';
 
 export interface SchoolOption {
   value: string;
