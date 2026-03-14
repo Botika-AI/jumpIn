@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 04-integration-verification
 source: [04-01-SUMMARY.md, 04-02-SUMMARY.md]
 started: 2026-03-14T14:30:00Z
@@ -60,17 +60,41 @@ skipped: 3
   reason: "User reported: the login page flashes before the appearance of the dashboard"
   severity: major
   test: 1
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Static export bakes LoginForm into pre-rendered HTML (readSession() returns 'login' at build time); on hydration React finds real session in localStorage and updates state, but the update fires after first paint — no 'loading' state exists to suppress rendering during the hydration window"
+  artifacts:
+    - path: "components/AuthController.tsx"
+      issue: "useState initializer calls readSession() which returns 'login' at build time, so pre-rendered HTML always contains LoginForm; no 'loading' auth state to render null during hydration"
+    - path: "types.ts"
+      issue: "AuthState type missing 'loading' value needed to represent undetermined state"
+  missing:
+    - "Add 'loading' value to AuthState type"
+    - "Initialize authState to 'loading' unconditionally (remove localStorage read from initializer)"
+    - "Move localStorage read into useLayoutEffect — fires before paint, sets real auth state invisibly"
+    - "Render null while authState === 'loading' to suppress both LoginForm and Dashboard during hydration"
+  debug_session: ".planning/debug/login-flash-on-hard-refresh.md"
 
 - truth: "QR scanner overlay is a clean full-screen dark overlay with no injected library UI, readable controls, and correct mobile scaling — live feed starts automatically"
   status: failed
   reason: "User reported: The scanner overlay is unreadable (the buttons the user must press are invisible/hard to see) and is poorly scaled (it messes up the page size on a phone). The library injects a dropdown where you can choose the camera. No live feed is present from it however."
   severity: major
   test: 2
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Incomplete error keyword list silently swallows HTTP/insecure-context camera failures (primary cause of no live feed); async import/unmount race leaks camera resource; missing iOS viewport metadata causes scaling issues; zero clientWidth at start() call time; container has no min-height causing layout shifts; close button has insufficient z-index"
+  artifacts:
+    - path: "components/QRScanner.tsx"
+      issue: ".catch() only checks 4 DOMException keywords — 'Camera streaming not supported' and insecure-context errors are silently swallowed; no live feed shown, no error message"
+    - path: "components/QRScanner.tsx"
+      issue: "Async import/unmount race — if component unmounts while import() is resolving, camera starts on unmounted component with no way to stop it"
+    - path: "components/QRScanner.tsx"
+      issue: "#qr-reader div has no min-height; video surface has unpredictable dimensions before stream arrives, causing layout shifts on mobile"
+    - path: "components/QRScanner.tsx"
+      issue: "Close button bg-white/10 is 90% transparent and may render below library-injected elements due to stacking context; needs z-10 or higher"
+    - path: "app/layout.tsx"
+      issue: "Missing viewport metadata: viewport-fit=cover, user-scalable=no, maximum-scale=1 — causes accidental zoom and unsafe area issues on iOS during scanning"
+  missing:
+    - "Expand .catch() error detection: add checks for 'Camera streaming not supported', 'insecure context', 'getUserMedia', plus generic fallback with Italian error message"
+    - "Fix async-import/unmount race: introduce cancelled boolean flag, check before start(), set true before stop()"
+    - "Add viewport export to app/layout.tsx: viewport-fit=cover, user-scalable=no, maximum-scale=1.0"
+    - "Guard against zero clientWidth: check clientWidth > 0 before calling start(), defer with requestAnimationFrame if zero"
+    - "Add min-h-[300px] to #qr-reader div to stabilise layout before stream arrives"
+    - "Add z-10 to close button to ensure it stacks above library-injected elements"
+  debug_session: ".planning/debug/qr-scanner-mobile-bugs.md"
