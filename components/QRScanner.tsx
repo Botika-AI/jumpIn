@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
-import type { Html5QrcodeScanner as Html5QrcodeScannerType } from 'html5-qrcode';
+import type { Html5Qrcode as Html5QrcodeType } from 'html5-qrcode';
 
 interface QrScannerProps {
   onScan: (decodedText: string) => void;
@@ -10,44 +10,57 @@ interface QrScannerProps {
 }
 
 export default function QrScanner({ onScan, onClose }: QrScannerProps) {
-  const scannerRef = useRef<Html5QrcodeScannerType | null>(null);
+  const scannerRef = useRef<Html5QrcodeType | null>(null);
   const onScanRef = useRef(onScan);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
-  // Keep ref in sync with latest onScan prop
   useEffect(() => {
     onScanRef.current = onScan;
   }, [onScan]);
 
-  // Initialize scanner once on mount — empty dep array avoids re-initialization bug
   useEffect(() => {
-    import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
-      scannerRef.current = new Html5QrcodeScanner(
-        'qr-reader',
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        /* verbose= */ false
-      );
+    import('html5-qrcode').then(({ Html5Qrcode }) => {
+      scannerRef.current = new Html5Qrcode('qr-reader');
 
-      scannerRef.current.render(
-        (decodedText) => {
-          onScanRef.current(decodedText);
-          scannerRef.current?.clear();
-        },
-        (errorMsg: unknown) => {
-          // Per-frame "no QR found" errors come as plain strings — ignore them
-          // Hardware/permission errors come as Error objects with a .name property
-          if (errorMsg && typeof errorMsg !== 'string' && (errorMsg as Error).name) {
+      scannerRef.current
+        .start(
+          { facingMode: { ideal: 'environment' } },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          (decodedText) => {
+            onScanRef.current(decodedText);
+            scannerRef.current?.stop().catch(console.error);
+          },
+          (errorMsg: unknown) => {
+            // Per-frame "no QR found" messages — ignore
+            // Real errors contain known error code keywords
+            const msg = typeof errorMsg === 'string' ? errorMsg : String(errorMsg);
+            if (
+              msg.includes('NotAllowedError') ||
+              msg.includes('NotReadableError') ||
+              msg.includes('NotFoundError') ||
+              msg.includes('OverconstrainedError')
+            ) {
+              setCameraError('Impossibile accedere alla fotocamera. Verifica i permessi del browser.');
+            }
+          }
+        )
+        .catch((err: unknown) => {
+          const msg = String(err);
+          if (
+            msg.includes('NotAllowedError') ||
+            msg.includes('NotReadableError') ||
+            msg.includes('NotFoundError') ||
+            msg.includes('OverconstrainedError')
+          ) {
             setCameraError('Impossibile accedere alla fotocamera. Verifica i permessi del browser.');
           }
-        }
-      );
+        });
     });
 
     return () => {
-      setCameraError(null);
-      scannerRef.current?.clear().catch(console.error);
+      scannerRef.current?.stop().catch(console.error);
     };
-  }, []); // empty — initialize once
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4">

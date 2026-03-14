@@ -1,10 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import LoginForm from '@/components/LoginForm';
 import RegisterForm from '@/components/RegisterForm';
 import Dashboard from '@/components/Dashboard';
 import type { AuthState, UserProfile } from '@/types';
+
+// Isomorphic pattern: useLayoutEffect on the client (fires before paint, prevents flash),
+// useEffect on the server (avoids SSR warning since localStorage is not available there).
+const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 export default function AuthController() {
   const [authState, setAuthState] = useState<AuthState>('login');
@@ -12,7 +17,7 @@ export default function AuthController() {
   const [isLoading, setIsLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     try {
       const savedUser = localStorage.getItem('jumpin_user');
       if (savedUser) {
