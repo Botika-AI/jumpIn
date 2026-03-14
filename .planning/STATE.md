@@ -3,6 +3,19 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
+last_updated: "2026-03-14T12:13:45.679Z"
+progress:
+  total_phases: 4
+  completed_phases: 4
+  total_plans: 10
+  completed_plans: 10
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: unknown
 last_updated: "2026-03-14T11:16:09.625Z"
 progress:
   total_phases: 4
@@ -100,6 +113,7 @@ Progress: [█████████░] 95%
 | Phase 03-mock-auth-and-state P01 | 116 | 2 tasks | 2 files |
 | Phase 03-mock-auth-and-state P02 | 204 | 2 tasks | 4 files |
 | Phase 04-integration-verification P01 | 194 | 2 tasks | 3 files |
+| Phase 04-integration-verification P02 | 2700 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -135,6 +149,8 @@ Recent decisions affecting current work:
 - [Phase 03-02]: password field stays in RegisterForm local state but excluded from onRegister profile — mock auth has no credential storage
 - [Phase 04-01]: tailwindcss-animate absent from plugins[] — animate-in classes on RegisterForm degrade cosmetically; no action taken
 - [Phase 04-01]: console.log placeholder removed from Dashboard handleScan (auto-fix Rule 2)
+- [Phase 04-02]: useIsomorphicLayoutEffect for localStorage read in AuthController prevents login form flash before paint; SSR-safe via conditional assignment
+- [Phase 04-02]: Html5Qrcode direct API replaces Html5QrcodeScanner — full control of camera UI, facingMode environment auto-selects back camera without picker on mobile
 
 ### Pending Todos
 
