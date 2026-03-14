@@ -9,10 +9,10 @@ Requirements for initial release. Migrate existing React+Vite SPA to Next.js App
 
 ### Migration
 
-- [ ] **MIG-01**: Project scaffolded as Next.js App Router with TypeScript
+- [x] **MIG-01**: Project scaffolded as Next.js App Router with TypeScript
 - [x] **MIG-02**: Existing glassmorphism CSS and styles ported to Next.js (mesh background, glass cards, glass inputs)
-- [ ] **MIG-03**: Tailwind CSS configured via package (replace CDN)
-- [ ] **MIG-04**: Google Fonts (Montserrat, Inter) loaded via Next.js font optimization
+- [x] **MIG-03**: Tailwind CSS configured via package (replace CDN)
+- [x] **MIG-04**: Google Fonts (Montserrat, Inter) loaded via Next.js font optimization
 
 ### UI Components
 
@@ -33,11 +33,11 @@ Requirements for initial release. Migrate existing React+Vite SPA to Next.js App
 
 ### Infrastructure
 
-- [ ] **INF-01**: Vite config replaced with Next.js config (next.config.js)
-- [ ] **INF-02**: Path aliases (@/) configured for Next.js
-- [ ] **INF-03**: Project builds successfully with `next build`
-- [ ] **INF-04**: Development server runs with `next dev`
-- [ ] **INF-05**: Project structure follows Next.js App Router conventions (app/ directory)
+- [x] **INF-01**: Vite config replaced with Next.js config (next.config.js)
+- [x] **INF-02**: Path aliases (@/) configured for Next.js
+- [x] **INF-03**: Project builds successfully with `next build`
+- [x] **INF-04**: Development server runs with `next dev`
+- [x] **INF-05**: Project structure follows Next.js App Router conventions (app/ directory)
 
 ## v2 Requirements
 
@@ -90,10 +90,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MIG-01 | Phase 1 | Pending |
+| MIG-01 | Phase 1 | Complete |
 | MIG-02 | Phase 2 | Complete |
-| MIG-03 | Phase 1 | Pending |
-| MIG-04 | Phase 1 | Pending |
+| MIG-03 | Phase 1 | Complete |
+| MIG-04 | Phase 1 | Complete |
 | UI-01 | Phase 2 | Complete |
 | UI-02 | Phase 2 | Complete |
 | UI-03 | Phase 2 | Complete |
@@ -105,11 +105,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-03 | Phase 3 | Complete |
 | AUTH-04 | Phase 3 | Complete |
 | AUTH-05 | Phase 3 | Complete |
-| INF-01 | Phase 1 | Pending |
-| INF-02 | Phase 1 | Pending |
-| INF-03 | Phase 1 | Pending |
-| INF-04 | Phase 1 | Pending |
-| INF-05 | Phase 1 | Pending |
+| INF-01 | Phase 1 | Complete |
+| INF-02 | Phase 1 | Complete |
+| INF-03 | Phase 1 | Complete |
+| INF-04 | Phase 1 | Complete |
+| INF-05 | Phase 1 | Complete |
 
 **Coverage:**
 - v1 requirements: 20 total
