@@ -113,6 +113,29 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 3. Mock Auth & State | 2/2 | Complete   | 2026-03-14 |
 | 4. Integration & Verification | 4/4 | Complete   | 2026-03-14 |
 
+### Phase 5: Supabase Authentication
+
+**Goal:** User can register, log in, and persist session using real Supabase Auth with profile data stored in a Supabase profiles table
+**Requirements**: SAUTH-01, SAUTH-02, SAUTH-03, SAUTH-04, DB-01, DB-02, DB-03, DB-04
+**Depends on:** Phase 4
+**Plans:** 1/4 plans executed
+
+Plans:
+- [ ] 05-01-PLAN.md — Supabase packages + client utilities + middleware + schema SQL (Wave 1)
+- [ ] 05-02-PLAN.md — RegisterForm confirm password field + LoginForm mock hint removal (Wave 1)
+- [ ] 05-03-PLAN.md — AuthController rewrite: replace all mock localStorage auth with Supabase calls (Wave 2)
+- [ ] 05-04-PLAN.md — UAT checkpoint: full auth flow human verification (Wave 3)
+
+### Phase 6: Google Sheets Check-in
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 5
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 6 to break down)
+
 ---
 
 *Roadmap created: 2026-02-13*

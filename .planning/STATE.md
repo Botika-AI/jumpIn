@@ -3,6 +3,19 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
+last_updated: "2026-03-17T12:27:55.120Z"
+progress:
+  total_phases: 6
+  completed_phases: 4
+  total_plans: 16
+  completed_plans: 13
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: unknown
 last_updated: "2026-03-14T14:47:47.086Z"
 progress:
   total_phases: 4
@@ -129,6 +142,7 @@ Progress: [█████████░] 95%
 | Phase 04-integration-verification P02 | 2700 | 2 tasks | 3 files |
 | Phase 04-integration-verification P03 | 61 | 1 tasks | 2 files |
 | Phase 04-integration-verification P04 | 81 | 2 tasks | 2 files |
+| Phase 05-supabase-authentication P02 | 180 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -169,6 +183,8 @@ Recent decisions affecting current work:
 - [Phase 04-03]: 'loading' AuthState + useIsomorphicLayoutEffect init in AuthController eliminates login form flash on hard refresh
 - [Phase 04-integration-verification]: cancelled flag checked before Html5Qrcode instantiation and inside startScanner() — covers both async timing windows
 - [Phase 04-integration-verification]: viewport exported as separate named export from layout.tsx per Next.js App Router requirement (not inside metadata)
+- [Phase 05-02]: confirmPassword stays in local component state, never passed to onRegister callback — purely a UI validation concern
+- [Phase 05-02]: Error cleared on any keystroke in the confirm field to avoid stale error after user edits
 
 ### Roadmap Evolution
 
