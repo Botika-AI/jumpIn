@@ -2,26 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-17T13:43:12.226Z"
-progress:
-  total_phases: 6
-  completed_phases: 5
-  total_plans: 16
-  completed_plans: 16
----
-
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
 status: in-progress
-last_updated: "2026-03-17T13:36:48Z"
+last_updated: "2026-03-17T17:27:00Z"
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 16
-  completed_plans: 16
+  total_plans: 19
+  completed_plans: 17
 ---
 
 # Project State
@@ -31,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Users can scan a QR code to instantly check in, with their attendance reliably recorded in both Supabase and Google Sheets
-**Current focus:** Phase 5 - Supabase Authentication
+**Current focus:** Phase 6 - Google Sheets Check-in
 
 ## Current Position
 
-Phase: 5 of 6 (Supabase Authentication) — COMPLETE
-Plan: 4 of 4 in current phase — COMPLETE
+Phase: 6 of 6 (Google Sheets Check-in) — In Progress
+Plan: 1 of 3 in current phase — COMPLETE
 Status: In Progress
-Last activity: 2026-03-17 — Completed Phase 05 Plan 04 (Human UAT Walkthrough)
+Last activity: 2026-03-17 — Completed Phase 06 Plan 01 (Google Sheets Integration Layer)
 
-Progress: [█████████░] 100% of Phase 5 complete (16/16 plans total)
+Progress: [██████████] 17/19 plans total (Phase 5 complete, Phase 6 Plan 1/3 complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15
+- Total plans completed: 17
 - Average duration: 7.5 minutes
 - Total execution time: ~1.7 hours
 
@@ -80,6 +67,7 @@ Progress: [█████████░] 100% of Phase 5 complete (16/16 plans
 | Phase 05-supabase-authentication P01 | 574 | 2 tasks | 6 files |
 | Phase 05-supabase-authentication P03 | 101 | 1 tasks | 2 files |
 | Phase 05-supabase-authentication P04 | UAT | 2 checkpoints | 0 files |
+| Phase 06-google-sheets-check-in P01 | ~480s | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -127,6 +115,10 @@ Recent decisions affecting current work:
 - [Phase 05-03]: handleRegister accepts password as second parameter — avoids fragile DOM querySelector, keeps password in RegisterForm local state and passes explicitly
 - [Phase 05-03]: registerError state in AuthController passed to RegisterForm — server errors distinct from client-side password mismatch
 - [Phase 05-04]: QR scan UAT skipped on desktop (no camera) — not a code defect; QR scanner validated in Phase 04 integration testing
+- [Phase 06-01]: runtime = 'nodejs' on checkin route — googleapis uses Node.js crypto APIs, incompatible with Edge runtime
+- [Phase 06-01]: JSON.parse(GOOGLE_SERVICE_ACCOUNT_KEY) with no .replace() on private_key — key arrives correctly escaped as JSON string
+- [Phase 06-01]: Unknown QR value defaults to 'Entrata' with console warning — safe default, no hard failure on unrecognized QR
+- [Phase 06-01]: 1-retry pattern in route.ts not googleSheets.ts — retry is transport concern, not Sheets service concern
 
 ### Roadmap Evolution
 
@@ -144,10 +136,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-17 (plan execution)
-Stopped at: Completed Phase 05 Plan 04 - Human UAT Walkthrough (Phase 5 complete)
+Stopped at: Completed Phase 06 Plan 01 - Google Sheets Integration Layer
 Resume file: None
 
-**Phase 5 Complete:** All 4 plans done. Supabase auth fully integrated and UAT verified. Phase 6 (Google Sheets Check-in) is next.
+**Phase 6 In Progress:** Plan 01 done. lib/googleSheets.ts and POST /api/checkin route created. Plans 02 and 03 remaining.
 
 ---
 
