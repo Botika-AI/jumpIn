@@ -132,7 +132,7 @@ Plans:
 **Goal:** QR scan check-in events are appended as rows to a Google Sheets spreadsheet via a server-side Next.js API route using a Google Service Account
 **Requirements**: GS-01, GS-03, GS-04, GS-INIT, GS-ENV, GS-QR
 **Depends on:** Phase 5
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] 06-01-PLAN.md — Server-side infra: googleapis install + lib/googleSheets.ts + POST /api/checkin route + env example (Wave 1)

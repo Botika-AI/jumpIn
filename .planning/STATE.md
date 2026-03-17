@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-03-17T17:27:00Z"
+last_updated: "2026-03-17T17:31:00Z"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 19
-  completed_plans: 17
+  completed_plans: 18
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 6 of 6 (Google Sheets Check-in) — In Progress
-Plan: 1 of 3 in current phase — COMPLETE
+Plan: 2 of 3 in current phase — COMPLETE
 Status: In Progress
-Last activity: 2026-03-17 — Completed Phase 06 Plan 01 (Google Sheets Integration Layer)
+Last activity: 2026-03-17 — Completed Phase 06 Plan 02 (Client-Side Wiring)
 
-Progress: [██████████] 17/19 plans total (Phase 5 complete, Phase 6 Plan 1/3 complete)
+Progress: [██████████] 18/19 plans total (Phase 5 complete, Phase 6 Plan 2/3 complete)
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [██████████] 17/19 plans total (Phase 5 complete, 
 | Phase 05-supabase-authentication P03 | 101 | 1 tasks | 2 files |
 | Phase 05-supabase-authentication P04 | UAT | 2 checkpoints | 0 files |
 | Phase 06-google-sheets-check-in P01 | ~480s | 2 tasks | 5 files |
+| Phase 06 P02 | 158 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,8 @@ Recent decisions affecting current work:
 - [Phase 06-01]: JSON.parse(GOOGLE_SERVICE_ACCOUNT_KEY) with no .replace() on private_key — key arrives correctly escaped as JSON string
 - [Phase 06-01]: Unknown QR value defaults to 'Entrata' with console warning — safe default, no hard failure on unrecognized QR
 - [Phase 06-01]: 1-retry pattern in route.ts not googleSheets.ts — retry is transport concern, not Sheets service concern
+- [Phase 06]: sheetsError is optional in DashboardProps — no crash if AuthController omits it
+- [Phase 06]: Both Supabase and Sheets writes always fire regardless of each other — Sheets is audit log, not a gate
 
 ### Roadmap Evolution
 
@@ -136,10 +139,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-17 (plan execution)
-Stopped at: Completed Phase 06 Plan 01 - Google Sheets Integration Layer
+Stopped at: Completed Phase 06 Plan 02 - Client-Side Wiring
 Resume file: None
 
-**Phase 6 In Progress:** Plan 01 done. lib/googleSheets.ts and POST /api/checkin route created. Plans 02 and 03 remaining.
+**Phase 6 In Progress:** Plans 01 and 02 done. Full end-to-end QR scan -> Supabase -> Sheets data flow wired. Plan 03 (UAT) remaining.
 
 ---
 
