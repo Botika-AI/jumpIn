@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-03-17T12:33:15Z"
+last_updated: "2026-03-17T12:41:03Z"
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 16
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Project State
@@ -23,16 +23,16 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 5 of 6 (Supabase Authentication)
-Plan: 2 of 4 in current phase
+Plan: 4 of 4 in current phase
 Status: In Progress
-Last activity: 2026-03-17 — Completed Phase 05 Plan 01 (Supabase Infrastructure Setup)
+Last activity: 2026-03-17 — Completed Phase 05 Plan 03 (Supabase Auth Integration)
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
+- Total plans completed: 15
 - Average duration: 7.5 minutes
 - Total execution time: ~1.7 hours
 
@@ -65,6 +65,7 @@ Progress: [█████████░] 88%
 | Phase 04-integration-verification P03 | 61 | 1 tasks | 2 files |
 | Phase 04-integration-verification P04 | 81 | 2 tasks | 2 files |
 | Phase 05-supabase-authentication P01 | 574 | 2 tasks | 6 files |
+| Phase 05-supabase-authentication P03 | 101 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,8 @@ Recent decisions affecting current work:
 - [Phase 05-01]: Force-added .env.local.example past .gitignore (.env* pattern) — safe template with no secrets, committed for developer onboarding
 - [Phase 05-01]: npm install required --legacy-peer-deps — @supabase/ssr@0.9.0 peer spec requires supabase-js ^2.97.0 but 2.99.x is installed (compatible)
 - [Phase 05-01]: supabase/ directory is reference SQL only, no Supabase CLI used — schema applied manually via Supabase SQL Editor
+- [Phase 05-03]: handleRegister accepts password as second parameter — avoids fragile DOM querySelector, keeps password in RegisterForm local state and passes explicitly
+- [Phase 05-03]: registerError state in AuthController passed to RegisterForm — server errors distinct from client-side password mismatch
 
 ### Roadmap Evolution
 
@@ -126,10 +129,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-17 (plan execution)
-Stopped at: Completed Phase 05 Plan 01 - Supabase Infrastructure Setup
+Stopped at: Completed Phase 05 Plan 03 - Supabase Auth Integration
 Resume file: None
 
-**Phase 5 In Progress:** Plan 05-01 done. Supabase packages installed, client utilities created, middleware wired, schema SQL produced. Build clean. Ready for 05-02 AuthController with Supabase.
+**Phase 5 In Progress:** Plans 05-01 and 05-03 done. AuthController fully rewritten with Supabase auth. Ready for 05-04 UAT/verification.
 
 ---
 
