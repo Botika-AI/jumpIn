@@ -103,14 +103,6 @@ export default function LoginForm({ onLogin, isLoading, onNavigateRegister }: Lo
         </form>
       </div>
 
-      {/* TEST credentials hint */}
-      <div className="mt-10 text-center">
-        <div className="inline-block px-4 py-2 rounded-full bg-white/40 border border-white/60 backdrop-blur-md">
-          <span className="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-bold">
-            TEST: <span className="text-orange-400">demo@example.com</span> / <span className="text-orange-400">password123</span>
-          </span>
-        </div>
-      </div>
     </div>
   );
 }

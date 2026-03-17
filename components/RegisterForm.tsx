@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { AlertCircle, ChevronRight } from 'lucide-react';
 import { RIMINI_SCHOOLS } from '@/lib/schools';
 import type { UserProfile } from '@/types';
 
@@ -19,9 +19,16 @@ export default function RegisterForm({ onRegister, isLoading, onNavigateLogin }:
   const [customSchool, setCustomSchool] = useState('');
   const [dob, setDob] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      setPasswordError('Le password non coincidono.');
+      return;
+    }
+    setPasswordError(null);
     onRegister({
       first_name: firstName,
       last_name: lastName,
@@ -135,6 +142,29 @@ export default function RegisterForm({ onRegister, isLoading, onNavigateLogin }:
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
+
+          {/* Conferma Password */}
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Conferma Password</label>
+            <input
+              type="password"
+              required
+              minLength={8}
+              className="w-full px-4 py-3 rounded-2xl glass-input text-sm"
+              value={confirmPassword}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                if (passwordError) setPasswordError(null);
+              }}
+            />
+          </div>
+
+          {passwordError && (
+            <div className="p-3 rounded-2xl bg-red-50/80 border border-red-100 flex items-center gap-2 text-red-600">
+              <AlertCircle size={16} className="shrink-0" />
+              <p className="text-xs font-bold">{passwordError}</p>
+            </div>
+          )}
 
           {/* Submit button */}
           <button
