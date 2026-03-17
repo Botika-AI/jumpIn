@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Next.js Foundation** - Scaffold project and configure build tooling ✓
 - [x] **Phase 2: UI Component Migration** - Port all components with glassmorphism styling (completed 2026-02-27)
 - [x] **Phase 3: Mock Auth & State** - Wire up localStorage-based authentication flows (completed 2026-03-14)
-- [x] **Phase 4: Integration & Verification** - End-to-end testing and build validation (gap closure in progress) (completed 2026-03-14)
+- [x] **Phase 4: Integration & Verification** - End-to-end testing and build validation (gap closure in progress) (completed 2026-03-14)
 
 ## Phase Details
 
@@ -129,13 +129,15 @@ Plans:
 
 ### Phase 6: Google Sheets Check-in
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** QR scan check-in events are appended as rows to a Google Sheets spreadsheet via a server-side Next.js API route using a Google Service Account
+**Requirements**: GS-01, GS-03, GS-04, GS-INIT, GS-ENV, GS-QR
 **Depends on:** Phase 5
-**Plans:** 0 plans
+**Plans:** 3 plans in 3 waves
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 6 to break down)
+- [ ] 06-01-PLAN.md — Server-side infra: googleapis install + lib/googleSheets.ts + POST /api/checkin route + env example (Wave 1)
+- [ ] 06-02-PLAN.md — Client wiring: AuthController handleCheckIn(decodedText) + Sheets fetch + sheetsError + Dashboard prop updates (Wave 2)
+- [ ] 06-03-PLAN.md — UAT checkpoint: Google credentials setup + full scan-to-row verification (Wave 3)
 
 ---
 
