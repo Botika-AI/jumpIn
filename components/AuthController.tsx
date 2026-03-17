@@ -25,6 +25,7 @@ export default function AuthController() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
+  const [sheetsError, setSheetsError] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient()
@@ -122,16 +123,48 @@ export default function AuthController() {
     setAuthState('login')
   }
 
-  const handleCheckIn = async () => {
+  const handleCheckIn = async (decodedText: string) => {
     if (!user) return
     const supabase = createClient()
     const checkinTime = new Date().toISOString()
+
+    // 1. Supabase write — primary, must succeed
     const { error } = await supabase
       .from('profiles')
       .update({ last_checkin: checkinTime })
       .eq('id', user.id)
     if (!error) {
       setUser({ ...user, last_checkin: checkinTime })
+    }
+
+    // 2. Sheets write — secondary, non-fatal
+    const dataOra = new Date(checkinTime).toLocaleString('it-IT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+
+    try {
+      const res = await fetch('/api/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: user.first_name,
+          cognome: user.last_name,
+          email: user.email,
+          scuola: user.school,
+          dataOra,
+          decodedText,
+        }),
+      })
+      if (!res.ok) {
+        setSheetsError('Check-in registrato. Errore di sincronizzazione con il registro.')
+      }
+    } catch {
+      setSheetsError('Check-in registrato. Errore di sincronizzazione con il registro.')
     }
   }
 
@@ -167,6 +200,8 @@ export default function AuthController() {
         user={user}
         onLogout={handleLogout}
         onCheckIn={handleCheckIn}
+        sheetsError={sheetsError}
+        onClearSheetsError={() => setSheetsError(null)}
       />
     );
   }
