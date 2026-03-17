@@ -45,17 +45,17 @@ Deferred to future release. Backend integration and real data persistence.
 
 ### Authentication (Supabase)
 
-- **SAUTH-01**: Replace mock auth with Supabase Auth (email/password)
-- **SAUTH-02**: Cookie-based session management via @supabase/ssr
-- **SAUTH-03**: Middleware route protection for dashboard
-- **SAUTH-04**: Registration creates Supabase Auth user + profiles table row
+- [x] **SAUTH-01**: Replace mock auth with Supabase Auth (email/password)
+- [x] **SAUTH-02**: Cookie-based session management via @supabase/ssr
+- [x] **SAUTH-03**: Middleware route protection for dashboard
+- [x] **SAUTH-04**: Registration creates Supabase Auth user + profiles table row
 
 ### Database (Supabase)
 
-- **DB-01**: Profiles table schema (id, first_name, last_name, email, school, dob, last_checkin)
-- **DB-02**: Dashboard reads profile data from Supabase
-- **DB-03**: QR scan writes last_checkin timestamp to Supabase
-- **DB-04**: Row Level Security policies on profiles table
+- [x] **DB-01**: Profiles table schema (id, first_name, last_name, email, school, dob, last_checkin)
+- [x] **DB-02**: Dashboard reads profile data from Supabase
+- [x] **DB-03**: QR scan writes last_checkin timestamp to Supabase
+- [x] **DB-04**: Row Level Security policies on profiles table
 
 ### Google Sheets Integration
 
