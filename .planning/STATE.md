@@ -2,91 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-17T12:27:55.120Z"
+status: in-progress
+last_updated: "2026-03-17T12:33:15Z"
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 16
-  completed_plans: 13
----
-
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: unknown
-last_updated: "2026-03-14T14:47:47.086Z"
-progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
----
-
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: unknown
-last_updated: "2026-03-14T12:13:45.679Z"
-progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 10
-  completed_plans: 10
----
-
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: unknown
-last_updated: "2026-03-14T11:16:09.625Z"
-progress:
-  total_phases: 4
-  completed_phases: 3
-  total_plans: 10
-  completed_plans: 9
----
-
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: unknown
-last_updated: "2026-03-14T10:16:35.359Z"
-progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
----
-
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: unknown
-last_updated: "2026-03-14T10:10:12.804Z"
-progress:
-  total_phases: 3
-  completed_phases: 2
-  total_plans: 8
-  completed_plans: 7
----
-
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: in-progress
-last_updated: "2026-02-27T16:57:10Z"
-progress:
-  total_phases: 4
-  completed_phases: 2
-  total_plans: 9
-  completed_plans: 6
+  completed_plans: 14
 ---
 
 # Project State
@@ -96,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** Users can scan a QR code to instantly check in, with their attendance reliably recorded in both Supabase and Google Sheets
-**Current focus:** Phase 4 - Integration & Verification
+**Current focus:** Phase 5 - Supabase Authentication
 
 ## Current Position
 
-Phase: 4 of 4 (Integration & Verification)
-Plan: 1 of 2 in current phase
+Phase: 5 of 6 (Supabase Authentication)
+Plan: 2 of 4 in current phase
 Status: In Progress
-Last activity: 2026-03-14 — Completed Phase 04 Plan 01 (Pre-flight Verification and Inline Fixes)
+Last activity: 2026-03-17 — Completed Phase 05 Plan 01 (Supabase Infrastructure Setup)
 
-Progress: [█████████░] 95%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
+- Total plans completed: 14
 - Average duration: 7.5 minutes
-- Total execution time: 0.74 hours
+- Total execution time: ~1.7 hours
 
 **By Phase:**
 
@@ -142,7 +64,7 @@ Progress: [█████████░] 95%
 | Phase 04-integration-verification P02 | 2700 | 2 tasks | 3 files |
 | Phase 04-integration-verification P03 | 61 | 1 tasks | 2 files |
 | Phase 04-integration-verification P04 | 81 | 2 tasks | 2 files |
-| Phase 05-supabase-authentication P02 | 180 | 1 tasks | 2 files |
+| Phase 05-supabase-authentication P01 | 574 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -172,7 +94,7 @@ Recent decisions affecting current work:
 - [Phase 02-03]: Empty dep array [] for scanner init useEffect — avoids re-initialization bug from old [onScan] dep
 - [Phase 02-03]: Dashboard.tsx uses static PLACEHOLDER_USER with no props in Phase 2 — Phase 3 will add real user data
 - [Phase 03-01]: AuthController uses 'use client' directive — page.tsx stays Server Component, client boundary scoped to AuthController only
-- [Phase 03-01]: Hydration guard (return null when \!hydrated) prevents login form flash when user refreshes on dashboard
+- [Phase 03-01]: Hydration guard (return null when !hydrated) prevents login form flash when user refreshes on dashboard
 - [Phase 03-01]: TypeScript prop errors on child component JSX are intentional — resolved in Plan 02
 - [Phase 03-02]: Dashboard last_checkin reads directly from user prop (not local state) — persisted data flows down from AuthController/localStorage
 - [Phase 03-02]: password field stays in RegisterForm local state but excluded from onRegister profile — mock auth has no credential storage
@@ -183,8 +105,10 @@ Recent decisions affecting current work:
 - [Phase 04-03]: 'loading' AuthState + useIsomorphicLayoutEffect init in AuthController eliminates login form flash on hard refresh
 - [Phase 04-integration-verification]: cancelled flag checked before Html5Qrcode instantiation and inside startScanner() — covers both async timing windows
 - [Phase 04-integration-verification]: viewport exported as separate named export from layout.tsx per Next.js App Router requirement (not inside metadata)
-- [Phase 05-02]: confirmPassword stays in local component state, never passed to onRegister callback — purely a UI validation concern
-- [Phase 05-02]: Error cleared on any keystroke in the confirm field to avoid stale error after user edits
+- [Phase 05-01]: Used NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (not ANON_KEY) — matches Supabase's current naming convention for the publishable/anon key
+- [Phase 05-01]: Force-added .env.local.example past .gitignore (.env* pattern) — safe template with no secrets, committed for developer onboarding
+- [Phase 05-01]: npm install required --legacy-peer-deps — @supabase/ssr@0.9.0 peer spec requires supabase-js ^2.97.0 but 2.99.x is installed (compatible)
+- [Phase 05-01]: supabase/ directory is reference SQL only, no Supabase CLI used — schema applied manually via Supabase SQL Editor
 
 ### Roadmap Evolution
 
@@ -201,13 +125,13 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14 (plan execution)
-Stopped at: Completed Phase 04 Plan 01 - Pre-flight verification and inline fixes
+Last session: 2026-03-17 (plan execution)
+Stopped at: Completed Phase 05 Plan 01 - Supabase Infrastructure Setup
 Resume file: None
 
-**Phase 4 In Progress:** Plan 04-01 done. Build clean, lang=it set, camera error state added. Ready for 04-02 UAT walkthrough.
+**Phase 5 In Progress:** Plan 05-01 done. Supabase packages installed, client utilities created, middleware wired, schema SQL produced. Build clean. Ready for 05-02 AuthController with Supabase.
 
 ---
 
 *Created: 2026-02-13*
-*Last updated: 2026-02-27*
+*Last updated: 2026-03-17*
