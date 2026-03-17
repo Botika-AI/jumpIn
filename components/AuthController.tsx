@@ -1,99 +1,139 @@
 'use client';
 
-import { useState, useEffect, useLayoutEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import LoginForm from '@/components/LoginForm';
 import RegisterForm from '@/components/RegisterForm';
 import Dashboard from '@/components/Dashboard';
 import type { AuthState, UserProfile } from '@/types';
 
-const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+function mapSupabaseError(message: string): string {
+  switch (message) {
+    case 'Invalid login credentials':
+      return 'Credenziali non valide.'
+    case 'User already registered':
+      return 'Email già registrata. Accedi invece.'
+    case 'Email not confirmed':
+      return 'Conferma la tua email prima di accedere.'
+    default:
+      return 'Errore di connessione. Riprova.'
+  }
+}
 
 export default function AuthController() {
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(null);
 
-  useIsomorphicLayoutEffect(() => {
-    try {
-      const saved = localStorage.getItem('jumpin_user');
-      if (saved) {
-        const parsed = JSON.parse(saved) as UserProfile;
-        setUser(parsed);
-        setAuthState('dashboard');
+  useEffect(() => {
+    const supabase = createClient()
+
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        if (profile) {
+          setUser(profile as UserProfile)
+          setAuthState('dashboard')
+        } else {
+          setAuthState('login')
+        }
       } else {
-        setAuthState('login');
+        setAuthState('login')
       }
-    } catch {
-      localStorage.removeItem('jumpin_user');
-      setAuthState('login');
-    }
-  }, []);
+    })
 
-  const handleLogin = (email: string, password: string, onError: (msg: string) => void) => {
-    setIsLoading(true);
-    setTimeout(() => {
-      if (email === 'demo@example.com' && password === 'password123') {
-        let previousCheckin: string | undefined;
-        try {
-          const stored = localStorage.getItem('jumpin_user');
-          if (stored) previousCheckin = (JSON.parse(stored) as UserProfile).last_checkin;
-        } catch { /* ignore */ }
-        const mockUser: UserProfile = {
-          id: 'demo-123',
-          first_name: 'Demo',
-          last_name: 'User',
-          email: 'demo@example.com',
-          school: 'JumpIn Testing School',
-          dob: '2000-01-01',
-          last_checkin: previousCheckin,
-        };
-        setUser(mockUser);
-        localStorage.setItem('jumpin_user', JSON.stringify(mockUser));
-        setAuthState('dashboard');
-      } else {
-        onError('Credenziali non valide. Usa demo@example.com / password123');
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
+      if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setAuthState('login')
       }
-      setIsLoading(false);
-    }, 1200);
-  };
+    })
 
-  const handleRegister = (profile: Omit<UserProfile, 'id' | 'last_checkin'>) => {
-    setIsLoading(true);
-    setTimeout(() => {
-      const mockUser: UserProfile = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...profile,
-        last_checkin: undefined,
-      };
-      setUser(mockUser);
-      localStorage.setItem('jumpin_user', JSON.stringify(mockUser));
-      setAuthState('dashboard');
-      setIsLoading(false);
-    }, 2000);
-  };
+    return () => subscription.unsubscribe()
+  }, [])
 
-  const handleLogout = () => {
-    // Preserve last_checkin so it survives logout and reappears after re-login
-    let lastCheckin: string | undefined;
-    try {
-      const stored = localStorage.getItem('jumpin_user');
-      if (stored) lastCheckin = (JSON.parse(stored) as UserProfile).last_checkin;
-    } catch { /* ignore */ }
-    if (lastCheckin) {
-      localStorage.setItem('jumpin_user', JSON.stringify({ last_checkin: lastCheckin }));
-    } else {
-      localStorage.removeItem('jumpin_user');
+  const handleLogin = async (email: string, password: string, onError: (msg: string) => void) => {
+    setIsLoading(true)
+    const supabase = createClient()
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      onError(mapSupabaseError(error.message))
+      setIsLoading(false)
+      return
     }
-    setUser(null);
-    setAuthState('login');
-  };
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .single()
+    if (profile) {
+      setUser(profile as UserProfile)
+      setAuthState('dashboard')
+    }
+    setIsLoading(false)
+  }
 
-  const handleCheckIn = () => {
-    if (!user) return;
-    const updatedUser = { ...user, last_checkin: new Date().toISOString() };
-    setUser(updatedUser);
-    localStorage.setItem('jumpin_user', JSON.stringify(updatedUser));
-  };
+  const handleRegister = async (
+    profileData: Omit<UserProfile, 'id' | 'last_checkin'>,
+    password: string
+  ) => {
+    setIsLoading(true)
+    const supabase = createClient()
+    const { data, error } = await supabase.auth.signUp({
+      email: profileData.email,
+      password,
+      options: {
+        data: {
+          first_name: profileData.first_name,
+          last_name: profileData.last_name,
+          school: profileData.school,
+          dob: profileData.dob,
+        }
+      }
+    })
+    if (error) {
+      setRegisterError(mapSupabaseError(error.message))
+      setIsLoading(false)
+      return
+    }
+    if (data.user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single()
+      if (profile) {
+        setUser(profile as UserProfile)
+        setAuthState('dashboard')
+      }
+    }
+    setIsLoading(false)
+  }
+
+  const handleLogout = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    setUser(null)
+    setAuthState('login')
+  }
+
+  const handleCheckIn = async () => {
+    if (!user) return
+    const supabase = createClient()
+    const checkinTime = new Date().toISOString()
+    const { error } = await supabase
+      .from('profiles')
+      .update({ last_checkin: checkinTime })
+      .eq('id', user.id)
+    if (!error) {
+      setUser({ ...user, last_checkin: checkinTime })
+    }
+  }
 
   if (authState === 'loading') {
     return null;
@@ -115,6 +155,8 @@ export default function AuthController() {
         onRegister={handleRegister}
         isLoading={isLoading}
         onNavigateLogin={() => setAuthState('login')}
+        registerError={registerError}
+        onClearRegisterError={() => setRegisterError(null)}
       />
     );
   }

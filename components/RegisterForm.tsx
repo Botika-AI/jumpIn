@@ -6,12 +6,14 @@ import { RIMINI_SCHOOLS } from '@/lib/schools';
 import type { UserProfile } from '@/types';
 
 interface RegisterFormProps {
-  onRegister: (profile: Omit<UserProfile, 'id' | 'last_checkin'>) => void;
+  onRegister: (profile: Omit<UserProfile, 'id' | 'last_checkin'>, password: string) => void;
   isLoading: boolean;
   onNavigateLogin: () => void;
+  registerError?: string | null;
+  onClearRegisterError?: () => void;
 }
 
-export default function RegisterForm({ onRegister, isLoading, onNavigateLogin }: RegisterFormProps) {
+export default function RegisterForm({ onRegister, isLoading, onNavigateLogin, registerError, onClearRegisterError }: RegisterFormProps) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -35,7 +37,7 @@ export default function RegisterForm({ onRegister, isLoading, onNavigateLogin }:
       email,
       school: school === 'altro' ? customSchool : school,
       dob,
-    });
+    }, password);
   };
 
   return (
@@ -139,7 +141,7 @@ export default function RegisterForm({ onRegister, isLoading, onNavigateLogin }:
               minLength={8}
               className="w-full px-4 py-3 rounded-2xl glass-input text-sm"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => { setPassword(e.target.value); if (registerError) onClearRegisterError?.(); }}
             />
           </div>
 
@@ -163,6 +165,13 @@ export default function RegisterForm({ onRegister, isLoading, onNavigateLogin }:
             <div className="p-3 rounded-2xl bg-red-50/80 border border-red-100 flex items-center gap-2 text-red-600">
               <AlertCircle size={16} className="shrink-0" />
               <p className="text-xs font-bold">{passwordError}</p>
+            </div>
+          )}
+
+          {registerError && (
+            <div className="p-3 rounded-2xl bg-red-50/80 border border-red-100 flex items-center gap-2 text-red-600">
+              <AlertCircle size={16} className="shrink-0" />
+              <p className="text-xs font-bold">{registerError}</p>
             </div>
           )}
 
