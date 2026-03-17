@@ -1,6 +1,7 @@
 # Phase 6: Google Sheets Check-in - Context
 
 **Gathered:** 2026-03-17
+**Updated:** 2026-03-17
 **Status:** Ready for planning
 
 <domain>
@@ -16,7 +17,8 @@ When a user scans a QR code (entrance or exit), write the check-in event to a Go
 ### Sync behavior
 - Check-in only — registration does NOT write to Google Sheets
 - Supabase write happens first (existing `handleCheckIn` flow); API route call happens after
-- On Sheets write failure: retry once automatically, then fail silently (Supabase write always succeeds regardless)
+- On Sheets write failure: surface an Italian error to the user (Claude decides exact wording)
+- If Sheets write fails, the Supabase `last_checkin` write still stands — do NOT roll back
 - Each QR scan appends a new row (not update-in-place) — full history of all entrance/exit events
 
 ### Spreadsheet structure
