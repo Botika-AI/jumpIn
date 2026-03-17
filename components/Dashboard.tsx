@@ -8,10 +8,12 @@ import type { UserProfile } from '@/types';
 interface DashboardProps {
   user: UserProfile;
   onLogout: () => void;
-  onCheckIn: () => void;
+  onCheckIn: (decodedText: string) => void;
+  sheetsError?: string | null;
+  onClearSheetsError?: () => void;
 }
 
-export default function Dashboard({ user, onLogout, onCheckIn }: DashboardProps) {
+export default function Dashboard({ user, onLogout, onCheckIn, sheetsError, onClearSheetsError }: DashboardProps) {
   const [showScanner, setShowScanner] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -20,7 +22,7 @@ export default function Dashboard({ user, onLogout, onCheckIn }: DashboardProps)
   const handleScan = (decodedText: string) => {
     setShowScanner(false);
     setSuccess(true);
-    onCheckIn();  // AUTH-05: persists last_checkin to localStorage via AuthController
+    onCheckIn(decodedText);  // pass decodedText through to AuthController for Sheets payload
     if ('vibrate' in navigator) navigator.vibrate(200);
     setTimeout(() => setSuccess(false), 4000);
   };
@@ -131,6 +133,20 @@ export default function Dashboard({ user, onLogout, onCheckIn }: DashboardProps)
               Effettua Check-in
             </p>
           </button>
+        )}
+
+        {/* Non-fatal Sheets sync error — shown after success checkmark fades */}
+        {sheetsError && (
+          <div className="mt-4 px-5 py-3 rounded-2xl bg-yellow-50 border border-yellow-200 flex items-center justify-between gap-3 text-yellow-700 text-xs font-medium">
+            <span>{sheetsError}</span>
+            <button
+              onClick={onClearSheetsError}
+              className="text-yellow-500 hover:text-yellow-700 transition-colors text-lg leading-none font-bold"
+              aria-label="Chiudi"
+            >
+              ×
+            </button>
+          </div>
         )}
 
         {/* Last check-in timestamp */}
