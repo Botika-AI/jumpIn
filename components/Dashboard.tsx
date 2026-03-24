@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Camera, LogOut, CheckCircle, Clock, MapPin, Mail, User, ShieldCheck } from 'lucide-react';
+import { Camera, LogOut, CheckCircle, XCircle, Clock, MapPin, Mail, User, ShieldCheck } from 'lucide-react';
 import QrScanner from '@/components/QRScanner';
 import type { UserProfile } from '@/types';
 
 interface DashboardProps {
   user: UserProfile;
   onLogout: () => void;
-  onCheckIn: (decodedText: string) => void;
+  onCheckIn: (decodedText: string) => Promise<{ ok: boolean }>;
   sheetsError?: string | null;
   onClearSheetsError?: () => void;
 }
@@ -16,15 +16,21 @@ interface DashboardProps {
 export default function Dashboard({ user, onLogout, onCheckIn, sheetsError, onClearSheetsError }: DashboardProps) {
   const [showScanner, setShowScanner] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [unknownQr, setUnknownQr] = useState(false);
 
   const initials = `${user.first_name[0]}${user.last_name[0]}`.toUpperCase();
 
-  const handleScan = (decodedText: string) => {
+  const handleScan = async (decodedText: string) => {
     setShowScanner(false);
-    setSuccess(true);
-    onCheckIn(decodedText);  // pass decodedText through to AuthController for Sheets payload
-    if ('vibrate' in navigator) navigator.vibrate(200);
-    setTimeout(() => setSuccess(false), 4000);
+    const result = await onCheckIn(decodedText);
+    if (result.ok) {
+      setSuccess(true);
+      if ('vibrate' in navigator) navigator.vibrate(200);
+      setTimeout(() => setSuccess(false), 4000);
+    } else {
+      setUnknownQr(true);
+      setTimeout(() => setUnknownQr(false), 4000);
+    }
   };
 
   return (
@@ -120,6 +126,14 @@ export default function Dashboard({ user, onLogout, onCheckIn, sheetsError, onCl
             </div>
             <p className="text-green-600 font-bold text-xl font-montserrat tracking-tight">Check-in Confermato!</p>
             <p className="text-gray-400 text-xs font-medium uppercase tracking-widest mt-1">Sincronizzazione completata</p>
+          </div>
+        ) : unknownQr ? (
+          <div className="flex flex-col items-center animate-in zoom-in duration-500">
+            <div className="w-24 h-24 rounded-[2.5rem] bg-red-500/10 border-2 border-red-500/20 flex items-center justify-center text-red-500 mb-4 shadow-xl shadow-red-500/10">
+              <XCircle size={48} />
+            </div>
+            <p className="text-red-600 font-bold text-xl font-montserrat tracking-tight">QR Non Riconosciuto</p>
+            <p className="text-gray-400 text-xs font-medium uppercase tracking-widest mt-1">Usa il QR code dell&apos;evento</p>
           </div>
         ) : (
           <button

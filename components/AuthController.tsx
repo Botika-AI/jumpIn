@@ -123,21 +123,11 @@ export default function AuthController() {
     setAuthState('login')
   }
 
-  const handleCheckIn = async (decodedText: string) => {
-    if (!user) return
+  const handleCheckIn = async (decodedText: string): Promise<{ ok: boolean }> => {
+    if (!user) return { ok: false }
     const supabase = createClient()
     const checkinTime = new Date().toISOString()
 
-    // 1. Supabase write — primary, must succeed
-    const { error } = await supabase
-      .from('profiles')
-      .update({ last_checkin: checkinTime })
-      .eq('id', user.id)
-    if (!error) {
-      setUser({ ...user, last_checkin: checkinTime })
-    }
-
-    // 2. Sheets write — secondary, non-fatal
     const dataOra = new Date(checkinTime).toLocaleString('it-IT', {
       day: '2-digit',
       month: '2-digit',
@@ -147,6 +137,7 @@ export default function AuthController() {
       second: '2-digit',
     })
 
+    // 1. Sheets write first — validates QR and records attendance
     try {
       const res = await fetch('/api/checkin', {
         method: 'POST',
@@ -160,12 +151,28 @@ export default function AuthController() {
           decodedText,
         }),
       })
+      if (res.status === 400) {
+        // Unknown QR — reject entirely, do not update Supabase
+        return { ok: false }
+      }
       if (!res.ok) {
+        // Sheets write failed (500) but QR was valid — still confirm check-in
         setSheetsError('Check-in registrato. Errore di sincronizzazione con il registro.')
       }
     } catch {
       setSheetsError('Check-in registrato. Errore di sincronizzazione con il registro.')
     }
+
+    // 2. Supabase write — only reached if QR was recognised
+    const { error } = await supabase
+      .from('profiles')
+      .update({ last_checkin: checkinTime })
+      .eq('id', user.id)
+    if (!error) {
+      setUser({ ...user, last_checkin: checkinTime })
+    }
+
+    return { ok: true }
   }
 
   if (authState === 'loading') {

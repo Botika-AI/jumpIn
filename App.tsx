@@ -84,13 +84,14 @@ const App: React.FC = () => {
     setLoginError(null);
   };
 
-  const handleCheckIn = async () => {
+  const handleCheckIn = async (_decodedText: string): Promise<{ ok: boolean }> => {
     if (user) {
       const timestamp = new Date().toISOString();
       const updatedUser = { ...user, last_checkin: timestamp };
       setUser(updatedUser);
       localStorage.setItem('jumpin_user', JSON.stringify(updatedUser));
     }
+    return { ok: true };
   };
 
   return (
