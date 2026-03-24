@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 
 import { NextRequest } from 'next/server';
-import { appendCheckin, CheckInPayload } from '@/lib/googleSheets';
+import { appendCheckin, resolveQrTipo, CheckInPayload } from '@/lib/googleSheets';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,12 +12,18 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: 'Dati mancanti.' }, { status: 400 });
     }
 
+    // Reject unrecognised QR codes
+    const tipo = resolveQrTipo(body.decodedText);
+    if (!tipo) {
+      return Response.json({ error: 'QR code non riconosciuto.' }, { status: 400 });
+    }
+
     // 1 immediate retry on transient failure
     try {
-      await appendCheckin(body);
+      await appendCheckin(body, tipo);
     } catch (firstErr) {
       console.error('[checkin] First attempt failed, retrying:', firstErr);
-      await appendCheckin(body); // throws on second failure — caught below
+      await appendCheckin(body, tipo); // throws on second failure — caught below
     }
 
     return Response.json({ ok: true });

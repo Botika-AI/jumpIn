@@ -44,19 +44,15 @@ async function ensureHeaders(
   }
 }
 
-export async function appendCheckin(payload: CheckInPayload): Promise<void> {
+export function resolveQrTipo(decodedText: string): 'Entrata' | 'Uscita' | null {
+  if (decodedText === process.env.ENTRANCE_QR_VALUE) return 'Entrata';
+  if (decodedText === process.env.EXIT_QR_VALUE) return 'Uscita';
+  return null;
+}
+
+export async function appendCheckin(payload: CheckInPayload, tipo: 'Entrata' | 'Uscita'): Promise<void> {
   const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID;
   if (!spreadsheetId) throw new Error('GOOGLE_SPREADSHEET_ID environment variable is not set');
-
-  let tipo: string;
-  if (payload.decodedText === process.env.ENTRANCE_QR_VALUE) {
-    tipo = 'Entrata';
-  } else if (payload.decodedText === process.env.EXIT_QR_VALUE) {
-    tipo = 'Uscita';
-  } else {
-    console.log('[checkin] unknown QR value:', payload.decodedText);
-    tipo = 'Entrata';
-  }
 
   const sheets = getSheetsClient();
   await ensureHeaders(sheets, spreadsheetId);
@@ -67,7 +63,7 @@ export async function appendCheckin(payload: CheckInPayload): Promise<void> {
     valueInputOption: 'USER_ENTERED',
     insertDataOption: 'INSERT_ROWS',
     requestBody: {
-      values: [[payload.nome, payload.cognome, payload.email, payload.scuola, payload.dataOra, tipo]],
+      values: [[payload.nome, payload.cognome, payload.email, payload.scuola, payload.dataOra, tipo as string]],
     },
   });
 }
