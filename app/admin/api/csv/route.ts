@@ -13,7 +13,12 @@ type AttendanceRow = {
     last_name: string;
     email: string;
     school: string;
-  };
+  } | {
+    first_name: string;
+    last_name: string;
+    email: string;
+    school: string;
+  }[];
 };
 
 export async function GET(request: NextRequest) {
@@ -40,8 +45,8 @@ export async function GET(request: NextRequest) {
 
   const rows = [
     'Nome,Cognome,Email,Scuola,Tipo,Data e Ora',
-    ...(data as AttendanceRow[]).map(row => {
-      const p = row.profiles;
+    ...(data as unknown as AttendanceRow[]).map(row => {
+      const p = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
       const dt = new Date(row.scanned_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' });
       return [p.first_name, p.last_name, p.email, p.school, row.type, dt]
         .map(v => `"${(v ?? '').replace(/"/g, '""')}"`)
