@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Camera, LogOut, CheckCircle, XCircle, Clock, MapPin, Mail, User, ShieldCheck } from 'lucide-react';
+import { Camera, LogOut, CheckCircle, XCircle, Clock, MapPin, Mail, User, ShieldCheck, Settings } from 'lucide-react';
 import QrScanner from '@/components/QRScanner';
 import type { UserProfile } from '@/types';
 
@@ -46,13 +46,22 @@ export default function Dashboard({ user, onLogout, onCheckIn, sheetsError, onCl
             <p className="text-[10px] text-orange-400 font-bold tracking-widest uppercase -mt-1">Dashboard</p>
           </div>
         </div>
-        <button
-          onClick={onLogout}
-          className="p-3 rounded-2xl bg-white/60 hover:bg-red-50 hover:text-red-500 transition-all text-gray-400 border border-white shadow-sm"
-          aria-label="Logout"
-        >
-          <LogOut size={22} />
-        </button>
+        <div className="flex items-center gap-2">
+          <a
+            href="/admin"
+            className="p-3 rounded-2xl bg-white/60 hover:bg-orange-50 hover:text-orange-500 transition-all text-gray-400 border border-white shadow-sm"
+            aria-label="Admin"
+          >
+            <Settings size={22} />
+          </a>
+          <button
+            onClick={onLogout}
+            className="p-3 rounded-2xl bg-white/60 hover:bg-red-50 hover:text-red-500 transition-all text-gray-400 border border-white shadow-sm"
+            aria-label="Logout"
+          >
+            <LogOut size={22} />
+          </button>
+        </div>
       </div>
 
       {/* Profile card */}
@@ -149,7 +158,7 @@ export default function Dashboard({ user, onLogout, onCheckIn, sheetsError, onCl
           </button>
         )}
 
-        {/* Non-fatal Sheets sync error — shown after success checkmark fades */}
+        {/* Non-fatal Sheets sync error */}
         {sheetsError && (
           <div className="mt-4 px-5 py-3 rounded-2xl bg-yellow-50 border border-yellow-200 flex items-center justify-between gap-3 text-yellow-700 text-xs font-medium">
             <span>{sheetsError}</span>

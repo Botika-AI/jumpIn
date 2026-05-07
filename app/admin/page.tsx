@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { isAdmin } from '@/lib/admin';
 
@@ -6,7 +5,22 @@ export default async function AdminPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) redirect('/');
+  if (!user) {
+    return (
+      <main className="min-h-screen mesh-bg flex items-center justify-center p-6">
+        <div className="liquid-glass p-8 text-center max-w-sm w-full">
+          <h1 className="text-2xl font-montserrat font-bold text-orange-900 mb-2">Login richiesto</h1>
+          <p className="text-orange-800/70 mb-6">Devi effettuare il login per accedere alla dashboard admin.</p>
+          <a
+            href="/"
+            className="inline-block px-6 py-3 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-bold transition-colors"
+          >
+            Vai al Login
+          </a>
+        </div>
+      </main>
+    );
+  }
 
   if (!isAdmin(user.email)) {
     return (
