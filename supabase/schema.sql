@@ -14,10 +14,30 @@ create table if not exists public.profiles (
   last_checkin timestamptz
 );
 
--- 2. Row Level Security
-alter table public.profiles enable row level security;
+-- 2. Events table
+create table if not exists public.events (
+  id text primary key,
+  name text not null,
+  event_date date,
+  location text,
+  created_at timestamptz default now()
+);
 
--- 3. RLS Policies (drop first to make idempotent)
+-- 3. Attendances table
+create table if not exists public.attendances (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  event_id text references public.events(id) on delete cascade not null,
+  type text check (type in ('ingresso', 'uscita')) not null,
+  scanned_at timestamptz default now()
+);
+
+-- 4. Row Level Security
+alter table public.profiles enable row level security;
+alter table public.events enable row level security;
+alter table public.attendances enable row level security;
+
+-- 5. RLS Policies — profiles (drop first to make idempotent)
 drop policy if exists "Users can view own profile" on profiles;
 create policy "Users can view own profile"
   on profiles for select
@@ -30,7 +50,27 @@ create policy "Users can update own profile"
   using ( (select auth.uid()) = id )
   with check ( (select auth.uid()) = id );
 
--- 4. Trigger function: auto-create profile row on signup
+-- 6. RLS Policies — events
+drop policy if exists "Events readable by authenticated" on events;
+create policy "Events readable by authenticated"
+  on events for select
+  to authenticated
+  using (true);
+
+-- 7. RLS Policies — attendances
+drop policy if exists "Users can insert own attendance" on attendances;
+create policy "Users can insert own attendance"
+  on attendances for insert
+  to authenticated
+  with check ( (select auth.uid()) = user_id );
+
+drop policy if exists "Users can view own attendance" on attendances;
+create policy "Users can view own attendance"
+  on attendances for select
+  to authenticated
+  using ( (select auth.uid()) = user_id );
+
+-- 8. Trigger function: auto-create profile row on signup
 -- security definer with empty search_path is required so the trigger can INSERT
 -- into public.profiles even when RLS is enabled
 create or replace function public.handle_new_user()
