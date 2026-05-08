@@ -37,6 +37,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       return;
     }
 
+    // Verifica che l'evento esista e sia attivo
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .select('id, event_date, event_end')
+      .eq('id', eventId)
+      .single();
+
+    if (eventError || !event) {
+      setScanError('Evento non riconosciuto. QR code non valido.');
+      setIsProcessing(false);
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const effectiveEnd = event.event_end || event.event_date;
+    if (today < event.event_date) {
+      setScanError('Evento non ancora iniziato.');
+      setIsProcessing(false);
+      return;
+    }
+    if (today > effectiveEnd) {
+      setScanError('Evento scaduto. Il check-in non è più disponibile.');
+      setIsProcessing(false);
+      return;
+    }
+
     const { error: insertError } = await supabase.from('attendances').insert({
       user_id: user.id,
       event_id: eventId,
@@ -119,6 +145,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 <p className="text-sm font-bold text-gray-800">{user.first_name} {user.last_name}</p>
               </div>
             </div>
+
             <div className="flex items-center gap-5 p-4 rounded-3xl bg-white/40 border border-white/60 group transition-all hover:bg-white/60">
               <div className="p-3 rounded-2xl bg-orange-500/10 text-orange-500 transition-colors group-hover:bg-orange-500 group-hover:text-white">
                 <MapPin size={20} />
@@ -128,6 +155,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 <p className="text-sm font-bold text-gray-800 leading-tight">{user.school}</p>
               </div>
             </div>
+
             <div className="flex items-center gap-5 p-4 rounded-3xl bg-white/40 border border-white/60 group transition-all hover:bg-white/60">
               <div className="p-3 rounded-2xl bg-orange-500/10 text-orange-500 transition-colors group-hover:bg-orange-500 group-hover:text-white">
                 <Mail size={20} />
