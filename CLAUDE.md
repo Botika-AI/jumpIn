@@ -87,7 +87,7 @@ Auto-popolata da trigger `on_auth_user_created` al signup.
 | `ENTRANCE_QR_VALUE` | Stringa codificata nel QR di ingresso |
 | `EXIT_QR_VALUE` | Stringa codificata nel QR di uscita |
 | `CURRENT_EVENT_ID` | ID evento attivo (es. `jumpin_2026_05`) |
-| `ADMIN_EMAILS` | Email admin separate da virgola (es. `ciliberti.andrea@gmail.com,andrea.ciliberti@botika.ai`) |
+| `ADMIN_EMAILS` | Email admin separate da virgola (configurate su Vercel) |
 | `GOOGLE_SPREADSHEET_ID` | ID Google Spreadsheet di backup |
 | `GOOGLE_SERVICE_ACCOUNT_KEY` | JSON service account Google (stringato) |
 
@@ -142,16 +142,15 @@ supabase/schema.sql         # Schema completo (idempotente, da eseguire su DB ve
 - Redirect a `/` se non autenticato; pagina 403 se autenticato ma non admin
 - Il CSV usa `SUPABASE_SERVICE_ROLE_KEY` per bypassare RLS e leggere tutte le presenze
 
+### Admin Emails Configurate
+- configurate tramite variabile d'ambiente `ADMIN_EMAILS` su Vercel (non nel codice)
+
 ### Schema CSV Export
 ```
 Nome,Cognome,Email,Scuola,Tipo,Data e Ora
 Mario,Rossi,mario@example.com,Liceo Einstein,ingresso,07/05/2026 21:30:00
 Mario,Rossi,mario@example.com,Liceo Einstein,uscita,07/05/2026 23:45:00
 ```
-
-### Admin Emails Configurate
-- `ciliberti.andrea@gmail.com`
-- `andrea.ciliberti@botika.ai`
 
 ### URL Produzione
 `https://jumpindeploy.vercel.app/admin`
