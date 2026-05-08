@@ -36,6 +36,5 @@ CREATE POLICY "attendances_select_admin" ON public.attendances FOR SELECT TO aut
 CREATE POLICY "profiles_select_admin" ON public.profiles FOR SELECT TO authenticated
   USING (auth.uid() = id OR auth_is_admin());
 
--- 6. Imposta admin per le email conosciute (eseguire dopo che gli utenti si sono registrati)
--- UPDATE public.profiles SET is_admin = true
---   WHERE email IN ('ciliberti.andrea@gmail.com', 'andrea.ciliberti@botika.ai');
+-- 6. Imposta admin manualmente via SQL Editor dopo la registrazione:
+-- UPDATE public.profiles SET is_admin = true WHERE email = 'your@email.com';
