@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Camera, LogOut, CheckCircle, Clock, MapPin, Mail, User, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Camera, LogOut, CheckCircle, Clock, MapPin, Mail, User, ShieldCheck, AlertCircle, Settings } from 'lucide-react';
 import { UserProfile } from '../types';
 import { GlassCard } from './GlassCard';
 import QRScanner from './QRScanner';
@@ -74,10 +74,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
             <p className="text-[10px] text-orange-400 font-bold tracking-widest uppercase -mt-1">Dashboard</p>
           </div>
         </div>
-        <button onClick={onLogout}
-          className="p-3 rounded-2xl bg-white/60 hover:bg-red-50 hover:text-red-500 transition-all text-gray-400 border border-white shadow-sm">
-          <LogOut size={22} />
-        </button>
+        <div className="flex items-center gap-2">
+          {user.is_admin && (
+            <a href="/admin"
+              className="p-3 rounded-2xl bg-orange-500 hover:bg-orange-600 transition-all text-white border border-orange-400 shadow-sm"
+              title="Admin Dashboard">
+              <Settings size={22} />
+            </a>
+          )}
+          <button onClick={onLogout}
+            className="p-3 rounded-2xl bg-white/60 hover:bg-red-50 hover:text-red-500 transition-all text-gray-400 border border-white shadow-sm">
+            <LogOut size={22} />
+          </button>
+        </div>
       </div>
 
       <GlassCard className="mb-10 overflow-visible">
