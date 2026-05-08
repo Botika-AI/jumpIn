@@ -60,7 +60,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     setTimeout(() => { setSuccess(false); setLastTipo(null); }, 5000);
   };
 
-  const initials = `${user.first_name[0] || ''}${user.last_name[0] || ''}`.toUpperCase();
+  const initials = `${(user.first_name || '')[0] || ''}${(user.last_name || '')[0] || ''}`.toUpperCase() || '?';
 
   return (
     <div className="w-full max-w-md mx-auto px-4 py-10 animate-in fade-in duration-1000">
