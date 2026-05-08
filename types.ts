@@ -20,6 +20,7 @@ export interface JumpInEvent {
   id: string;
   name: string;
   event_date: string;
+  event_end?: string;
   location: string;
   created_at: string;
 }
