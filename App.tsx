@@ -86,10 +86,29 @@ const AuthApp: React.FC = () => {
     const { data, error } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
+      options: {
+        data: {
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          school,
+          dob: formData.dob,
+        },
+      },
     });
 
-    if (error || !data.user) {
-      setLoginError(error?.message || 'Errore durante la registrazione.');
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes('already registered') || msg.includes('already been registered')) {
+        setLoginError('Hai già un account con questa email. Effettua il login.');
+      } else {
+        setLoginError(error.message || 'Errore durante la registrazione.');
+      }
+      setIsLoading(false);
+      return;
+    }
+
+    if (!data.user) {
+      setLoginError('Errore durante la registrazione.');
       setIsLoading(false);
       return;
     }
@@ -209,6 +228,7 @@ const AuthApp: React.FC = () => {
     );
   }
 
+  // Login
   return (
     <div className="w-full max-w-md mx-auto animate-in slide-in-from-bottom-8 duration-700 px-4">
       <div className="text-center mb-10">
