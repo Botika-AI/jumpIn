@@ -212,7 +212,7 @@ const AuthApp: React.FC = () => {
     return (
       <div className="w-full max-w-md mx-auto animate-in slide-in-from-right-8 duration-700 py-10 px-4">
         <div className="text-center mb-10">
-          <img src="/logo.png" alt="JumpIn" className="h-14 w-auto mx-auto mb-1" />
+          <img src="/logo.png" alt="JumpIn" className="h-20 w-auto mx-auto mb-1" />
           <p className="text-[10px] text-orange-400 font-bold tracking-widest uppercase mt-1">Dashboard</p>
         </div>
         <GlassCard>
@@ -288,7 +288,7 @@ const AuthApp: React.FC = () => {
     return (
       <div className="w-full max-w-md mx-auto animate-in slide-in-from-bottom-8 duration-700 px-4">
         <div className="text-center mb-10">
-          <img src="/logo.png" alt="JumpIn" className="h-14 w-auto mx-auto mb-1" />
+          <img src="/logo.png" alt="JumpIn" className="h-20 w-auto mx-auto mb-1" />
           <p className="text-orange-900/40 font-bold uppercase tracking-[0.3em] text-[10px]">Digital Experience</p>
         </div>
         <GlassCard>
@@ -323,7 +323,7 @@ const AuthApp: React.FC = () => {
     return (
       <div className="w-full max-w-md mx-auto animate-in slide-in-from-bottom-8 duration-700 px-4">
         <div className="text-center mb-10">
-          <img src="/logo.png" alt="JumpIn" className="h-14 w-auto mx-auto mb-1" />
+          <img src="/logo.png" alt="JumpIn" className="h-20 w-auto mx-auto mb-1" />
           <p className="text-orange-900/40 font-bold uppercase tracking-[0.3em] text-[10px]">Digital Experience</p>
         </div>
         <GlassCard>
@@ -378,7 +378,7 @@ const AuthApp: React.FC = () => {
   return (
     <div className="w-full max-w-md mx-auto animate-in slide-in-from-bottom-8 duration-700 px-4">
       <div className="text-center mb-10">
-        <img src="/logo.png" alt="JumpIn" className="h-14 w-auto mx-auto mb-1" />
+        <img src="/logo.png" alt="JumpIn" className="h-20 w-auto mx-auto mb-1" />
         <p className="text-orange-900/40 font-bold uppercase tracking-[0.3em] text-[10px]">Digital Experience</p>
       </div>
       <GlassCard className={loginError ? 'ring-2 ring-red-200/50' : ''}>

@@ -92,7 +92,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     <div className="w-full max-w-md mx-auto px-4 py-10 animate-in fade-in duration-1000">
       <div className="relative flex items-center justify-center mb-6 px-2">
         <div className="flex flex-col items-center gap-1">
-          <img src="/logo.png" alt="JumpIn" className="h-14 w-auto" />
+          <img src="/logo.png" alt="JumpIn" className="h-20 w-auto" />
           <p className="text-[10px] text-orange-400 font-bold tracking-widest uppercase">Dashboard</p>
         </div>
         <div className="absolute right-2 flex items-center gap-2">
