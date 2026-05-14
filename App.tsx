@@ -6,7 +6,7 @@ import { RIMINI_SCHOOLS } from './constants';
 import { GlassCard } from './components/GlassCard';
 import { Dashboard } from './components/Dashboard';
 import AdminPage from './pages/AdminPage';
-import { AlertCircle, ChevronRight } from 'lucide-react';
+import { AlertCircle, ChevronRight, CheckCircle2 } from 'lucide-react';
 
 const AuthApp: React.FC = () => {
   const [authState, setAuthState] = useState<AuthState>('loading');
@@ -22,6 +22,8 @@ const AuthApp: React.FC = () => {
     school: RIMINI_SCHOOLS[0].value,
     customSchool: '',
   });
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [privacyError, setPrivacyError] = useState(false);
 
   const loadProfile = async (userId: string) => {
     const { data: profile } = await supabase
@@ -38,26 +40,42 @@ const AuthApp: React.FC = () => {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        loadProfile(session.user.id);
-      } else {
-        setAuthState('login');
-      }
-    });
+    const isRecovery =
+      window.location.hash.includes('type=recovery') ||
+      window.location.search.includes('type=recovery');
+
+    if (isRecovery) {
+      setAuthState('set-password');
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT') {
+      if (event === 'PASSWORD_RECOVERY') {
+        setAuthState('set-password');
+      } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setAuthState('login');
       }
     });
+
+    if (!isRecovery) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          loadProfile(session.user.id);
+        } else {
+          setAuthState('login');
+        }
+      });
+    }
 
     return () => subscription.unsubscribe();
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!privacyAccepted) {
+      setPrivacyError(true);
+      return;
+    }
     setIsLoading(true);
     setLoginError(null);
 
@@ -113,7 +131,7 @@ const AuthApp: React.FC = () => {
       return;
     }
 
-    const { error: profileError } = await supabase.from('profiles').upsert({
+    await supabase.from('profiles').upsert({
       id: data.user.id,
       first_name: formData.firstName,
       last_name: formData.lastName,
@@ -122,13 +140,17 @@ const AuthApp: React.FC = () => {
       dob: formData.dob,
     });
 
-    if (profileError) {
-      setLoginError('Profilo non salvato. Riprova.');
-      setIsLoading(false);
-      return;
-    }
-
-    await loadProfile(data.user.id);
+    setUser({
+      id: data.user.id,
+      first_name: formData.firstName,
+      last_name: formData.lastName,
+      email: formData.email,
+      school,
+      dob: formData.dob,
+      is_admin: false,
+      last_checkin: null,
+    });
+    setAuthState('dashboard');
     setIsLoading(false);
   };
 
@@ -138,6 +160,40 @@ const AuthApp: React.FC = () => {
     setAuthState('login');
     setFormData({ ...formData, email: '', password: '' });
     setLoginError(null);
+  };
+
+  const handleSetNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setLoginError(null);
+    const { error } = await supabase.auth.updateUser({ password: formData.password });
+    setIsLoading(false);
+    if (error) {
+      setLoginError('Errore durante il salvataggio. Riprova.');
+    } else {
+      setFormData({ ...formData, password: '' });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await loadProfile(session.user.id);
+      } else {
+        setAuthState('login');
+      }
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setLoginError(null);
+    const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
+      redirectTo: `${window.location.origin}/`,
+    });
+    setIsLoading(false);
+    if (error) {
+      setLoginError('Errore nell\'invio dell\'email. Riprova.');
+    } else {
+      setAuthState('reset-sent' as AuthState);
+    }
   };
 
   if (authState === 'loading') {
@@ -156,7 +212,7 @@ const AuthApp: React.FC = () => {
     return (
       <div className="w-full max-w-md mx-auto animate-in slide-in-from-right-8 duration-700 py-10 px-4">
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold font-montserrat text-orange-600 tracking-tighter drop-shadow-sm">Nuovo Account</h1>
+          <img src="/logo.png" alt="JumpIn" className="h-24 w-auto mx-auto mb-3" />
           <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest mt-1">Benvenuto in JumpIn</p>
         </div>
         <GlassCard>
@@ -220,9 +276,99 @@ const AuthApp: React.FC = () => {
             <p className="text-center text-sm text-gray-500 font-medium pt-4">
               Hai un account?{' '}
               <button type="button" onClick={() => { setAuthState('login'); setLoginError(null); }}
-                className="text-orange-600 font-bold hover:underline">Effettua l'accesso</button>
+                className="text-orange-500 font-bold hover:text-orange-600 hover:underline underline-offset-4 transition-all">Effettua l'accesso</button>
             </p>
           </form>
+        </GlassCard>
+      </div>
+    );
+  }
+
+  if (authState === 'set-password') {
+    return (
+      <div className="w-full max-w-md mx-auto animate-in slide-in-from-bottom-8 duration-700 px-4">
+        <div className="text-center mb-10">
+          <img src="/logo.png" alt="JumpIn" className="h-28 w-auto mx-auto mb-3" />
+          <p className="text-orange-900/40 font-bold uppercase tracking-[0.3em] text-[10px]">Digital Experience</p>
+        </div>
+        <GlassCard>
+          <h2 className="text-2xl font-bold font-montserrat mb-2 text-gray-800">Nuova Password</h2>
+          <p className="text-sm text-gray-400 mb-8">Scegli una nuova password per il tuo account.</p>
+          {loginError && (
+            <div className="mb-6 p-4 rounded-2xl bg-red-50/80 border border-red-100 flex items-center gap-3 text-red-600">
+              <AlertCircle size={20} className="shrink-0" />
+              <p className="text-xs font-bold leading-tight">{loginError}</p>
+            </div>
+          )}
+          <form onSubmit={handleSetNewPassword} className="space-y-5">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Nuova Password</label>
+              <input type="password" required minLength={8} placeholder="••••••••"
+                className="w-full px-5 py-4 rounded-2xl glass-input placeholder:text-gray-300 text-base"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
+            </div>
+            <button type="submit" disabled={isLoading}
+              className="w-full py-5 rounded-2xl btn-primary-liquid flex items-center justify-center gap-2 group mt-6 disabled:opacity-70">
+              <span>{isLoading ? 'Salvataggio...' : 'Salva nuova password'}</span>
+              {!isLoading && <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />}
+            </button>
+          </form>
+        </GlassCard>
+      </div>
+    );
+  }
+
+  if (authState === 'reset' || authState === ('reset-sent' as AuthState)) {
+    return (
+      <div className="w-full max-w-md mx-auto animate-in slide-in-from-bottom-8 duration-700 px-4">
+        <div className="text-center mb-10">
+          <img src="/logo.png" alt="JumpIn" className="h-28 w-auto mx-auto mb-3" />
+          <p className="text-orange-900/40 font-bold uppercase tracking-[0.3em] text-[10px]">Digital Experience</p>
+        </div>
+        <GlassCard>
+          {authState === ('reset-sent' as AuthState) ? (
+            <div className="flex flex-col items-center text-center gap-4 py-4">
+              <CheckCircle2 size={48} className="text-green-500" />
+              <h2 className="text-2xl font-bold font-montserrat text-gray-800">Email inviata!</h2>
+              <p className="text-sm text-gray-500">Controlla la tua casella di posta e segui il link per reimpostare la password.</p>
+              <button onClick={() => { setAuthState('login'); setLoginError(null); }}
+                className="mt-4 text-orange-500 font-bold text-sm hover:text-orange-600 hover:underline underline-offset-4 transition-all">
+                Torna al login
+              </button>
+            </div>
+          ) : (
+            <>
+              <h2 className="text-2xl font-bold font-montserrat mb-2 text-gray-800">Reimposta Password</h2>
+              <p className="text-sm text-gray-400 mb-8">Inserisci la tua email e ti invieremo un link per reimpostare la password.</p>
+              {loginError && (
+                <div className="mb-6 p-4 rounded-2xl bg-red-50/80 border border-red-100 flex items-center gap-3 text-red-600">
+                  <AlertCircle size={20} className="shrink-0" />
+                  <p className="text-xs font-bold leading-tight">{loginError}</p>
+                </div>
+              )}
+              <form onSubmit={handleResetPassword} className="space-y-5">
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Email</label>
+                  <input type="email" required placeholder="name@example.com"
+                    className="w-full px-5 py-4 rounded-2xl glass-input placeholder:text-gray-300 text-base"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                </div>
+                <button type="submit" disabled={isLoading}
+                  className="w-full py-5 rounded-2xl btn-primary-liquid flex items-center justify-center gap-2 group mt-6 disabled:opacity-70">
+                  <span>{isLoading ? 'Invio in corso...' : 'Invia link di recupero'}</span>
+                  {!isLoading && <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />}
+                </button>
+                <p className="text-center text-sm text-gray-500 font-medium pt-2">
+                  <button type="button" onClick={() => { setAuthState('login'); setLoginError(null); }}
+                    className="text-orange-500 font-bold hover:text-orange-600 hover:underline underline-offset-4 transition-all">
+                    Torna al login
+                  </button>
+                </p>
+              </form>
+            </>
+          )}
         </GlassCard>
       </div>
     );
@@ -232,7 +378,7 @@ const AuthApp: React.FC = () => {
   return (
     <div className="w-full max-w-md mx-auto animate-in slide-in-from-bottom-8 duration-700 px-4">
       <div className="text-center mb-10">
-        <h1 className="text-5xl font-bold font-montserrat text-orange-600 mb-3 tracking-tighter drop-shadow-sm">JumpIn</h1>
+        <img src="/logo.png" alt="JumpIn" className="h-28 w-auto mx-auto mb-3" />
         <p className="text-orange-900/40 font-bold uppercase tracking-[0.3em] text-[10px]">Digital Experience</p>
       </div>
       <GlassCard className={loginError ? 'ring-2 ring-red-200/50' : ''}>
@@ -257,6 +403,33 @@ const AuthApp: React.FC = () => {
               className="w-full px-5 py-4 rounded-2xl glass-input placeholder:text-gray-300 text-base"
               value={formData.password}
               onChange={(e) => { setFormData({ ...formData, password: e.target.value }); if (loginError) setLoginError(null); }} />
+            <p className="text-xs text-gray-500 font-medium mt-1 text-left ml-1">
+              Dimenticata?{' '}
+              <button type="button" onClick={() => { setAuthState('reset'); setLoginError(null); }}
+                className="text-orange-500 font-bold hover:text-orange-600 hover:underline underline-offset-4 transition-all">
+                Reimposta Password
+              </button>
+            </p>
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-start gap-3 ml-1">
+              <input type="checkbox" id="privacy"
+                checked={privacyAccepted}
+                onChange={(e) => { setPrivacyAccepted(e.target.checked); setPrivacyError(false); }}
+                className="mt-0.5 w-4 h-4 accent-orange-500 cursor-pointer shrink-0" />
+              <label htmlFor="privacy" className="text-xs text-gray-500 font-medium leading-relaxed cursor-pointer">
+                Ho letto e accetto la{' '}
+                <button type="button" onClick={() => window.open('https://www.fattorcomune.com/privacy-policy/', '_blank')}
+                  className="text-orange-500 font-bold hover:text-orange-600 hover:underline underline-offset-4 transition-all">
+                  normativa sulla privacy
+                </button>
+              </label>
+            </div>
+            {privacyError && (
+              <p className="text-xs text-gray-500 font-medium ml-1 animate-in slide-in-from-top-1 duration-200">
+                <span className="text-red-500">*</span> Devi accettare la normativa sulla privacy per continuare.
+              </p>
+            )}
           </div>
           <button type="submit" disabled={isLoading}
             className="w-full py-5 rounded-2xl btn-primary-liquid flex items-center justify-center gap-2 group mt-6 disabled:opacity-70">
@@ -271,7 +444,7 @@ const AuthApp: React.FC = () => {
           <p className="text-center text-sm text-gray-500 font-medium">
             Nuovo qui?{' '}
             <button type="button" onClick={() => setAuthState('register')}
-              className="text-orange-600 font-bold hover:text-orange-700 underline-offset-4 decoration-orange-200/50 hover:underline transition-all">
+              className="text-orange-500 font-bold hover:text-orange-600 hover:underline underline-offset-4 transition-all">
               Crea un account
             </button>
           </p>
