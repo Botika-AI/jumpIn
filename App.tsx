@@ -456,7 +456,7 @@ const AuthApp: React.FC = () => {
 
 const App: React.FC = () => (
   <BrowserRouter>
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 sm:p-4">
+    <div className="w-full min-h-screen flex flex-col items-center justify-center p-6 sm:p-4">
       <Routes>
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<AuthApp />} />
