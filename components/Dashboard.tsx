@@ -90,12 +90,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
 
   return (
     <div className="w-full max-w-md mx-auto px-4 py-10 animate-in fade-in duration-1000">
-      <div className="relative flex items-center justify-center mb-6 px-2">
-        <div className="flex flex-col items-center gap-1">
+      <div className="relative flex items-center mb-6 px-2">
+        <div className="absolute left-0 right-0 flex flex-col items-center gap-1 pointer-events-none">
           <img src="/logo.png" alt="JumpIn" className="h-20 w-auto" />
           <p className="text-[10px] text-orange-400 font-bold tracking-widest uppercase">Dashboard</p>
         </div>
-        <div className="absolute right-2 flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2 relative z-10">
           {user.is_admin && (
             <a href="/admin"
               className="p-3 rounded-2xl bg-orange-500 hover:bg-orange-600 transition-all text-white border border-orange-400 shadow-sm"
