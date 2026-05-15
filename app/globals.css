@@ -106,3 +106,27 @@ body { -ms-overflow-style: none; scrollbar-width: none; }
   70% { box-shadow: 0 10px 30px -5px rgba(249, 115, 22, 0.5), 0 0 0 15px rgba(249, 115, 22, 0); }
   100% { box-shadow: 0 10px 30px -5px rgba(249, 115, 22, 0.5), 0 0 0 0px rgba(249, 115, 22, 0); }
 }
+
+/* QR Scanner — override stili html5-qrcode */
+#qr-reader {
+  width: 100% !important;
+  border: none !important;
+  position: relative !important;
+}
+#qr-reader video {
+  width: 100% !important;
+  height: auto !important;
+  object-fit: cover !important;
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+}
+#qr-reader__scan_region {
+  width: 100% !important;
+  position: relative !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+#qr-reader__dashboard {
+  display: none !important;
+}
