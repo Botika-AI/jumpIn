@@ -9,6 +9,9 @@ export const RIMINI_SCHOOLS: SchoolOption[] = [
   { value: 'Istituto Tecnico R. Valturio', label: 'Istituto Tecnico R. Valturio' },
   { value: 'IPSIA L.B. Alberti', label: 'IPSIA L.B. Alberti' },
   { value: 'ISISS P. Gobetti - A. De Gasperi (Morciano)', label: 'ISISS P. Gobetti - A. De Gasperi (Morciano)' },
+  { value: 'Liceo A. Volta - F. Fellini', label: 'Liceo A. Volta - F. Fellini' },
+  { value: 'Liceo Karis', label: 'Liceo Karis' },
+  { value: 'Liceo linguistico ed economico sociale G. Masina', label: 'Liceo linguistico ed economico sociale G. Masina' },
   { value: 'altro', label: 'Altro (Specifica)' },
 ];
 

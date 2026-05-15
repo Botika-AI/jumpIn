@@ -9,7 +9,7 @@ export interface UserProfile {
   is_admin?: boolean;
 }
 
-export type AuthState = 'loading' | 'login' | 'register' | 'dashboard';
+export type AuthState = 'loading' | 'login' | 'register' | 'dashboard' | 'reset' | 'set-password';
 
 export interface SchoolOption {
   value: string;
