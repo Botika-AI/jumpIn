@@ -189,7 +189,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               <Camera size={44} />
             </div>
             <p className="font-montserrat font-bold text-lg tracking-tight text-gray-800 group-hover:text-orange-600 transition-colors">
-              {isProcessing ? 'Salvataggio...' : 'Effettua Check-in'}
+              {isProcessing ? 'Salvataggio...' : 'Effettua Check-in/Check-out'}
             </p>
           </button>
         )}
