@@ -6,8 +6,9 @@ allowed-tools:
   - Read
   - Write
   - Bash
-  - Task
+  - Agent
   - AskUserQuestion
+requires: [new-project, phase, plan-phase]
 ---
 <objective>
 Start a new milestone: questioning → research (optional) → requirements → roadmap.
@@ -25,11 +26,11 @@ Brownfield equivalent of new-project. Project exists, PROJECT.md has history. Ga
 </objective>
 
 <execution_context>
-@D:/!programming/botika/jumpInLoginAndQrCode/.claude/get-shit-done/workflows/new-milestone.md
-@D:/!programming/botika/jumpInLoginAndQrCode/.claude/get-shit-done/references/questioning.md
-@D:/!programming/botika/jumpInLoginAndQrCode/.claude/get-shit-done/references/ui-brand.md
-@D:/!programming/botika/jumpInLoginAndQrCode/.claude/get-shit-done/templates/project.md
-@D:/!programming/botika/jumpInLoginAndQrCode/.claude/get-shit-done/templates/requirements.md
+@/Users/danielegazzosi/Desktop/Jump'In Platform/jumpIn/.claude/get-shit-done/workflows/new-milestone.md
+@/Users/danielegazzosi/Desktop/Jump'In Platform/jumpIn/.claude/get-shit-done/references/questioning.md
+@/Users/danielegazzosi/Desktop/Jump'In Platform/jumpIn/.claude/get-shit-done/references/ui-brand.md
+@/Users/danielegazzosi/Desktop/Jump'In Platform/jumpIn/.claude/get-shit-done/templates/project.md
+@/Users/danielegazzosi/Desktop/Jump'In Platform/jumpIn/.claude/get-shit-done/templates/requirements.md
 </execution_context>
 
 <context>
@@ -39,6 +40,6 @@ Project and milestone context files are resolved inside the workflow (`init new-
 </context>
 
 <process>
-Execute the new-milestone workflow from @D:/!programming/botika/jumpInLoginAndQrCode/.claude/get-shit-done/workflows/new-milestone.md end-to-end.
+Execute end-to-end.
 Preserve all workflow gates (validation, questioning, research, requirements, roadmap approval, commits).
 </process>

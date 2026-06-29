@@ -9,8 +9,9 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-  - Task
+  - Agent
   - AskUserQuestion
+requires: [phase]
 ---
 <objective>
 Audit Nyquist validation coverage for a completed phase. Three states:
@@ -22,7 +23,7 @@ Output: updated VALIDATION.md + generated test files.
 </objective>
 
 <execution_context>
-@D:/!programming/botika/jumpInLoginAndQrCode/.claude/get-shit-done/workflows/validate-phase.md
+@/Users/danielegazzosi/Desktop/Jump'In Platform/jumpIn/.claude/get-shit-done/workflows/validate-phase.md
 </execution_context>
 
 <context>
@@ -30,6 +31,6 @@ Phase: $ARGUMENTS — optional, defaults to last completed phase.
 </context>
 
 <process>
-Execute @D:/!programming/botika/jumpInLoginAndQrCode/.claude/get-shit-done/workflows/validate-phase.md.
+Execute end-to-end.
 Preserve all workflow gates.
 </process>
