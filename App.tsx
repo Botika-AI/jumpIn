@@ -4,8 +4,9 @@ import { AuthState, UserProfile } from './types';
 import { supabase } from './lib/supabase';
 import { RIMINI_SCHOOLS } from './constants';
 import { GlassCard } from './components/GlassCard';
-import { Dashboard } from './components/Dashboard';
+import { AppShell } from './components/AppShell';
 import AdminPage from './pages/AdminPage';
+import { OnboardingInterests } from './components/OnboardingInterests';
 import { AlertCircle, ChevronRight, CheckCircle2 } from 'lucide-react';
 
 const AuthApp: React.FC = () => {
@@ -150,7 +151,7 @@ const AuthApp: React.FC = () => {
       is_admin: false,
       last_checkin: null,
     });
-    setAuthState('dashboard');
+    setAuthState('onboarding');
     setIsLoading(false);
   };
 
@@ -160,6 +161,13 @@ const AuthApp: React.FC = () => {
     setAuthState('login');
     setFormData({ ...formData, email: '', password: '' });
     setLoginError(null);
+  };
+
+  const handleOnboardingComplete = async (interests: string[], goals: string[]) => {
+    if (!user) return;
+    await supabase.from('profiles').update({ interests, goals }).eq('id', user.id);
+    setUser({ ...user, interests, goals });
+    setAuthState('dashboard');
   };
 
   const handleSetNewPassword = async (e: React.FormEvent) => {
@@ -205,7 +213,11 @@ const AuthApp: React.FC = () => {
   }
 
   if (authState === 'dashboard' && user) {
-    return <Dashboard user={user} onLogout={handleLogout} />;
+    return <AppShell user={user} onLogout={handleLogout} />;
+  }
+
+  if (authState === 'onboarding' && user) {
+    return <OnboardingInterests onComplete={handleOnboardingComplete} />;
   }
 
   if (authState === 'register') {
