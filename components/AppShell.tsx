@@ -5,6 +5,7 @@ import { Dashboard } from './Dashboard';
 import { HomeDashboard } from './HomeDashboard';
 import { EsperienzePage } from './EsperienzePage';
 import { AziendePage } from './AziendePage';
+import { JobPage } from './JobPage';
 
 export type AppSection = 'home' | 'esperienze' | 'eventi' | 'aziende' | 'job';
 type TuSection = 'profilo' | 'badge';
@@ -120,7 +121,7 @@ export const AppShell: React.FC<Props> = ({ user, onLogout }) => {
         {activeSection === 'esperienze' && <EsperienzePage onDetailChange={setIsInDetail} />}
         {activeSection === 'eventi'     && <ComingSoon title="I Miei Eventi" />}
         {activeSection === 'aziende'    && <AziendePage onDetailChange={setIsInDetail} />}
-        {activeSection === 'job'        && <ComingSoon title="Job Positioning" />}
+        {activeSection === 'job'        && <JobPage onDetailChange={setIsInDetail} />}
       </div>
 
       {/* Bottom tab bar */}
