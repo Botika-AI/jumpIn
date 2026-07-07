@@ -357,7 +357,7 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange }
         <>
           <div className="sticky top-0 z-20 bg-gray-50 px-4 pt-4 pb-3 relative">
             <div className="max-w-md mx-auto">
-          <div className="mb-3 text-center">
+          <div className="mb-3">
             <h1 className="text-xl font-bold font-montserrat text-gray-900">Esperienze</h1>
             <p className="text-xs text-gray-400 mt-0.5">Partecipa, impara e cresci<br/>con hackathon, workshop e laboratori</p>
           </div>

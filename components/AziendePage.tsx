@@ -393,7 +393,7 @@ export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange }) => {
           {/* Header sticky */}
           <div className="sticky top-0 z-20 bg-gray-50 px-4 pt-4 pb-3 relative">
             <div className="max-w-md mx-auto">
-              <div className="mb-3 text-center">
+              <div className="mb-3">
                 <h1 className="text-xl font-bold font-montserrat text-gray-900">Aziende</h1>
                 <p className="text-xs text-gray-400 mt-0.5">Scopri le aziende del territorio</p>
               </div>
