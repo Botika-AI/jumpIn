@@ -355,19 +355,22 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange }
         />
       ) : (
         <>
-          <div className="sticky top-0 z-20 bg-gray-50 px-4 pt-11 pb-3 relative">
+          <div className="sticky top-0 z-20 bg-gray-50 px-4 pt-4 pb-3 relative">
             <div className="max-w-md mx-auto">
-          <h1 className="text-xl font-bold font-montserrat text-gray-900 mb-3">Esperienze</h1>
+          <div className="mb-3 text-center">
+            <h1 className="text-xl font-bold font-montserrat text-gray-900">Esperienze</h1>
+            <p className="text-xs text-gray-400 mt-0.5">Partecipa, impara e cresci con hackathon, workshop e laboratori</p>
+          </div>
 
           {/* Ricerca */}
-          <div className="relative mb-3">
+          <div className="relative mb-2">
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
               type="text"
               placeholder="Cerca..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-3 rounded-2xl glass-input text-sm"
+              className="w-full pl-9 pr-4 py-2.5 rounded-2xl glass-input text-sm"
             />
           </div>
 

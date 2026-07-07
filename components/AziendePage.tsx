@@ -390,10 +390,13 @@ export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange }) => {
         />
       ) : (
         <>
-          {/* Header sticky — titolo a sx, icone nav a dx (gestite da AppShell) */}
-          <div className="sticky top-0 z-20 bg-gray-50 px-4 pt-11 pb-3 relative">
+          {/* Header sticky */}
+          <div className="sticky top-0 z-20 bg-gray-50 px-4 pt-4 pb-3 relative">
             <div className="max-w-md mx-auto">
-              <h1 className="text-xl font-bold font-montserrat text-gray-900 mb-3">Aziende</h1>
+              <div className="mb-3 text-center">
+                <h1 className="text-xl font-bold font-montserrat text-gray-900">Aziende</h1>
+                <p className="text-xs text-gray-400 mt-0.5">Scopri le aziende del territorio</p>
+              </div>
 
               {/* Ricerca */}
               <div className="relative mb-2">
@@ -403,7 +406,7 @@ export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange }) => {
                   placeholder="Cerca..."
                   value={search}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-3 rounded-2xl glass-input text-sm"
+                  className="w-full pl-9 pr-4 py-2.5 rounded-2xl glass-input text-sm"
                 />
               </div>
 
