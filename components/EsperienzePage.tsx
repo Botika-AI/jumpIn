@@ -300,9 +300,13 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange }
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
+    let root: Element | null = el.parentElement;
+    while (root && getComputedStyle(root).overflowY !== 'auto') {
+      root = root.parentElement;
+    }
     const observer = new IntersectionObserver(
       ([entry]) => setScrolled(!entry.isIntersecting),
-      { threshold: 0 }
+      { root, threshold: 0 }
     );
     observer.observe(el);
     return () => observer.disconnect();
