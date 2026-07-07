@@ -7,9 +7,11 @@ export interface UserProfile {
   dob: string;
   last_checkin?: string;
   is_admin?: boolean;
+  interests?: string[];
+  goals?: string[];
 }
 
-export type AuthState = 'loading' | 'login' | 'register' | 'dashboard' | 'reset' | 'set-password';
+export type AuthState = 'loading' | 'login' | 'register' | 'onboarding' | 'dashboard' | 'reset' | 'set-password';
 
 export interface SchoolOption {
   value: string;
@@ -31,4 +33,16 @@ export interface Attendance {
   event_id: string;
   type: 'ingresso' | 'uscita';
   scanned_at: string;
+}
+
+export interface Azienda {
+  id: string;
+  name: string;
+  sector: string;
+  description?: string;
+  logo_url?: string;
+  website?: string;
+  email?: string;
+  location?: string;
+  created_at: string;
 }

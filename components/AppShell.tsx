@@ -4,6 +4,7 @@ import { UserProfile } from '../types';
 import { Dashboard } from './Dashboard';
 import { HomeDashboard } from './HomeDashboard';
 import { EsperienzePage } from './EsperienzePage';
+import { AziendePage } from './AziendePage';
 
 export type AppSection = 'home' | 'esperienze' | 'eventi' | 'aziende' | 'job';
 type TuSection = 'profilo' | 'badge';
@@ -118,7 +119,7 @@ export const AppShell: React.FC<Props> = ({ user, onLogout }) => {
         {activeSection === 'home'       && <HomeDashboard user={user} onNavigate={navigate} />}
         {activeSection === 'esperienze' && <EsperienzePage onDetailChange={setIsInDetail} />}
         {activeSection === 'eventi'     && <ComingSoon title="I Miei Eventi" />}
-        {activeSection === 'aziende'    && <ComingSoon title="Aziende" />}
+        {activeSection === 'aziende'    && <AziendePage onDetailChange={setIsInDetail} />}
         {activeSection === 'job'        && <ComingSoon title="Job Positioning" />}
       </div>
 

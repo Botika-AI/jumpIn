@@ -355,15 +355,9 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange }
         />
       ) : (
         <>
-          <div className="sticky top-0 z-20 bg-gray-50 px-4 pt-20 pb-3 relative">
+          <div className="sticky top-0 z-20 bg-gray-50 px-4 pt-11 pb-3 relative">
             <div className="max-w-md mx-auto">
-          {/* Header */}
-          <div className="mb-3 text-center">
-            <h1 className="text-xl font-bold font-montserrat text-gray-900">Esperienze</h1>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Partecipa, impara e cresci<br/>con hackathon, workshop e laboratori pensati per il tuo futuro
-            </p>
-          </div>
+          <h1 className="text-xl font-bold font-montserrat text-gray-900 mb-3">Esperienze</h1>
 
           {/* Ricerca */}
           <div className="relative mb-3">
