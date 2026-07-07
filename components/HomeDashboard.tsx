@@ -66,7 +66,7 @@ export const HomeDashboard: React.FC<Props> = ({ user, onNavigate }) => {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 pt-6 pb-4">
+    <div className="min-h-full">
 
       {/* Toast */}
       {toast && (
@@ -87,13 +87,13 @@ export const HomeDashboard: React.FC<Props> = ({ user, onNavigate }) => {
         </div>
       )}
 
-      {/* Logo */}
-      <div className="flex justify-center mb-4">
-        <img src="/logo.png" alt="JumpIn" className="h-16 w-auto" />
-      </div>
-
-      {/* Greeting banner */}
-      <div className="bg-orange-500 rounded-2xl p-5 mb-6">
+      {/* Sticky header: logo + banner */}
+      <div className="sticky top-0 z-20 bg-gray-50 px-4 pt-6 pb-4">
+        <div className="max-w-md mx-auto">
+          <div className="flex justify-center mb-4">
+            <img src="/logo.png" alt="JumpIn" className="h-16 w-auto" />
+          </div>
+          <div className="bg-orange-500 rounded-2xl p-5">
         <h1 className="text-2xl font-bold font-montserrat text-white mb-1">
           Ciao, {user.first_name}! 👋
         </h1>
@@ -106,7 +106,11 @@ export const HomeDashboard: React.FC<Props> = ({ user, onNavigate }) => {
         >
           Vai al Profilo
         </button>
+          </div>
+        </div>
       </div>
+
+      <div className="max-w-md mx-auto px-4 pb-4">
 
       {/* Esperienze in evidenza */}
       <h2 className="text-base font-bold font-montserrat text-gray-900 mb-3">Esperienze in evidenza</h2>
@@ -246,6 +250,7 @@ export const HomeDashboard: React.FC<Props> = ({ user, onNavigate }) => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

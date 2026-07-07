@@ -341,9 +341,11 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange }
           onBack={closeDetail}
         />
       ) : (
-        <div className="max-w-md mx-auto px-4 pt-20 pb-4">
+        <>
+          <div className="sticky top-0 z-20 bg-gray-50 px-4 pt-20 pb-3">
+            <div className="max-w-md mx-auto">
           {/* Header */}
-          <div className="mb-5 text-center">
+          <div className="mb-3 text-center">
             <h1 className="text-xl font-bold font-montserrat text-gray-900">Esperienze</h1>
             <p className="text-xs text-gray-400 mt-0.5">
               Partecipa, impara e cresci<br/>con hackathon, workshop e laboratori pensati per il tuo futuro
@@ -382,7 +384,10 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange }
               {STATUS_OPTIONS.map(o => <option key={o} value={o} className="bg-white">{o}</option>)}
             </select>
           </div>
+            </div>
+          </div>
 
+          <div className="max-w-md mx-auto px-4 pb-4">
           {/* Lista verticale */}
           {filtered.length > 0 ? (
             <div className="space-y-3">
@@ -402,7 +407,8 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange }
               <p className="text-xs text-gray-400">Prova a modificare i filtri di ricerca</p>
             </div>
           )}
-        </div>
+          </div>
+        </>
       )}
 
       {/* Modal iscrizione */}
