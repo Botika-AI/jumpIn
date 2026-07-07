@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, CalendarDays, MapPin, Users, ChevronLeft, CheckCircle2, X, BookOpen, UserCircle2, SlidersHorizontal } from 'lucide-react';
 
 interface Experience {
@@ -294,6 +294,19 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange }
   const [confirmEnroll, setConfirmEnroll] = useState<Experience | null>(null);
   const [confirmCancel, setConfirmCancel] = useState<Experience | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [scrolled, setScrolled] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setScrolled(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
 
@@ -385,11 +398,13 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange }
             </select>
           </div>
             </div>
-            {/* Sfumatura bordo inferiore */}
-            <div className="absolute left-0 right-0 bottom-0 translate-y-full h-6 bg-gradient-to-b from-gray-50 to-transparent pointer-events-none" />
+            {scrolled && (
+              <div className="absolute left-0 right-0 bottom-0 translate-y-full h-6 bg-gradient-to-b from-gray-50 to-transparent pointer-events-none" />
+            )}
           </div>
 
           <div className="max-w-md mx-auto px-4 pb-4">
+          <div ref={sentinelRef} className="h-px" />
           {/* Lista verticale */}
           {filtered.length > 0 ? (
             <div className="space-y-3">
