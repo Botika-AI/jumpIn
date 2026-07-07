@@ -342,7 +342,7 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange }
         />
       ) : (
         <>
-          <div className="sticky top-0 z-20 bg-gray-50 px-4 pt-20 pb-3">
+          <div className="sticky top-0 z-20 bg-gray-50 px-4 pt-20 pb-3 relative">
             <div className="max-w-md mx-auto">
           {/* Header */}
           <div className="mb-3 text-center">
@@ -385,6 +385,8 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange }
             </select>
           </div>
             </div>
+            {/* Sfumatura bordo inferiore */}
+            <div className="absolute left-0 right-0 bottom-0 translate-y-full h-6 bg-gradient-to-b from-gray-50 to-transparent pointer-events-none" />
           </div>
 
           <div className="max-w-md mx-auto px-4 pb-4">
