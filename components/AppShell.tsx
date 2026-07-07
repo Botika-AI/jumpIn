@@ -100,7 +100,7 @@ export const AppShell: React.FC<Props> = ({ user, onLogout }) => {
       {/* Icone fisse top-right — nascoste in modalità dettaglio */}
       <div
         className={`fixed left-0 right-0 z-30 pointer-events-none transition-opacity duration-200 ${isInDetail ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 40px)' }}
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 16px)' }}
       >
         <div className="max-w-md mx-auto px-4 flex justify-end">
           <div className="flex items-center gap-3 pointer-events-auto">

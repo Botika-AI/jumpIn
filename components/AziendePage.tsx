@@ -395,7 +395,7 @@ export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange }) => {
             <div className="max-w-md mx-auto">
               <div className="mb-3 text-center">
                 <h1 className="text-xl font-bold font-montserrat text-gray-900">Aziende</h1>
-                <p className="text-xs text-gray-400 mt-0.5">Scopri le aziende del territorio</p>
+                <p className="text-xs text-gray-400 mt-0.5">Scopri le<br/>aziende del territorio</p>
               </div>
 
               {/* Ricerca */}
