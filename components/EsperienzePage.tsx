@@ -300,16 +300,14 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange }
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
-    let root: Element | null = el.parentElement;
-    while (root && getComputedStyle(root).overflowY !== 'auto') {
-      root = root.parentElement;
+    let scrollEl: HTMLElement | null = el.parentElement;
+    while (scrollEl && getComputedStyle(scrollEl).overflowY !== 'auto') {
+      scrollEl = scrollEl.parentElement as HTMLElement;
     }
-    const observer = new IntersectionObserver(
-      ([entry]) => setScrolled(!entry.isIntersecting),
-      { root, threshold: 0 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
+    if (!scrollEl) return;
+    const handleScroll = () => setScrolled(scrollEl!.scrollTop > 0);
+    scrollEl.addEventListener('scroll', handleScroll, { passive: true });
+    return () => scrollEl!.removeEventListener('scroll', handleScroll);
   }, []);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
