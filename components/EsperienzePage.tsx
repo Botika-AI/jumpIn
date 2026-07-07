@@ -300,14 +300,12 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange }
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
-    let scrollEl: HTMLElement | null = el.parentElement;
-    while (scrollEl && getComputedStyle(scrollEl).overflowY !== 'auto') {
-      scrollEl = scrollEl.parentElement as HTMLElement;
-    }
-    if (!scrollEl) return;
-    const handleScroll = () => setScrolled(scrollEl!.scrollTop > 0);
-    scrollEl.addEventListener('scroll', handleScroll, { passive: true });
-    return () => scrollEl!.removeEventListener('scroll', handleScroll);
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (target.contains(el)) setScrolled(target.scrollTop > 0);
+    };
+    document.addEventListener('scroll', handleScroll, { passive: true, capture: true });
+    return () => document.removeEventListener('scroll', handleScroll, { capture: true } as EventListenerOptions);
   }, []);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
