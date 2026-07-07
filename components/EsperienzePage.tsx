@@ -342,7 +342,7 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange }
         />
       ) : (
         <>
-          <div className="sticky top-0 z-20 bg-gray-50/90 backdrop-blur-md px-4 pt-20 pb-3 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
+          <div className="sticky top-0 z-20 bg-gray-50 px-4 pt-20 pb-3">
             <div className="max-w-md mx-auto">
           {/* Header */}
           <div className="mb-3 text-center">

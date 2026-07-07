@@ -88,7 +88,7 @@ export const HomeDashboard: React.FC<Props> = ({ user, onNavigate }) => {
       )}
 
       {/* Sticky header: logo + banner */}
-      <div className="sticky top-0 z-20 bg-gray-50/90 backdrop-blur-md px-4 pt-6 pb-4 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
+      <div className="sticky top-0 z-20 bg-gray-50 px-4 pt-6 pb-4">
         <div className="max-w-md mx-auto">
           <div className="flex justify-center mb-4">
             <img src="/logo.png" alt="JumpIn" className="h-16 w-auto" />
