@@ -213,7 +213,13 @@ const AuthApp: React.FC = () => {
   }
 
   if (authState === 'dashboard' && user) {
-    return <AppShell user={user} onLogout={handleLogout} />;
+    return (
+      <AppShell
+        user={user}
+        onLogout={handleLogout}
+        onUserUpdate={(updates: Partial<UserProfile>) => setUser((prev: UserProfile | null) => prev ? { ...prev, ...updates } : prev)}
+      />
+    );
   }
 
   if (authState === 'onboarding' && user) {

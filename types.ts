@@ -7,6 +7,7 @@ export interface UserProfile {
   dob: string;
   last_checkin?: string;
   is_admin?: boolean;
+  bio?: string;
   interests?: string[];
   goals?: string[];
 }

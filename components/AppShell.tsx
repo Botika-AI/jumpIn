@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import { Home, Compass, Calendar, Building2, Briefcase, ChevronLeft, Bell, Award, User } from 'lucide-react';
+import { Home, Compass, Calendar, Building2, Briefcase, ChevronLeft, Bell, User } from 'lucide-react';
 import { UserProfile } from '../types';
-import { Dashboard } from './Dashboard';
 import { HomeDashboard } from './HomeDashboard';
 import { EsperienzePage } from './EsperienzePage';
 import { AziendePage } from './AziendePage';
 import { JobPage } from './JobPage';
+import { ProfileSettingsPage } from './ProfileSettingsPage';
 
 export type AppSection = 'home' | 'esperienze' | 'eventi' | 'aziende' | 'job';
-type TuSection = 'profilo' | 'badge';
 
 const NAV_TABS = [
   { key: 'home'       as AppSection, label: 'Dashboard',  Icon: Home      },
@@ -18,14 +17,10 @@ const NAV_TABS = [
   { key: 'job'        as AppSection, label: 'Job',        Icon: Briefcase },
 ];
 
-const TU_TABS: { key: TuSection; label: string; Icon: React.FC<{ size: number; strokeWidth: number }> }[] = [
-  { key: 'profilo', label: 'Profilo', Icon: ({ size, strokeWidth }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg> },
-  { key: 'badge',   label: 'Badge',   Icon: ({ size, strokeWidth }) => <Award size={size} strokeWidth={strokeWidth} /> },
-];
-
 interface Props {
   user: UserProfile;
   onLogout: () => void;
+  onUserUpdate?: (updates: Partial<UserProfile>) => void;
 }
 
 const ComingSoon: React.FC<{ title: string }> = ({ title }) => (
@@ -35,60 +30,8 @@ const ComingSoon: React.FC<{ title: string }> = ({ title }) => (
   </div>
 );
 
-const TuPage: React.FC<{ user: UserProfile; onBack: () => void; onLogout: () => void }> = ({ user, onBack, onLogout }) => {
-  const [activeSection, setActiveSection] = useState<TuSection>('profilo');
-  const initials = `${(user.first_name || '')[0] || ''}${(user.last_name || '')[0] || ''}`.toUpperCase() || '?';
 
-  return (
-    <div className="fixed inset-0 bg-gray-50 z-40 flex flex-col animate-in slide-in-from-right duration-300">
-      {/* Header */}
-      <div
-        className="bg-white border-b border-gray-100 flex items-center gap-3 px-4 shrink-0"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)', paddingBottom: '12px' }}
-      >
-        <button onClick={onBack} className="-ml-1 p-1.5 text-gray-500 hover:text-gray-700 transition-colors">
-          <ChevronLeft size={22} />
-        </button>
-        <div className="flex items-center gap-3 flex-1">
-          <div className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
-            {initials}
-          </div>
-          <div>
-            <p className="font-bold text-sm text-gray-900 leading-tight">{user.first_name} {user.last_name}</p>
-            <p className="text-[11px] text-gray-400 truncate">{user.school}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Sub-tab bar */}
-      <div className="bg-white border-b border-gray-100 flex shrink-0">
-        {TU_TABS.map(({ key, label, Icon }) => {
-          const active = activeSection === key;
-          return (
-            <button
-              key={key}
-              onClick={() => setActiveSection(key)}
-              className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors border-b-2 ${
-                active ? 'text-orange-500 border-orange-500' : 'text-gray-400 border-transparent'
-              }`}
-            >
-              <Icon size={18} strokeWidth={active ? 2.5 : 1.75} />
-              <span className="text-[9px] font-bold uppercase tracking-wide">{label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-        {activeSection === 'profilo' && <Dashboard user={user} onLogout={onLogout} />}
-        {activeSection === 'badge'   && <ComingSoon title="Badge" />}
-      </div>
-    </div>
-  );
-};
-
-export const AppShell: React.FC<Props> = ({ user, onLogout }) => {
+export const AppShell: React.FC<Props> = ({ user, onLogout, onUserUpdate }) => {
   const [activeSection, setActiveSection] = useState<AppSection>('home');
   const [showTu, setShowTu] = useState(false);
   const [showNotifiche, setShowNotifiche] = useState(false);
@@ -148,9 +91,14 @@ export const AppShell: React.FC<Props> = ({ user, onLogout }) => {
         </div>
       </div>
 
-      {/* Pannello "Tu" */}
+      {/* Pannello profilo e impostazioni */}
       {showTu && (
-        <TuPage user={user} onBack={() => setShowTu(false)} onLogout={onLogout} />
+        <ProfileSettingsPage
+          user={user}
+          onBack={() => setShowTu(false)}
+          onLogout={onLogout}
+          onUserUpdate={onUserUpdate}
+        />
       )}
 
       {/* Pannello Notifiche */}
