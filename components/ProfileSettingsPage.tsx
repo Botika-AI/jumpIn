@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  ChevronLeft, User, Activity, Award, Shield, Eye,
-  LogOut, Check, X, Plus,
+  ChevronLeft, User, Activity, Award, Shield,
+  LogOut, Check, X, Plus, CheckCircle2, Star, MapPin,
+  Lock, Monitor, Download, Trash2,
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { supabase } from '../lib/supabase';
@@ -13,8 +14,8 @@ const SETTINGS_TABS: { key: SettingsTab; label: string; Icon: React.ElementType 
   { key: 'account',    label: 'Account',    Icon: User     },
   { key: 'attivita',   label: 'Attività',   Icon: Activity },
   { key: 'badge',      label: 'Badge',      Icon: Award    },
-  { key: 'sicurezza',  label: 'Sicurezza',  Icon: Shield   },
-  { key: 'visibilita', label: 'Visibilità', Icon: Eye      },
+  { key: 'sicurezza',  label: 'Sicurezza',  Icon: Lock     },
+  { key: 'visibilita', label: 'Visibilità e Privacy', Icon: Shield },
 ];
 
 interface Props {
@@ -350,16 +351,485 @@ const FieldRow: React.FC<{
   </div>
 );
 
-// ── Placeholder tab ───────────────────────────────────────────────────────────
-const ComingSoonTab: React.FC<{ title: string; Icon: React.ElementType }> = ({ title, Icon }) => (
-  <div className="flex flex-col items-center justify-center py-20 px-6 text-center gap-3">
-    <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
-      <Icon size={24} className="text-gray-400" />
+// ── Tab Attività ──────────────────────────────────────────────────────────────
+type ActivityType = 'completato' | 'iscritto' | 'checkin' | 'badge';
+
+interface ActivityItem {
+  id: string;
+  type: ActivityType;
+  title: string;
+  subtitle?: string;
+  date: string;
+  hasAction?: boolean;
+}
+
+// Dati mock — da sostituire con fetch Supabase (attendances JOIN events + badges)
+const MOCK_ACTIVITIES: ActivityItem[] = [
+  {
+    id: '1',
+    type: 'completato',
+    title: 'Completato: Robotica Lab',
+    subtitle: "Badge ottenuto: 'Robotics Enthusiast'",
+    date: '26 Ottobre 2025',
+  },
+  {
+    id: '2',
+    type: 'iscritto',
+    title: 'Iscritto: AI Hackathon Milano 2025',
+    subtitle: '15–17 Novembre 2025',
+    date: '',
+    hasAction: true,
+  },
+];
+
+const ACTIVITY_CONFIG: Record<ActivityType, { bg: string; Icon: React.ElementType; color: string }> = {
+  completato: { bg: 'bg-green-100',  Icon: CheckCircle2, color: 'text-green-500'  },
+  iscritto:   { bg: 'bg-orange-100', Icon: Star,         color: 'text-orange-500' },
+  checkin:    { bg: 'bg-blue-100',   Icon: MapPin,        color: 'text-blue-500'   },
+  badge:      { bg: 'bg-violet-100', Icon: Award,         color: 'text-violet-500' },
+};
+
+const AttivitaTab: React.FC = () => {
+  const activities = MOCK_ACTIVITIES; // ← sostituire con: await supabase.from('attendances').select(...)
+
+  if (activities.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-6 text-center gap-3">
+        <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
+          <Activity size={24} className="text-gray-400" />
+        </div>
+        <p className="font-bold font-montserrat text-gray-700">Nessuna attività</p>
+        <p className="text-xs text-gray-400 leading-relaxed max-w-[200px]">
+          Le tue partecipazioni ed esperienze appariranno qui
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-4 py-5 max-w-md mx-auto">
+      <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-1 mb-3">
+        {activities.length} attività recenti
+      </p>
+      <div className="space-y-3">
+        {activities.map(activity => {
+          const { bg, Icon, color } = ACTIVITY_CONFIG[activity.type];
+          return (
+            <div
+              key={activity.id}
+              className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4 flex items-start gap-4"
+            >
+              {/* Icona stato */}
+              <div className={`w-10 h-10 rounded-full ${bg} flex items-center justify-center shrink-0 mt-0.5`}>
+                <Icon size={18} className={color} strokeWidth={2} />
+              </div>
+
+              {/* Testo */}
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm text-gray-900 leading-snug mb-0.5">{activity.title}</p>
+                {activity.subtitle && (
+                  <p className="text-xs text-gray-400 leading-snug mb-1">{activity.subtitle}</p>
+                )}
+                {activity.date && (
+                  <p className="text-[10px] text-gray-300 font-medium mb-2">{activity.date}</p>
+                )}
+                {activity.hasAction && (
+                  <button className="text-[11px] font-bold text-orange-500 bg-orange-50 px-3 py-1.5 rounded-xl border border-orange-100">
+                    Mostra dettagli
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
-    <p className="font-bold font-montserrat text-gray-700">{title}</p>
-    <p className="text-xs text-gray-400">Sezione in arrivo</p>
-  </div>
-);
+  );
+};
+
+// ── Tab Badge ─────────────────────────────────────────────────────────────────
+interface BadgeItem {
+  id: string;
+  name: string;
+  description: string;
+  date: string;
+  Icon: React.ElementType;
+  color: string;
+  bg: string;
+}
+
+const MOCK_BADGES: BadgeItem[] = [
+  {
+    id: '1',
+    name: 'Robotics Enthusiast',
+    description: 'Completato il corso Robotica Lab',
+    date: '26 Ottobre 2025',
+    Icon: Award,
+    color: 'text-violet-500',
+    bg: 'bg-violet-100',
+  },
+  {
+    id: '2',
+    name: 'AI Pioneer',
+    description: "Partecipato all'AI Hackathon Milano",
+    date: '17 Novembre 2025',
+    Icon: Star,
+    color: 'text-orange-500',
+    bg: 'bg-orange-100',
+  },
+];
+
+const BadgeTab: React.FC = () => {
+  const badges = MOCK_BADGES; // ← da sostituire con fetch Supabase
+
+  if (badges.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-6 text-center gap-3">
+        <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
+          <Award size={24} className="text-gray-400" />
+        </div>
+        <p className="font-bold font-montserrat text-gray-700">Nessun badge ancora</p>
+        <p className="text-xs text-gray-400 leading-relaxed max-w-[200px]">
+          Completa esperienze e partecipa agli eventi per guadagnare badge
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-4 py-5 max-w-md mx-auto">
+      <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-1 mb-3">
+        {badges.length} badge ottenuti
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        {badges.map(badge => {
+          const { Icon } = badge;
+          return (
+            <div
+              key={badge.id}
+              className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col items-center text-center"
+            >
+              <div className={`w-14 h-14 ${badge.bg} rounded-2xl flex items-center justify-center mb-3 shadow-sm`}>
+                <Icon size={26} className={badge.color} strokeWidth={1.75} />
+              </div>
+              <p className="font-bold font-montserrat text-gray-900 text-xs leading-snug mb-1">{badge.name}</p>
+              <p className="text-[10px] text-gray-400 leading-snug mb-2">{badge.description}</p>
+              <p className="text-[9px] text-gray-300 font-medium">{badge.date}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ── Tab Sicurezza ─────────────────────────────────────────────────────────────
+const SicurezzaTab: React.FC<{ user: UserProfile }> = ({ user }) => {
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingPwd, setSavingPwd] = useState(false);
+  const [pwdStatus, setPwdStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [pwdError, setPwdError] = useState('');
+  const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [sessionInfo, setSessionInfo] = useState<{ loginAt: string; expiresAt: string } | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) return;
+      const fmt = (iso: string) =>
+        new Date(iso).toLocaleString('it-IT', {
+          day: '2-digit', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit',
+        });
+      setSessionInfo({
+        loginAt:   fmt(data.session.user.last_sign_in_at ?? data.session.user.created_at),
+        expiresAt: fmt(new Date(data.session.expires_at! * 1000).toISOString()),
+      });
+    });
+  }, []);
+
+  const handleChangePassword = async () => {
+    if (newPassword.length < 8) { setPwdError('La password deve essere di almeno 8 caratteri'); setPwdStatus('error'); return; }
+    if (newPassword !== confirmPassword) { setPwdError('Le password non coincidono'); setPwdStatus('error'); return; }
+    setSavingPwd(true); setPwdStatus('idle'); setPwdError('');
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setSavingPwd(false);
+    if (error) { setPwdError(error.message); setPwdStatus('error'); }
+    else { setPwdStatus('success'); setNewPassword(''); setConfirmPassword(''); setTimeout(() => { setShowPasswordForm(false); setPwdStatus('idle'); }, 2000); }
+  };
+
+  const cancelPasswordForm = () => { setShowPasswordForm(false); setNewPassword(''); setConfirmPassword(''); setPwdStatus('idle'); setPwdError(''); };
+
+  return (
+    <div className="px-4 py-5 max-w-md mx-auto">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
+        {/* ── Password ── */}
+        <div className="px-5 py-4 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="font-bold font-montserrat text-gray-900 text-sm">Password</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{user.email}</p>
+          </div>
+          {!showPasswordForm && (
+            <button onClick={() => setShowPasswordForm(true)} className="text-xs font-bold text-orange-500 shrink-0 mt-0.5">
+              Cambia
+            </button>
+          )}
+        </div>
+
+        {showPasswordForm && (
+          <div className="px-5 pb-5 pt-0 space-y-3 border-t border-gray-50">
+            <div className="pt-4">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Nuova password</label>
+              <input
+                type="password" value={newPassword}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
+                placeholder="Min. 8 caratteri"
+                className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 placeholder-gray-300"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Conferma nuova password</label>
+              <input
+                type="password" value={confirmPassword}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+                placeholder="Ripeti la password"
+                className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-orange-400 placeholder-gray-300"
+              />
+            </div>
+            {pwdStatus === 'error' && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{pwdError}</p>}
+            {pwdStatus === 'success' && (
+              <p className="text-xs text-green-600 bg-green-50 rounded-xl px-3 py-2 flex items-center gap-1.5">
+                <CheckCircle2 size={13} /> Password aggiornata
+              </p>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button onClick={cancelPasswordForm} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-500 text-xs font-bold">Annulla</button>
+              <button onClick={handleChangePassword} disabled={savingPwd || !newPassword || !confirmPassword} className="flex-1 py-2.5 rounded-xl bg-orange-500 text-white text-xs font-bold disabled:opacity-50">
+                {savingPwd ? 'Salvataggio…' : 'Aggiorna'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="h-px bg-gray-50" />
+
+        {/* ── 2FA ── */}
+        <div className="px-5 py-4 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="font-bold font-montserrat text-gray-900 text-sm">Autenticazione a due fattori</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">Aggiungi un livello di sicurezza extra</p>
+          </div>
+          <span className="text-[9px] font-bold bg-gray-100 text-gray-400 px-2 py-1 rounded-full uppercase tracking-wide shrink-0 mt-0.5 whitespace-nowrap">
+            Prossim.
+          </span>
+        </div>
+
+        <div className="h-px bg-gray-50" />
+
+        {/* ── Sessioni ── */}
+        <button
+          onClick={() => setSessionsOpen((o: boolean) => !o)}
+          className="w-full px-5 py-4 flex items-start justify-between gap-4 text-left"
+        >
+          <div className="min-w-0">
+            <p className="font-bold font-montserrat text-gray-900 text-sm">Sessioni attive</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">Visualizza i dispositivi connessi</p>
+          </div>
+          <span className="text-xs font-bold text-orange-500 shrink-0 mt-0.5">
+            {sessionsOpen ? 'Chiudi' : 'Visualizza'}
+          </span>
+        </button>
+
+        {sessionsOpen && (
+          <div className="px-5 pb-5 pt-0 border-t border-gray-50">
+            <div className="flex items-start gap-3 pt-4">
+              <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center shrink-0 mt-0.5">
+                <Monitor size={16} className="text-green-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-bold font-montserrat text-gray-900">Dispositivo corrente</p>
+                  <div className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
+                </div>
+                {sessionInfo ? (
+                  <>
+                    <p className="text-[11px] text-gray-400 mt-0.5">Accesso: {sessionInfo.loginAt}</p>
+                    <p className="text-[11px] text-gray-400">Scade: {sessionInfo.expiresAt}</p>
+                  </>
+                ) : (
+                  <p className="text-[11px] text-gray-400 mt-0.5">Sessione attiva</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── Tab Visibilità, Privacy e Dati ────────────────────────────────────────────
+const AZIENDE_VEDONO = [
+  { label: 'Nome, età e località',                    visible: true  },
+  { label: 'Bio',                                     visible: true  },
+  { label: 'Interessi e competenze',                  visible: true  },
+  { label: 'Badge ottenuti ed esperienze completate', visible: true  },
+  { label: 'Informazioni di contatto personali (email, telefono)', visible: false },
+];
+
+const VisibilitaTab: React.FC<{ user: UserProfile; onLogout: () => void }> = ({ user, onLogout }) => {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+
+    const { data: profile } = await supabase
+      .from('profiles').select('*').eq('id', user.id).single();
+
+    // Prende tutte le presenze con il nome evento, deduplica per event_id
+    const { data: attendances } = await supabase
+      .from('attendances')
+      .select('event_id, events(name)')
+      .eq('user_id', user.id);
+
+    const eventiCompletati = [
+      ...new Map(
+        (attendances ?? []).map((a: Record<string, unknown>) => {
+          const ev = a.events as Record<string, unknown> | null;
+          return [a.event_id as string, (ev?.name ?? a.event_id) as string];
+        })
+      ).values(),
+    ].join(' | ');
+
+    const interests = Array.isArray(profile?.interests)
+      ? (profile.interests as string[]).join(' | ') : '';
+
+    const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+
+    const rows = [
+      'Nome,Cognome,Email,Scuola,DataNascita,Bio,Interessi,EventiCompletati',
+      [
+        esc(profile?.first_name), esc(profile?.last_name), esc(profile?.email),
+        esc(profile?.school), esc(profile?.dob),
+        esc(profile?.bio), esc(interests),
+        esc(eventiCompletati),
+      ].join(','),
+    ];
+
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = `jumpin_dati_${user.id.slice(0, 8)}.csv`; link.click();
+    URL.revokeObjectURL(url);
+    setExporting(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    const { error } = await supabase.rpc('delete_user');
+    if (error) { setDeleting(false); setShowDeleteConfirm(false); alert('Errore durante la cancellazione. Riprova.'); return; }
+    await supabase.auth.signOut();
+    onLogout();
+  };
+
+  return (
+    <div className="px-4 py-5 max-w-md mx-auto space-y-5">
+
+      {/* Visibilità profilo */}
+      <div>
+        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-1 mb-3">Visibilità profilo</p>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          {/* Banner attivo */}
+          <div className="mx-4 mt-4 mb-3 bg-orange-50 border border-orange-100 rounded-xl px-4 py-3 flex items-start gap-2">
+            <Star size={16} className="text-orange-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold font-montserrat text-gray-700">Profilo attivo</p>
+              <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed">
+                Il tuo profilo è ora visibile alle aziende. Assicurati di tenere aggiornate le tue competenze e badge per massimizzare le opportunità.
+              </p>
+            </div>
+          </div>
+
+          {/* Checklist */}
+          <div className="px-5 pb-4">
+            <p className="text-xs font-bold text-gray-700 mb-2">Cosa vedono le aziende?</p>
+            <div className="space-y-2">
+              {AZIENDE_VEDONO.map(({ label, visible }) => (
+                <div key={label} className="flex items-center gap-2">
+                  {visible
+                    ? <CheckCircle2 size={15} className="text-orange-400 shrink-0" />
+                    : <X size={15} className="text-gray-300 shrink-0" />
+                  }
+                  <span className={`text-xs ${visible ? 'text-gray-700' : 'text-gray-400'}`}>{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Azioni */}
+      <div className="space-y-3">
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          className="w-full py-3 rounded-2xl border border-gray-200 bg-white text-gray-700 text-sm font-bold flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+        >
+          <Download size={16} className="text-gray-400" />
+          {exporting ? 'Preparazione…' : 'Esporta i miei dati'}
+        </button>
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="w-full py-3 rounded-2xl border border-red-100 bg-white text-red-500 text-sm font-bold flex items-center justify-center gap-2 shadow-sm"
+        >
+          <Trash2 size={16} className="text-red-400" />
+          Cancella account
+        </button>
+      </div>
+
+      {/* Modal conferma */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div className="flex justify-end px-4 pt-4">
+              <button onClick={() => setShowDeleteConfirm(false)} className="p-1 text-gray-400 hover:text-gray-600">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="px-6 pb-2 text-center">
+              <p className="font-bold font-montserrat text-gray-900 text-base mb-2 leading-snug">
+                Vuoi cancellare il tuo account?
+              </p>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Se confermi, non potrai più accedere a Jumpin' e sfruttare le funzionalità della piattaforma
+              </p>
+            </div>
+            <div className="flex gap-3 px-6 py-5">
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="flex-1 py-3 rounded-xl bg-orange-500 text-white text-sm font-bold disabled:opacity-50"
+              >
+                {deleting ? 'Eliminazione…' : 'Conferma'}
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 text-sm font-bold"
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ── Pagina principale ─────────────────────────────────────────────────────────
 export const ProfileSettingsPage: React.FC<Props> = ({ user, onBack, onLogout, onUserUpdate }) => {
@@ -417,10 +887,10 @@ export const ProfileSettingsPage: React.FC<Props> = ({ user, onBack, onLogout, o
       {/* Contenuto */}
       <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         {activeTab === 'account'    && <AccountTab user={user} onUserUpdate={onUserUpdate} />}
-        {activeTab === 'attivita'   && <ComingSoonTab title="Attività" Icon={Activity} />}
-        {activeTab === 'badge'      && <ComingSoonTab title="Badge" Icon={Award} />}
-        {activeTab === 'sicurezza'  && <ComingSoonTab title="Sicurezza" Icon={Shield} />}
-        {activeTab === 'visibilita' && <ComingSoonTab title="Visibilità" Icon={Eye} />}
+        {activeTab === 'attivita'   && <AttivitaTab />}
+        {activeTab === 'badge'      && <BadgeTab />}
+        {activeTab === 'sicurezza'  && <SicurezzaTab user={user} />}
+        {activeTab === 'visibilita' && <VisibilitaTab user={user} onLogout={onLogout} />}
       </div>
     </div>
   );
