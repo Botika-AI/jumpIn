@@ -26,7 +26,7 @@ const AuthApp: React.FC = () => {
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [privacyError, setPrivacyError] = useState(false);
 
-  const loadProfile = async (userId: string) => {
+  const loadProfile = async (userId: string): Promise<UserProfile | null> => {
     const { data: profile } = await supabase
       .from('profiles')
       .select('*')
@@ -35,8 +35,10 @@ const AuthApp: React.FC = () => {
     if (profile) {
       setUser(profile as UserProfile);
       setAuthState('dashboard');
+      return profile as UserProfile;
     } else {
       setAuthState('login');
+      return null;
     }
   };
 
@@ -91,7 +93,11 @@ const AuthApp: React.FC = () => {
       return;
     }
 
-    await loadProfile(data.user.id);
+    const profile = await loadProfile(data.user.id);
+
+    supabase.from('access_logs').insert({ user_id: data.user.id, user_type: profile?.is_admin ? 'admin' : 'studente' })
+      .then(({ error }) => { if (error) console.error('access_logs insert error:', error); });
+
     setIsLoading(false);
   };
 
@@ -151,6 +157,10 @@ const AuthApp: React.FC = () => {
       is_admin: false,
       last_checkin: null,
     });
+
+    supabase.from('access_logs').insert({ user_id: data.user.id, user_type: 'studente' })
+      .then(({ error }) => { if (error) console.error('access_logs register error:', error); });
+
     setAuthState('onboarding');
     setIsLoading(false);
   };
