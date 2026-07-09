@@ -5,7 +5,7 @@ import { supabase } from './lib/supabase';
 import { RIMINI_SCHOOLS } from './constants';
 import { GlassCard } from './components/GlassCard';
 import { AppShell } from './components/AppShell';
-import AdminPage from './pages/AdminPage';
+import { AdminShell } from './pages/AdminShell';
 import { OnboardingInterests } from './components/OnboardingInterests';
 import { AlertCircle, ChevronRight, CheckCircle2 } from 'lucide-react';
 
@@ -213,6 +213,9 @@ const AuthApp: React.FC = () => {
   }
 
   if (authState === 'dashboard' && user) {
+    if (user.is_admin) {
+      return <AdminShell user={user} onLogout={handleLogout} />;
+    }
     return (
       <AppShell
         user={user}
@@ -476,7 +479,6 @@ const App: React.FC = () => (
   <BrowserRouter>
     <div className="w-full min-h-screen flex flex-col items-center justify-center p-6 sm:p-4">
       <Routes>
-        <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<AuthApp />} />
       </Routes>
     </div>
