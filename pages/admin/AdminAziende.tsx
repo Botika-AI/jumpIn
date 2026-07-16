@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Search, ChevronDown } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { AggiungiAzienda } from './AggiungiAzienda';
+import { AziendaModal } from './AziendaModal';
 
 interface Azienda {
   id: string;
@@ -38,17 +39,16 @@ function fmt(d: string | null) {
   return d ? new Date(d).toLocaleDateString('it-IT') : '—';
 }
 
-interface Props {
-  onApri?: (id: string) => void;
-}
+interface Props {}
 
-export const AdminAziende: React.FC<Props> = ({ onApri }) => {
+export const AdminAziende: React.FC<Props> = () => {
   const [view, setView]                   = useState<'list' | 'add'>('list');
   const [aziende, setAziende]             = useState<Azienda[]>([]);
   const [loading, setLoading]             = useState(true);
   const [search, setSearch]               = useState('');
   const [filterSettore, setFilterSettore] = useState('');
   const [filterAccesso, setFilterAccesso] = useState('');
+  const [modalId, setModalId]             = useState<string | null>(null);
 
   const fetchAziende = useCallback(async () => {
     setLoading(true);
@@ -173,7 +173,7 @@ export const AdminAziende: React.FC<Props> = ({ onApri }) => {
                 <td className="px-6 py-3 text-sm text-gray-500 whitespace-nowrap">{fmt(a.last_access)}</td>
                 <td className="px-6 py-3">
                   <button
-                    onClick={() => onApri?.(a.id)}
+                    onClick={() => setModalId(a.id)}
                     className="text-sm font-semibold text-[#F0813C] hover:text-orange-600 transition-colors"
                   >
                     Apri
@@ -190,6 +190,16 @@ export const AdminAziende: React.FC<Props> = ({ onApri }) => {
           {filtered.length} aziend{filtered.length === 1 ? 'a' : 'e'} trovat{filtered.length === 1 ? 'a' : 'e'}
           {aziende.length !== filtered.length && ` su ${aziende.length} totali`}
         </p>
+      )}
+
+      {modalId && (
+        <AziendaModal
+          aziendaId={modalId}
+          onClose={() => setModalId(null)}
+          onUpdate={(id, changes) =>
+            setAziende(prev => prev.map(a => a.id === id ? { ...a, ...changes } as Azienda : a))
+          }
+        />
       )}
     </div>
   );

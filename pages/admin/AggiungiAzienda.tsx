@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Upload, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { resizeImage } from '../../lib/imageUtils';
 
 interface Props {
   onBack: () => void;
@@ -41,6 +42,8 @@ export const AggiungiAzienda: React.FC<Props> = ({ onBack, onCreated }) => {
   });
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [password, setPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +61,16 @@ export const AggiungiAzienda: React.FC<Props> = ({ onBack, onCreated }) => {
     reader.readAsDataURL(file);
   };
 
+  const handleCover = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { setError('La copertina non deve superare 5MB.'); return; }
+    setCoverFile(file);
+    const reader = new FileReader();
+    reader.onload = ev => setCoverPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) { setError('Il nome azienda è obbligatorio.'); return; }
@@ -65,18 +78,26 @@ export const AggiungiAzienda: React.FC<Props> = ({ onBack, onCreated }) => {
     setError(null);
 
     let logo_url: string | null = null;
+    let cover_url: string | null = null;
 
-    // Upload logo su Supabase Storage se presente
-    if (logoFile) {
-      const ext = logoFile.name.split('.').pop();
-      const path = `aziende/${Date.now()}.${ext}`;
+    const uploadImage = async (file: File, prefix: string, maxW: number, maxH: number) => {
+      const resized = await resizeImage(file, maxW, maxH);
+      const path = `aziende/${prefix}_${Date.now()}.webp`;
       const { error: uploadErr } = await supabase.storage
         .from('logos')
-        .upload(path, logoFile, { upsert: true });
-      if (!uploadErr) {
-        const { data: urlData } = supabase.storage.from('logos').getPublicUrl(path);
-        logo_url = urlData.publicUrl;
-      }
+        .upload(path, resized, { upsert: true, contentType: 'image/webp' });
+      if (uploadErr) return null;
+      const { data: urlData } = supabase.storage.from('logos').getPublicUrl(path);
+      return urlData.publicUrl;
+    };
+
+    if (logoFile || coverFile) {
+      const [logoResult, coverResult] = await Promise.all([
+        logoFile  ? uploadImage(logoFile,  'logo',  400, 400)   : Promise.resolve(null),
+        coverFile ? uploadImage(coverFile, 'cover', 1200, 480) : Promise.resolve(null),
+      ]);
+      logo_url = logoResult;
+      cover_url = coverResult;
     }
 
     const { error: insertErr } = await supabase.from('aziende').insert({
@@ -94,6 +115,7 @@ export const AggiungiAzienda: React.FC<Props> = ({ onBack, onCreated }) => {
       stato:          form.stato,
       mostra_partner: form.mostra_partner,
       logo_url,
+      cover_url,
     });
 
     setSaving(false);
@@ -137,6 +159,19 @@ export const AggiungiAzienda: React.FC<Props> = ({ onBack, onCreated }) => {
               <p className="text-sm font-medium text-gray-700">Logo azienda</p>
               <p className="text-xs text-gray-400 mt-0.5">Carica un'immagine quadrata (max 2MB)</p>
             </div>
+          </div>
+
+          {/* Copertina */}
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-1.5">Immagine di copertina</p>
+            <p className="text-xs text-gray-400 mb-2">Visibile nella pagina di dettaglio dell'azienda (max 5MB)</p>
+            <label className="relative w-full h-32 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-orange-300 transition-colors overflow-hidden">
+              {coverPreview
+                ? <img src={coverPreview} alt="copertina" className="w-full h-full object-cover" />
+                : <><Upload size={22} className="text-gray-300 mb-1" /><span className="text-xs text-gray-300">Carica copertina</span></>
+              }
+              <input type="file" accept="image/*" className="hidden" onChange={handleCover} />
+            </label>
           </div>
 
           {/* Nome */}

@@ -12,6 +12,7 @@ interface Company {
   description: string | null;
   website: string | null;
   logo_url: string | null;
+  cover_url: string | null;
 }
 
 // Colore deterministic basato sul nome
@@ -41,45 +42,40 @@ function location(c: Company) {
   return parts.length > 0 ? parts.join(', ') : 'Rimini, Emilia Romagna';
 }
 
-// ── Logo aziendale ─────────────────────────────────────────────────────────────
-const CompanyLogo: React.FC<{ company: Company; size?: 'sm' | 'lg' }> = ({ company, size = 'sm' }) => {
-  const dim = size === 'lg' ? 'w-14 h-14' : 'w-14 h-14';
+
+// ── Card griglia 2 colonne ─────────────────────────────────────────────────────
+const CompanyCard: React.FC<{ company: Company; onDetail: () => void }> = ({ company, onDetail }) => {
   const idx = colorIndex(company.name);
-  if (company.logo_url) {
-    return <img src={company.logo_url} alt={company.name} className={`${dim} rounded-2xl object-cover shadow-sm`} />;
-  }
   return (
-    <div className={`${dim} ${LOGO_COLORS[idx]} rounded-2xl flex items-center justify-center shadow-sm shrink-0`}>
-      <span className="text-white font-bold text-base">{initials(company.name)}</span>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex flex-col">
+      <div className="flex justify-center mb-3">
+        {company.logo_url
+          ? <img src={company.logo_url} alt={company.name} className="w-20 h-20 object-contain" />
+          : <div className={`w-20 h-20 ${LOGO_COLORS[idx]} rounded-2xl flex items-center justify-center shadow-sm shrink-0`}>
+              <span className="text-white font-bold text-xl">{initials(company.name)}</span>
+            </div>
+        }
+      </div>
+      <h3 className="font-bold text-gray-900 text-xs font-montserrat text-center leading-snug line-clamp-2 mb-1.5">
+        {company.name}
+      </h3>
+      <div className="flex justify-center mb-3">
+        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-500">
+          {company.settore || 'Azienda'}
+        </span>
+      </div>
+      <div className="flex items-center gap-1 text-[10px] text-gray-400 font-medium mb-3">
+        <MapPin size={9} className="shrink-0" />
+        <span className="truncate">{location(company)}</span>
+      </div>
+      <div className="mt-auto">
+        <button onClick={onDetail} className="w-full py-2 rounded-xl btn-primary-liquid text-[10px] font-bold">
+          Dettagli
+        </button>
+      </div>
     </div>
   );
 };
-
-// ── Card griglia 2 colonne ─────────────────────────────────────────────────────
-const CompanyCard: React.FC<{ company: Company; onDetail: () => void }> = ({ company, onDetail }) => (
-  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex flex-col">
-    <div className="flex justify-center mb-3">
-      <CompanyLogo company={company} />
-    </div>
-    <h3 className="font-bold text-gray-900 text-xs font-montserrat text-center leading-snug line-clamp-2 mb-1.5">
-      {company.name}
-    </h3>
-    <div className="flex justify-center mb-3">
-      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-500">
-        {company.settore || 'Azienda'}
-      </span>
-    </div>
-    <div className="flex items-center gap-1 text-[10px] text-gray-400 font-medium mb-3">
-      <MapPin size={9} className="shrink-0" />
-      <span className="truncate">{location(company)}</span>
-    </div>
-    <div className="mt-auto">
-      <button onClick={onDetail} className="w-full py-2 rounded-xl btn-primary-liquid text-[10px] font-bold">
-        Dettagli
-      </button>
-    </div>
-  </div>
-);
 
 // ── Vista dettaglio ───────────────────────────────────────────────────────────
 const CompanyDetail: React.FC<{
@@ -103,25 +99,15 @@ const CompanyDetail: React.FC<{
         <span className="text-gray-500 truncate">{company.name}</span>
       </div>
 
-      {/* Hero */}
+      {/* Hero — solo se c'è la copertina */}
       <div className="relative mx-4">
-        <div className={`rounded-2xl bg-gradient-to-br ${GRADIENTS[idx]} h-40 flex items-end p-5`}>
-          <div className="flex items-center gap-3">
-            {company.logo_url
-              ? <img src={company.logo_url} alt={company.name} className="w-14 h-14 rounded-2xl object-cover shadow" />
-              : <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow">
-                  <span className="text-white font-bold text-base">{initials(company.name)}</span>
-                </div>
-            }
-            <div className="text-white drop-shadow">
-              <p className="font-bold text-base leading-tight">{company.name}</p>
-              <p className="text-xs opacity-85">{company.settore || 'Azienda'}</p>
-            </div>
-          </div>
-        </div>
+        {company.cover_url && (
+          <img src={company.cover_url} alt={company.name}
+            className="w-full h-96 rounded-2xl object-cover mb-0" />
+        )}
 
         {/* Info card */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 pt-4 pb-4 -mt-5 relative z-10">
+        <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm px-5 pt-4 pb-4 relative z-10 ${company.cover_url ? '-mt-6' : ''}`}>
           <div className="flex items-start justify-between gap-2 mb-3">
             <h2 className="font-bold font-montserrat text-gray-900 text-lg leading-snug flex-1">
               {company.name}
@@ -214,7 +200,7 @@ export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange }) => {
   useEffect(() => {
     supabase
       .from('aziende')
-      .select('id, name, settore, indirizzo, cap, provincia, description, website, logo_url')
+      .select('id, name, settore, indirizzo, cap, provincia, description, website, logo_url, cover_url')
       .eq('stato', 'attivo')
       .eq('mostra_partner', true)
       .order('name', { ascending: true })
