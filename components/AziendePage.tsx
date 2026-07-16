@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, MapPin, Briefcase, ChevronLeft, CheckCircle2, X, Star, SlidersHorizontal, Building2 } from 'lucide-react';
+import { Search, MapPin, Briefcase, ChevronLeft, ChevronRight, CheckCircle2, X, Star, SlidersHorizontal, Building2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Company {
@@ -43,36 +43,43 @@ function location(c: Company) {
 }
 
 
-// ── Card griglia 2 colonne ─────────────────────────────────────────────────────
+// ── Card lista colonna singola ─────────────────────────────────────────────────
 const CompanyCard: React.FC<{ company: Company; onDetail: () => void }> = ({ company, onDetail }) => {
   const idx = colorIndex(company.name);
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex flex-col">
-      <div className="flex justify-center mb-3">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-start gap-4">
+      {/* Logo in riquadro */}
+      <div className="shrink-0 w-20 h-20 rounded-xl border border-gray-100 flex items-center justify-center bg-white">
         {company.logo_url
-          ? <img src={company.logo_url} alt={company.name} className="w-20 h-20 object-contain" />
-          : <div className={`w-20 h-20 ${LOGO_COLORS[idx]} rounded-2xl flex items-center justify-center shadow-sm shrink-0`}>
+          ? <img src={company.logo_url} alt={company.name} className="w-16 h-16 object-contain p-1" />
+          : <div className={`w-12 h-12 ${LOGO_COLORS[idx]} rounded-xl flex items-center justify-center`}>
               <span className="text-white font-bold text-xl">{initials(company.name)}</span>
             </div>
         }
       </div>
-      <h3 className="font-bold text-gray-900 text-xs font-montserrat text-center leading-snug line-clamp-2 mb-1.5">
-        {company.name}
-      </h3>
-      <div className="flex justify-center mb-3">
-        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-500">
-          {company.settore || 'Azienda'}
-        </span>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <h3 className="font-bold text-gray-900 text-base font-montserrat leading-snug mb-1.5 line-clamp-1">
+          {company.name}
+        </h3>
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {(company.settore || 'Azienda').split(',').map(s => s.trim()).filter(Boolean).map(tag => (
+            <span key={tag} className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-500 border border-orange-100">
+              {tag}
+            </span>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+          <MapPin size={11} className="shrink-0" />
+          <span className="truncate">{location(company)}</span>
+        </div>
       </div>
-      <div className="flex items-center gap-1 text-[10px] text-gray-400 font-medium mb-3">
-        <MapPin size={9} className="shrink-0" />
-        <span className="truncate">{location(company)}</span>
-      </div>
-      <div className="mt-auto">
-        <button onClick={onDetail} className="w-full py-2 rounded-xl btn-primary-liquid text-[10px] font-bold">
-          Dettagli
-        </button>
-      </div>
+
+      {/* Freccia */}
+      <button onClick={onDetail} className="shrink-0 self-center text-gray-300 active:text-orange-500 transition-colors p-1">
+        <ChevronRight size={26} strokeWidth={2} />
+      </button>
     </div>
   );
 };
@@ -304,7 +311,7 @@ export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange }) => {
                 <div className="w-8 h-8 rounded-full border-2 border-orange-200 border-t-orange-500 animate-spin" />
               </div>
             ) : filtered.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-3">
                 {filtered.map(c => (
                   <CompanyCard key={c.id} company={c} onDetail={() => openDetail(c)} />
                 ))}

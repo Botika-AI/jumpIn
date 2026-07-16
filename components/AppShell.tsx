@@ -23,7 +23,7 @@ export type AppSection = 'home' | 'esperienze' | 'eventi' | 'aziende' | 'job';
 const NAV_TABS = [
   { key: 'home'       as AppSection, label: 'Dashboard',  Icon: Home      },
   { key: 'esperienze' as AppSection, label: 'Esperienze', Icon: Compass   },
-  { key: 'eventi'     as AppSection, label: 'I Miei',     Icon: Calendar  },
+  { key: 'eventi'     as AppSection, label: 'Miei eventi', Icon: Calendar  },
   { key: 'aziende'    as AppSection, label: 'Aziende',    Icon: Building2 },
   { key: 'job'        as AppSection, label: 'Job',        Icon: Briefcase },
 ];

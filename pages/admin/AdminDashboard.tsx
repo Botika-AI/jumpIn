@@ -149,7 +149,7 @@ export const AdminDashboard: React.FC = () => {
     const [studentiRes, eventiRes, attendancesRes, logsRes, recentLogsRes] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_admin', false),
       supabase.from('events').select('id, name, event_date, event_end').order('event_date', { ascending: false }),
-      supabase.from('attendances').select('user_id, event_id'),
+      supabase.from('iscrizioni_eventi').select('user_id, event_id, stato'),
       // access_logs per grafico 90 giorni
       supabase.from('access_logs')
         .select('user_id, user_type, accessed_at')
@@ -176,8 +176,9 @@ export const AdminDashboard: React.FC = () => {
     const esperienze = allEvents.filter(e => eventStatus(e) !== 'Concluso').length;
     setKpi({ studenti: studentiRes.count ?? 0, aziende: aziendeCount, esperienze, feedback: 0 });
 
-    // Partecipazioni recenti: ultimi 3 eventi + conteggio partecipanti unici da attendances
+    // Partecipazioni recenti: ultimi 3 eventi + conteggio iscritti accettati da iscrizioni_eventi
     const partsPerEvento = allAttendances.reduce<Record<string, Set<string>>>((acc, a) => {
+      if (a.stato !== 'accettata') return acc;
       if (!acc[a.event_id]) acc[a.event_id] = new Set();
       acc[a.event_id].add(a.user_id);
       return acc;
