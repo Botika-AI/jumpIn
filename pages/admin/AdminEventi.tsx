@@ -383,7 +383,10 @@ const EventiList: React.FC<{
               <tr key={ev.id} className={i < filtered.length - 1 ? 'border-b border-gray-50' : ''} style={{ height: 60 }}>
                 <td className="px-6 py-3">
                   <div className="flex items-center gap-2">
-                    <Calendar size={14} className="text-gray-400 shrink-0" />
+                    <button onClick={() => setQrEvento({ id: ev.id, name: ev.name })}
+                      className="text-gray-300 hover:text-orange-500 transition-colors shrink-0" title="QR Codes">
+                      <QrCode size={14} />
+                    </button>
                     <span className="text-sm font-medium text-[#1F2430]">{ev.name}</span>
                   </div>
                 </td>
@@ -415,13 +418,8 @@ const EventiList: React.FC<{
                       className="text-sm font-semibold text-[#F0813C] hover:text-orange-600 transition-colors">
                       Modifica
                     </button>
-                    <button onClick={() => setQrEvento({ id: ev.id, name: ev.name })}
-                      className="flex items-center gap-1 text-sm font-semibold text-gray-400 hover:text-orange-500 transition-colors"
-                      title="QR Codes">
-                      <QrCode size={14} />
-                    </button>
                     <button onClick={() => setNotificaEvento({ id: ev.id, name: ev.name })}
-                      className="flex items-center gap-1 text-sm font-semibold text-gray-400 hover:text-orange-500 transition-colors"
+                      className="ml-auto flex items-center gap-1 text-sm font-semibold text-gray-400 hover:text-orange-500 transition-colors"
                       title="Invia notifica">
                       <Bell size={14} />
                     </button>
