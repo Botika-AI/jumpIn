@@ -290,7 +290,7 @@ const EventiList: React.FC<{
         <table className="w-full min-w-[720px]">
           <thead>
             <tr className="border-b border-gray-100">
-              {['Titolo', 'Tipo', 'Data', 'Stato', 'Iscrizioni', 'Azioni'].map(h => (
+              {['Titolo', 'Tipo', 'Data', 'Stato', 'Candidature', 'Azioni'].map(h => (
                 <th key={h} className="text-left px-6 py-4 text-sm font-bold text-[#1F2430] whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -333,7 +333,7 @@ const EventiList: React.FC<{
                   <button onClick={() => onIscrizioni(ev.id, ev.name)}
                     className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-orange-500 transition-colors group">
                     <Users size={13} className="text-gray-400 group-hover:text-orange-400 shrink-0" />
-                    {ev.iscrizioni_count ?? 0} iscrizioni
+                    {ev.iscrizioni_count ?? 0} candidature
                   </button>
                 </td>
                 <td className="px-6 py-3">
@@ -1094,7 +1094,7 @@ const IscrizioniView: React.FC<{
 
   const exportCSV = () => {
     const rows = [
-      ['Nome', 'Cognome', 'Email', 'Scuola', 'Data iscrizione', 'Stato'],
+      ['Nome', 'Cognome', 'Email', 'Scuola', 'Data candidatura', 'Stato'],
       ...iscrizioni.map(c => [
         c.profiles?.first_name ?? '', c.profiles?.last_name ?? '',
         c.profiles?.email ?? '', c.profiles?.school ?? '',
@@ -1104,7 +1104,33 @@ const IscrizioniView: React.FC<{
     const csv = rows.map(r => r.join(',')).join('\n');
     const a = document.createElement('a');
     a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-    a.download = `iscrizioni_${nomeEvento.replace(/\s+/g, '_')}.csv`;
+    a.download = `candidature_${nomeEvento.replace(/\s+/g, '_')}.csv`;
+    a.click();
+  };
+
+  const exportAttivitaCSV = async () => {
+    const { data } = await supabase
+      .from('attendances')
+      .select('type, scanned_at, profiles(first_name, last_name, email)')
+      .eq('event_id', eventId)
+      .order('scanned_at', { ascending: true });
+
+    const rows = [
+      ['Nome', 'Cognome', 'Email', 'Tipo', 'Data', 'Ora'],
+      ...(data ?? []).map((r: any) => {
+        const dt = new Date(r.scanned_at);
+        return [
+          r.profiles?.first_name ?? '', r.profiles?.last_name ?? '',
+          r.profiles?.email ?? '', r.type === 'ingresso' ? 'Entrata' : 'Uscita',
+          dt.toLocaleDateString('it-IT'),
+          dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+        ];
+      }),
+    ];
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = `attivita_${nomeEvento.replace(/\s+/g, '_')}.csv`;
     a.click();
   };
 
@@ -1122,19 +1148,25 @@ const IscrizioniView: React.FC<{
           <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-2">
             <ArrowLeft size={16} /> Torna agli eventi
           </button>
-          <h1 className="text-2xl font-bold font-montserrat text-[#1F2430]">Iscrizioni: {nomeEvento}</h1>
-          <p className="text-sm text-gray-500 mt-1">Gestisci le iscrizioni ricevute per questo evento</p>
+          <h1 className="text-2xl font-bold font-montserrat text-[#1F2430]">Candidature: {nomeEvento}</h1>
+          <p className="text-sm text-gray-500 mt-1">Gestisci le candidature ricevute per questo evento</p>
         </div>
-        <button onClick={exportCSV}
-          className="flex items-center gap-2 border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-colors shrink-0">
-          <Download size={15} /> Esporta CSV
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={exportCSV}
+            className="flex items-center gap-2 border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-colors">
+            <Download size={15} /> Esporta candidature
+          </button>
+          <button onClick={exportAttivitaCSV}
+            className="flex items-center gap-2 border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-colors">
+            <Download size={15} /> Esporta attività
+          </button>
+        </div>
       </div>
 
       {inAttesa > 0 && (
         <div className="flex items-center justify-between bg-orange-50 border border-orange-100 rounded-2xl px-5 py-3.5">
           <p className="text-sm font-semibold text-orange-700">
-            Hai {inAttesa} iscrizioni in attesa di revisione
+            Hai {inAttesa} candidature in attesa di revisione
           </p>
           <div className="flex items-center gap-4">
             <button onClick={() => bulkUpdate('accettata')} className="text-sm font-bold text-green-600 hover:text-green-700 transition-colors">Accetta tutte</button>
@@ -1145,7 +1177,7 @@ const IscrizioniView: React.FC<{
 
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Totale iscrizioni', val: iscrizioni.length, color: 'text-gray-900'  },
+          { label: 'Totale candidature', val: iscrizioni.length, color: 'text-gray-900'  },
           { label: 'In attesa',         val: inAttesa,          color: 'text-orange-500' },
           { label: 'Accettate',         val: accettate,         color: 'text-[#34A853]'  },
           { label: 'Rifiutate',         val: rifiutate,         color: 'text-[#E05252]'  },
