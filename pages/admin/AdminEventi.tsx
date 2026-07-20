@@ -1043,20 +1043,32 @@ const IscrizioniView: React.FC<{
   nomeEvento: string;
   onBack: () => void;
 }> = ({ eventId, nomeEvento, onBack }) => {
-  const [iscrizioni, setIscrizioni] = useState<Iscrizione[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [search, setSearch]         = useState('');
+  const today = new Date().toISOString().split('T')[0];
+
+  const [tab, setTab]                 = useState<'candidature' | 'attivita'>('candidature');
+  const [iscrizioni, setIscrizioni]   = useState<Iscrizione[]>([]);
+  const [attendances, setAttendances] = useState<Attendance[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [search, setSearch]           = useState('');
+  const [filterDate, setFilterDate]   = useState(today);
 
   useEffect(() => {
-    supabase
-      .from('iscrizioni_eventi')
-      .select('id, event_id, user_id, stato, created_at, profiles(first_name, last_name, school, email)')
-      .eq('event_id', eventId)
-      .order('created_at', { ascending: true })
-      .then(({ data }) => {
-        setIscrizioni((data ?? []) as unknown as Iscrizione[]);
-        setLoading(false);
-      });
+    Promise.all([
+      supabase
+        .from('iscrizioni_eventi')
+        .select('id, event_id, user_id, stato, created_at, profiles(first_name, last_name, school, email)')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('attendances')
+        .select('id, user_id, type, scanned_at, profiles(first_name, last_name, email)')
+        .eq('event_id', eventId)
+        .order('scanned_at', { ascending: true }),
+    ]).then(([{ data: isc }, { data: att }]) => {
+      setIscrizioni((isc ?? []) as unknown as Iscrizione[]);
+      setAttendances((att ?? []) as unknown as Attendance[]);
+      setLoading(false);
+    });
   }, [eventId]);
 
   const inAttesa  = iscrizioni.filter(c => c.stato === 'in_attesa').length;
@@ -1094,11 +1106,45 @@ const IscrizioniView: React.FC<{
     await Promise.all(targets.map(c => sendNotifica(c.user_id, stato)));
   };
 
-  const filtered = iscrizioni.filter(c => {
+  const filteredCandidature = iscrizioni.filter(c => {
     if (!search) return true;
     const name = `${c.profiles?.first_name ?? ''} ${c.profiles?.last_name ?? ''}`.toLowerCase();
     return name.includes(search.toLowerCase());
   });
+
+  // ── Attività derived state ──────────────────────────────────────────────────
+  const availableDates = [...new Set([
+    today,
+    ...attendances.map(a => new Date(a.scanned_at).toISOString().split('T')[0]),
+  ])].sort().reverse();
+
+  const attivitaRows = iscrizioni
+    .filter(c => c.stato === 'accettata')
+    .map(c => {
+      const scans = attendances.filter(a => {
+        const d = new Date(a.scanned_at).toISOString().split('T')[0];
+        return a.user_id === c.user_id && d === filterDate;
+      });
+      const checkin  = scans.filter(a => a.type === 'ingresso').sort((a, b) => a.scanned_at.localeCompare(b.scanned_at))[0] ?? null;
+      const checkout = scans.filter(a => a.type === 'uscita').sort((a, b) => a.scanned_at.localeCompare(b.scanned_at))[0] ?? null;
+      const statoAtt: 'presente' | 'uscito' | null = checkin ? (checkout ? 'uscito' : 'presente') : null;
+      return { iscrizione: c, checkin, checkout, statoAtt };
+    });
+
+  const attivitaFiltered = attivitaRows
+    .filter(r => r.checkin !== null)
+    .filter(r => {
+      if (!search) return true;
+      const name = `${r.iscrizione.profiles?.first_name ?? ''} ${r.iscrizione.profiles?.last_name ?? ''}`.toLowerCase();
+      return name.includes(search.toLowerCase());
+    });
+
+  const presentiOggi = attivitaRows.filter(r => r.statoAtt !== null).length;
+
+  const formatDateLabel = (d: string) => {
+    const label = new Date(d + 'T00:00:00').toLocaleDateString('it-IT');
+    return d === today ? `Oggi (${label})` : label;
+  };
 
   const exportCSV = () => {
     const rows = [
@@ -1116,24 +1162,22 @@ const IscrizioniView: React.FC<{
     a.click();
   };
 
-  const exportAttivitaCSV = async () => {
-    const { data } = await supabase
-      .from('attendances')
-      .select('type, scanned_at, profiles(first_name, last_name, email)')
-      .eq('event_id', eventId)
-      .order('scanned_at', { ascending: true });
-
+  const exportAttivitaCSV = () => {
+    const fmtTime = (ts: string) => new Date(ts).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    const fmtDate = (ts: string) => new Date(ts).toLocaleDateString('it-IT');
     const rows = [
-      ['Nome', 'Cognome', 'Email', 'Tipo', 'Data', 'Ora'],
-      ...(data ?? []).map((r: any) => {
-        const dt = new Date(r.scanned_at);
-        return [
-          r.profiles?.first_name ?? '', r.profiles?.last_name ?? '',
-          r.profiles?.email ?? '', r.type === 'ingresso' ? 'Entrata' : 'Uscita',
-          dt.toLocaleDateString('it-IT'),
-          dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
-        ];
-      }),
+      ['Nome', 'Cognome', 'Email', 'Scuola', 'Data', 'Orario Check-in', 'Orario Check-out'],
+      ...attivitaRows
+        .filter(r => r.checkin !== null)
+        .map(r => [
+          r.iscrizione.profiles?.first_name ?? '',
+          r.iscrizione.profiles?.last_name ?? '',
+          r.iscrizione.profiles?.email ?? '',
+          r.iscrizione.profiles?.school ?? '',
+          r.checkin ? fmtDate(r.checkin.scanned_at) : '',
+          r.checkin ? fmtTime(r.checkin.scanned_at) : '--',
+          r.checkout ? fmtTime(r.checkout.scanned_at) : '--',
+        ]),
     ];
     const csv = rows.map(r => r.join(',')).join('\n');
     const a = document.createElement('a');
@@ -1156,8 +1200,8 @@ const IscrizioniView: React.FC<{
           <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-2">
             <ArrowLeft size={16} /> Torna agli eventi
           </button>
-          <h1 className="text-2xl font-bold font-montserrat text-[#1F2430]">Candidature: {nomeEvento}</h1>
-          <p className="text-sm text-gray-500 mt-1">Gestisci le candidature ricevute per questo evento</p>
+          <h1 className="text-2xl font-bold font-montserrat text-[#1F2430]">Candidature e Attività: {nomeEvento}</h1>
+          <p className="text-sm text-gray-500 mt-1">Gestisci le candidature e le attività di check-in/out dei partecipanti ricevute per questo evento</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button onClick={exportCSV}
@@ -1197,61 +1241,171 @@ const IscrizioniView: React.FC<{
         ))}
       </div>
 
-      <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-xl px-4 py-2.5 max-w-sm">
-        <Search size={15} className="text-gray-300 shrink-0" />
-        <input type="text" placeholder="Cerca studente..."
-          className="bg-transparent text-sm text-gray-700 placeholder-gray-300 outline-none flex-1"
-          value={search} onChange={e => setSearch(e.target.value)} />
+      {/* Tab bar */}
+      <div className="border-b border-gray-200">
+        <div className="flex">
+          {([
+            { key: 'candidature' as const, label: 'Tutte le Candidature' },
+            { key: 'attivita'    as const, label: 'Attività (QR Check-in/Out)' },
+          ]).map(t => (
+            <button key={t.key} onClick={() => { setTab(t.key); setSearch(''); }}
+              className={`px-5 py-3 text-sm font-semibold border-b-2 transition-all ${
+                tab === t.key
+                  ? 'border-[#F0813C] text-[#F0813C]'
+                  : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
-        <table className="w-full min-w-[640px]">
-          <thead>
-            <tr className="border-b border-gray-100">
-              {['Studente', 'Scuola', 'Data iscrizione', 'Stato', 'Azioni'].map(h => (
-                <th key={h} className="text-left px-6 py-4 text-sm font-bold text-[#1F2430] whitespace-nowrap">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((c, i) => (
-              <tr key={c.id} className={i < filtered.length - 1 ? 'border-b border-gray-50' : ''} style={{ height: 58 }}>
-                <td className="px-6 py-3 text-sm font-medium text-[#1F2430]">
-                  {c.profiles?.first_name} {c.profiles?.last_name}
-                </td>
-                <td className="px-6 py-3 text-sm text-gray-500">{c.profiles?.school || '—'}</td>
-                <td className="px-6 py-3 text-sm text-gray-500 whitespace-nowrap">
-                  {new Date(c.created_at).toLocaleDateString('it-IT')}
-                </td>
-                <td className="px-6 py-3">
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${ISCRIZIONE_STYLE[c.stato]}`}>
-                    {ISCRIZIONE_LABEL[c.stato]}
-                  </span>
-                </td>
-                <td className="px-6 py-3">
-                  <div className="flex items-center gap-2">
-                    {c.stato === 'in_attesa' && (
-                      <>
-                        <button onClick={() => updateStato(c.id, 'accettata')}
-                          className="w-7 h-7 rounded-lg bg-green-50 flex items-center justify-center hover:bg-green-100 transition-colors" title="Accetta">
-                          <Check size={14} className="text-green-600" />
+      {tab === 'candidature' ? (
+        <>
+          <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-xl px-4 py-2.5 max-w-sm">
+            <Search size={15} className="text-gray-300 shrink-0" />
+            <input type="text" placeholder="Cerca studente..."
+              className="bg-transparent text-sm text-gray-700 placeholder-gray-300 outline-none flex-1"
+              value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+            <table className="w-full min-w-[640px]">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  {['Studente', 'Scuola', 'Data iscrizione', 'Stato', 'Azioni'].map(h => (
+                    <th key={h} className="text-left px-6 py-4 text-sm font-bold text-[#1F2430] whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCandidature.length === 0 ? (
+                  <tr><td colSpan={5} className="py-12 text-center text-sm text-gray-400">Nessuna candidatura trovata.</td></tr>
+                ) : filteredCandidature.map((c, i) => (
+                  <tr key={c.id} className={i < filteredCandidature.length - 1 ? 'border-b border-gray-50' : ''} style={{ height: 58 }}>
+                    <td className="px-6 py-3 text-sm font-medium text-[#1F2430]">
+                      {c.profiles?.first_name} {c.profiles?.last_name}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-gray-500">{c.profiles?.school || '—'}</td>
+                    <td className="px-6 py-3 text-sm text-gray-500 whitespace-nowrap">
+                      {new Date(c.created_at).toLocaleDateString('it-IT')}
+                    </td>
+                    <td className="px-6 py-3">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${ISCRIZIONE_STYLE[c.stato]}`}>
+                        {ISCRIZIONE_LABEL[c.stato]}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3">
+                      <div className="flex items-center gap-2">
+                        {c.stato === 'in_attesa' && (
+                          <>
+                            <button onClick={() => updateStato(c.id, 'accettata')}
+                              className="w-7 h-7 rounded-lg bg-green-50 flex items-center justify-center hover:bg-green-100 transition-colors" title="Accetta">
+                              <Check size={14} className="text-green-600" />
+                            </button>
+                            <button onClick={() => updateStato(c.id, 'rifiutata')}
+                              className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors" title="Rifiuta">
+                              <X size={14} className="text-red-500" />
+                            </button>
+                          </>
+                        )}
+                        <button className="text-sm font-semibold text-[#F0813C] hover:text-orange-600 transition-colors">
+                          Vedi profilo
                         </button>
-                        <button onClick={() => updateStato(c.id, 'rifiutata')}
-                          className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors" title="Rifiuta">
-                          <X size={14} className="text-red-500" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Toolbar attività */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-xl px-4 py-2.5 min-w-[200px] max-w-xs">
+              <Search size={15} className="text-gray-300 shrink-0" />
+              <input type="text" placeholder="Cerca studente..."
+                className="bg-transparent text-sm text-gray-700 placeholder-gray-300 outline-none flex-1"
+                value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+
+            <p className="flex-1 text-center text-sm font-semibold text-gray-700 whitespace-nowrap">
+              Partecipanti Presenti (Attuali):{' '}
+              <span className={presentiOggi > 0 ? 'text-[#2ECC71]' : 'text-gray-500'}>{presentiOggi}</span>
+              {' '}su {accettate} accettati
+            </p>
+
+            <div className="shrink-0 text-right">
+              <p className="text-xs text-gray-400 font-medium mb-1">Giorno di Attività</p>
+              <div className="relative">
+                <select
+                  value={filterDate}
+                  onChange={e => setFilterDate(e.target.value)}
+                  className="appearance-none bg-white border border-gray-200 rounded-xl px-4 py-2.5 pr-8 text-sm font-medium text-gray-700 outline-none cursor-pointer focus:border-orange-300 transition-colors"
+                >
+                  {availableDates.map(d => (
+                    <option key={d} value={d}>{formatDateLabel(d)}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Tabella attività */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+            <table className="w-full min-w-[760px]">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  {['Studente', 'Scuola', 'Stato Presenza (Oggi)', 'Check-in (Oggi)', 'Check-out (Oggi)', 'Azioni (Attività)'].map(h => (
+                    <th key={h} className="text-left px-6 py-4 text-sm font-bold text-[#1F2430] whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {attivitaFiltered.length === 0 ? (
+                  <tr><td colSpan={6} className="py-12 text-center text-sm text-gray-400">
+                    Nessuna scansione QR registrata per la data selezionata.
+                  </td></tr>
+                ) : attivitaFiltered.map((r, i) => {
+                  const fmtTime = (ts: string) => new Date(ts).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+                  const fmtDate = (ts: string) => new Date(ts).toLocaleDateString('it-IT');
+                  return (
+                    <tr key={r.iscrizione.id} className={i < attivitaFiltered.length - 1 ? 'border-b border-gray-50' : ''} style={{ height: 58 }}>
+                      <td className="px-6 py-3 text-sm font-medium text-[#1F2430]">
+                        {r.iscrizione.profiles?.first_name} {r.iscrizione.profiles?.last_name}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-500">{r.iscrizione.profiles?.school || '—'}</td>
+                      <td className="px-6 py-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          r.statoAtt === 'presente'
+                            ? 'bg-[#EAF8EE] text-[#2ECC71]'
+                            : 'bg-[#FEF0E1] text-[#FF8D38]'
+                        }`}>
+                          {r.statoAtt === 'presente' ? 'Presente' : 'Uscito'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-500 whitespace-nowrap">
+                        {r.checkin ? `${fmtTime(r.checkin.scanned_at)} - ${fmtDate(r.checkin.scanned_at)}` : '—'}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-500 whitespace-nowrap">
+                        {r.checkout ? `${fmtTime(r.checkout.scanned_at)} - ${fmtDate(r.checkout.scanned_at)}` : '- -'}
+                      </td>
+                      <td className="px-6 py-3">
+                        <button className="text-sm font-semibold text-[#F0813C] hover:text-orange-600 transition-colors">
+                          Vedi profilo
                         </button>
-                      </>
-                    )}
-                    <button className="text-sm font-semibold text-[#F0813C] hover:text-orange-600 transition-colors">
-                      Vedi profilo
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
     </div>
   );
