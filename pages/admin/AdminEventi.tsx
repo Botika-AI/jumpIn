@@ -58,6 +58,14 @@ interface Iscrizione {
   } | null;
 }
 
+interface Attendance {
+  id: string;
+  user_id: string;
+  type: 'ingresso' | 'uscita';
+  scanned_at: string;
+  profiles: { first_name: string | null; last_name: string | null; email: string } | null;
+}
+
 interface Azienda { id: string; name: string; }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -1035,20 +1043,28 @@ const IscrizioniView: React.FC<{
   nomeEvento: string;
   onBack: () => void;
 }> = ({ eventId, nomeEvento, onBack }) => {
-  const [iscrizioni, setIscrizioni] = useState<Iscrizione[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [search, setSearch]         = useState('');
+  const [iscrizioni, setIscrizioni]   = useState<Iscrizione[]>([]);
+  const [attendances, setAttendances] = useState<Attendance[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [search, setSearch]           = useState('');
 
   useEffect(() => {
-    supabase
-      .from('iscrizioni_eventi')
-      .select('id, event_id, user_id, stato, created_at, profiles(first_name, last_name, school, email)')
-      .eq('event_id', eventId)
-      .order('created_at', { ascending: true })
-      .then(({ data }) => {
-        setIscrizioni((data ?? []) as unknown as Iscrizione[]);
-        setLoading(false);
-      });
+    Promise.all([
+      supabase
+        .from('iscrizioni_eventi')
+        .select('id, event_id, user_id, stato, created_at, profiles(first_name, last_name, school, email)')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('attendances')
+        .select('id, user_id, type, scanned_at, profiles(first_name, last_name, email)')
+        .eq('event_id', eventId)
+        .order('scanned_at', { ascending: true }),
+    ]).then(([{ data: isc }, { data: att }]) => {
+      setIscrizioni((isc ?? []) as unknown as Iscrizione[]);
+      setAttendances((att ?? []) as unknown as Attendance[]);
+      setLoading(false);
+    });
   }, [eventId]);
 
   const inAttesa  = iscrizioni.filter(c => c.stato === 'in_attesa').length;
@@ -1243,6 +1259,68 @@ const IscrizioniView: React.FC<{
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* ── Sezione Attività ─────────────────────────────────────────── */}
+      <div className="pt-4">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold font-montserrat text-[#1F2430]">Attività</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Registrazioni di entrata e uscita tramite QR code</p>
+          </div>
+          <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-3 py-1.5 rounded-full">
+            {attendances.length} scansion{attendances.length === 1 ? 'e' : 'i'}
+          </span>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+          <table className="w-full min-w-[560px]">
+            <thead>
+              <tr className="border-b border-gray-100">
+                {['Studente', 'Data', 'Ora', 'Tipo', 'Azioni'].map(h => (
+                  <th key={h} className="text-left px-6 py-4 text-sm font-bold text-[#1F2430] whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {attendances.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-sm text-gray-400">
+                    Nessuna scansione QR registrata per questo evento.
+                  </td>
+                </tr>
+              ) : attendances.map((a, i) => {
+                const dt = new Date(a.scanned_at);
+                const isEntrata = a.type === 'ingresso';
+                return (
+                  <tr key={a.id} className={i < attendances.length - 1 ? 'border-b border-gray-50' : ''} style={{ height: 58 }}>
+                    <td className="px-6 py-3 text-sm font-medium text-[#1F2430]">
+                      {a.profiles?.first_name} {a.profiles?.last_name}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-gray-500 whitespace-nowrap">
+                      {dt.toLocaleDateString('it-IT')}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-gray-500 whitespace-nowrap">
+                      {dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="px-6 py-3">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        isEntrata ? 'bg-[#E6F6EC] text-[#34A853]' : 'bg-orange-50 text-orange-500'
+                      }`}>
+                        {isEntrata ? 'Entrata' : 'Uscita'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3">
+                      <button className="text-sm font-semibold text-[#F0813C] hover:text-orange-600 transition-colors">
+                        Vedi profilo
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
