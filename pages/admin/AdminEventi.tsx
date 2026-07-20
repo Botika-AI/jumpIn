@@ -1324,7 +1324,7 @@ const IscrizioniView: React.FC<{
         <>
           {/* Toolbar attività */}
           <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-xl px-4 py-2.5 min-w-[200px] max-w-xs">
+            <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-xl px-4 py-2.5 max-w-sm w-full">
               <Search size={15} className="text-gray-300 shrink-0" />
               <input type="text" placeholder="Cerca studente..."
                 className="bg-transparent text-sm text-gray-700 placeholder-gray-300 outline-none flex-1"
