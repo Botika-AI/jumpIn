@@ -15,7 +15,7 @@ type AdminSection =
 
 const ADMIN_NAV: { key: AdminSection; label: string; Icon: React.ElementType }[] = [
   { key: 'dashboard',   label: 'Dashboard Generale', Icon: LayoutDashboard },
-  { key: 'studenti',    label: 'Utenti Studenti',    Icon: Users            },
+  { key: 'studenti',    label: 'Utenti',             Icon: Users            },
   { key: 'aziende',     label: 'Aziende',            Icon: Building2        },
   { key: 'eventi',      label: 'Eventi',             Icon: Calendar         },
   { key: 'jobpost',     label: 'Job Post',           Icon: Briefcase        },
