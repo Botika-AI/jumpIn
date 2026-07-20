@@ -382,13 +382,10 @@ const EventiList: React.FC<{
             ) : filtered.map((ev, i) => (
               <tr key={ev.id} className={i < filtered.length - 1 ? 'border-b border-gray-50' : ''} style={{ height: 60 }}>
                 <td className="px-6 py-3">
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => setQrEvento({ id: ev.id, name: ev.name })}
-                      className="text-gray-300 hover:text-orange-500 transition-colors shrink-0" title="QR Codes">
-                      <QrCode size={14} />
-                    </button>
-                    <span className="text-sm font-medium text-[#1F2430]">{ev.name}</span>
-                  </div>
+                  <button onClick={() => setQrEvento({ id: ev.id, name: ev.name })}
+                    className="text-sm font-medium text-[#1F2430] hover:text-orange-500 transition-colors text-left">
+                    {ev.name}
+                  </button>
                 </td>
                 <td className="px-6 py-3">
                   <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
