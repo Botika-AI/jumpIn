@@ -80,8 +80,8 @@ export const AdminStudenti: React.FC<{ onModifica?: (id: string) => void }> = ({
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold font-montserrat text-[#1F2430]">Utenti Studenti</h1>
-          <p className="text-sm text-gray-500 mt-1">Gestisci tutti i profili studenti e la loro attività</p>
+          <h1 className="text-2xl font-bold font-montserrat text-[#1F2430]">Utenti</h1>
+          <p className="text-sm text-gray-500 mt-1">Gestisci tutti i profili e la loro attività</p>
         </div>
         <button className="flex items-center gap-2 bg-[#F0813C] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-orange-200 hover:bg-orange-500 transition-colors shrink-0">
           <span className="text-base leading-none font-bold">+</span> Aggiungi Studenti
@@ -163,7 +163,7 @@ export const AdminStudenti: React.FC<{ onModifica?: (id: string) => void }> = ({
                   <td className="px-6 py-3 text-sm text-gray-500">{s.school || '—'}</td>
                   <td className="px-6 py-3 text-sm text-gray-500 whitespace-nowrap">{fmt(s.dob)}</td>
                   <td className="px-6 py-3">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${status.bgColor} ${status.textColor}`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${status.bgColor} ${status.textColor}`}>
                       {status.label}
                     </span>
                   </td>
