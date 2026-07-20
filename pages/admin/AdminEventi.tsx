@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft, Calendar, Users, Upload, Plus, Search,
-  ChevronDown, Download, Check, X, Bell, Link, Trash2, FileText,
+  ChevronDown, Download, Check, X, Bell, Link, Trash2, FileText, QrCode,
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { supabase } from '../../lib/supabase';
 import { resizeImage } from '../../lib/imageUtils';
 
@@ -226,6 +227,69 @@ const NotificaModal: React.FC<{
   );
 };
 
+// ─── QR Modal ─────────────────────────────────────────────────────────────────
+
+const QrModal: React.FC<{
+  evento: { id: string; name: string };
+  onClose: () => void;
+}> = ({ evento, onClose }) => {
+  const [urls, setUrls] = useState<{ ingresso: string; uscita: string } | null>(null);
+
+  useEffect(() => {
+    const opts = { width: 300, margin: 2, color: { dark: '#1F2430', light: '#FFFFFF' } };
+    Promise.all([
+      QRCode.toDataURL(`JUMPIN|${evento.id}|ingresso`, opts),
+      QRCode.toDataURL(`JUMPIN|${evento.id}|uscita`, opts),
+    ]).then(([ingresso, uscita]) => setUrls({ ingresso, uscita }));
+  }, [evento.id]);
+
+  const download = (url: string, tipo: string) => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `qr_${evento.id}_${tipo}.png`;
+    a.click();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center">
+              <QrCode size={15} className="text-orange-500" />
+            </div>
+            <h3 className="font-bold font-montserrat text-[#1F2430]">QR Codes — {evento.name}</h3>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mb-5 ml-10">Stampa e affiggi all'ingresso e all'uscita dell'evento.</p>
+
+        {!urls ? (
+          <div className="flex justify-center py-8">
+            <div className="w-8 h-8 rounded-full border-2 border-orange-200 border-t-orange-500 animate-spin" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            {(['ingresso', 'uscita'] as const).map(tipo => (
+              <div key={tipo} className="flex flex-col items-center gap-3 p-4 rounded-2xl border border-gray-100 bg-gray-50">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">{tipo}</p>
+                <img src={urls[tipo]} alt={`QR ${tipo}`} className="w-full rounded-xl" />
+                <button
+                  onClick={() => download(urls[tipo], tipo)}
+                  className="w-full py-2 rounded-xl bg-[#F0813C] text-white text-xs font-bold hover:bg-orange-500 transition-colors flex items-center justify-center gap-1.5">
+                  <Download size={12} /> Scarica PNG
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── Schermata 1: Lista ───────────────────────────────────────────────────────
 
 const EventiList: React.FC<{
@@ -238,6 +302,7 @@ const EventiList: React.FC<{
   const [search, setSearch]           = useState('');
   const [filterStato, setFilterStato] = useState('');
   const [notificaEvento, setNotificaEvento] = useState<{ id: string; name: string } | null>(null);
+  const [qrEvento, setQrEvento]             = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     supabase
@@ -350,8 +415,13 @@ const EventiList: React.FC<{
                       className="text-sm font-semibold text-[#F0813C] hover:text-orange-600 transition-colors">
                       Modifica
                     </button>
+                    <button onClick={() => setQrEvento({ id: ev.id, name: ev.name })}
+                      className="flex items-center gap-1 text-sm font-semibold text-gray-400 hover:text-orange-500 transition-colors"
+                      title="QR Codes">
+                      <QrCode size={14} />
+                    </button>
                     <button onClick={() => setNotificaEvento({ id: ev.id, name: ev.name })}
-                      className="ml-auto flex items-center gap-1 text-sm font-semibold text-gray-400 hover:text-orange-500 transition-colors"
+                      className="flex items-center gap-1 text-sm font-semibold text-gray-400 hover:text-orange-500 transition-colors"
                       title="Invia notifica">
                       <Bell size={14} />
                     </button>
@@ -372,6 +442,9 @@ const EventiList: React.FC<{
 
       {notificaEvento && (
         <NotificaModal evento={notificaEvento} onClose={() => setNotificaEvento(null)} />
+      )}
+      {qrEvento && (
+        <QrModal evento={qrEvento} onClose={() => setQrEvento(null)} />
       )}
     </div>
   );
