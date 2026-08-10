@@ -6,6 +6,7 @@ import { RIMINI_SCHOOLS } from './constants';
 import { GlassCard } from './components/GlassCard';
 import { AppShell } from './components/AppShell';
 import { AdminShell } from './pages/AdminShell';
+import { AziendaApp } from './pages/AziendaApp';
 import { OnboardingInterests } from './components/OnboardingInterests';
 import { AlertCircle, ChevronRight, CheckCircle2 } from 'lucide-react';
 
@@ -487,11 +488,14 @@ const AuthApp: React.FC = () => {
 
 const App: React.FC = () => (
   <BrowserRouter>
-    <div className="w-full min-h-screen flex flex-col items-center justify-center p-6 sm:p-4">
-      <Routes>
-        <Route path="*" element={<AuthApp />} />
-      </Routes>
-    </div>
+    <Routes>
+      <Route path="/azienda" element={<AziendaApp />} />
+      <Route path="*" element={
+        <div className="w-full min-h-screen flex flex-col items-center justify-center p-6 sm:p-4">
+          <AuthApp />
+        </div>
+      } />
+    </Routes>
   </BrowserRouter>
 );
 

@@ -8,7 +8,7 @@ import { UserProfile } from '../types';
 import { supabase } from '../lib/supabase';
 
 type SettingsTab = 'account' | 'attivita' | 'badge' | 'sicurezza' | 'visibilita';
-type EditingField = 'nome' | 'bio' | 'interessi' | null;
+type EditingField = 'nome' | 'bio' | 'citta' | 'interessi' | null;
 
 const SETTINGS_TABS: { key: SettingsTab; label: string; Icon: React.ElementType }[] = [
   { key: 'account',    label: 'Account',    Icon: User     },
@@ -23,6 +23,8 @@ interface Props {
   onBack: () => void;
   onLogout: () => void;
   onUserUpdate?: (updates: Partial<UserProfile>) => void;
+  onOpenEvent?: (eventId: string) => void;
+  initialTab?: SettingsTab;
 }
 
 // ── Tab Account ───────────────────────────────────────────────────────────────
@@ -34,12 +36,14 @@ const AccountTab: React.FC<{ user: UserProfile; onUserUpdate?: (u: Partial<UserP
   const [displayFirstName, setDisplayFirstName] = useState(user.first_name || '');
   const [displayLastName, setDisplayLastName]   = useState(user.last_name || '');
   const [displayBio, setDisplayBio]             = useState(user.bio || '');
+  const [displayCitta, setDisplayCitta]         = useState(user.citta || '');
   const [displayInterests, setDisplayInterests] = useState<string[]>(user.interests || []);
 
   // Draft state — usato solo mentre si modifica un campo
   const [draftFirstName, setDraftFirstName] = useState('');
   const [draftLastName, setDraftLastName]   = useState('');
   const [draftBio, setDraftBio]             = useState('');
+  const [draftCitta, setDraftCitta]         = useState('');
   const [draftInterests, setDraftInterests] = useState<string[]>([]);
   const [interestInput, setInterestInput]   = useState('');
 
@@ -60,7 +64,8 @@ const AccountTab: React.FC<{ user: UserProfile; onUserUpdate?: (u: Partial<UserP
       setDraftFirstName(displayFirstName);
       setDraftLastName(displayLastName);
     }
-    if (field === 'bio') setDraftBio(displayBio);
+    if (field === 'bio')   setDraftBio(displayBio);
+    if (field === 'citta') setDraftCitta(displayCitta);
     if (field === 'interessi') { setDraftInterests([...displayInterests]); setInterestInput(''); }
   };
 
@@ -71,6 +76,7 @@ const AccountTab: React.FC<{ user: UserProfile; onUserUpdate?: (u: Partial<UserP
     let payload: Record<string, unknown> = {};
     if (field === 'nome')      payload = { first_name: draftFirstName.trim(), last_name: draftLastName.trim() };
     if (field === 'bio')       payload = { bio: draftBio.trim() };
+    if (field === 'citta')     payload = { citta: draftCitta.trim() };
     if (field === 'interessi') payload = { interests: draftInterests };
 
     const { error } = await supabase.from('profiles').update(payload).eq('id', user.id);
@@ -90,6 +96,10 @@ const AccountTab: React.FC<{ user: UserProfile; onUserUpdate?: (u: Partial<UserP
     if (field === 'bio') {
       setDisplayBio(draftBio.trim());
       onUserUpdate?.({ bio: draftBio.trim() });
+    }
+    if (field === 'citta') {
+      setDisplayCitta(draftCitta.trim());
+      onUserUpdate?.({ citta: draftCitta.trim() });
     }
     if (field === 'interessi') {
       setDisplayInterests([...draftInterests]);
@@ -198,6 +208,31 @@ const AccountTab: React.FC<{ user: UserProfile; onUserUpdate?: (u: Partial<UserP
         {/* Email — sola lettura */}
         <FieldRow label="Email">
           <p className="text-sm font-semibold text-gray-900">{user.email}</p>
+        </FieldRow>
+
+        <Divider />
+
+        {/* Città */}
+        <FieldRow
+          label="Città"
+          onEdit={() => openEdit('citta')}
+          editing={editing === 'citta'}
+          saving={saving}
+          onSave={() => saveField('citta')}
+          onCancel={cancelEdit}
+        >
+          {editing === 'citta' ? (
+            <input
+              value={draftCitta}
+              onChange={e => setDraftCitta(e.target.value)}
+              placeholder="Es. Rimini"
+              className="mt-2 w-full text-sm px-3 py-2 rounded-xl border border-gray-200 outline-none focus:border-orange-300 transition-colors"
+            />
+          ) : (
+            <p className="text-sm text-gray-900">
+              {displayCitta || <span className="text-gray-400 italic text-xs">Non inserita</span>}
+            </p>
+          )}
         </FieldRow>
 
         <Divider />
@@ -359,28 +394,10 @@ interface ActivityItem {
   type: ActivityType;
   title: string;
   subtitle?: string;
-  date: string;
-  hasAction?: boolean;
+  timestamp: number;
+  eventId?: string;
+  badge?: RealBadge;
 }
-
-// Dati mock — da sostituire con fetch Supabase (attendances JOIN events + badges)
-const MOCK_ACTIVITIES: ActivityItem[] = [
-  {
-    id: '1',
-    type: 'completato',
-    title: 'Completato: Robotica Lab',
-    subtitle: "Badge ottenuto: 'Robotics Enthusiast'",
-    date: '26 Ottobre 2025',
-  },
-  {
-    id: '2',
-    type: 'iscritto',
-    title: 'Iscritto: AI Hackathon Milano 2025',
-    subtitle: '15–17 Novembre 2025',
-    date: '',
-    hasAction: true,
-  },
-];
 
 const ACTIVITY_CONFIG: Record<ActivityType, { bg: string; Icon: React.ElementType; color: string }> = {
   completato: { bg: 'bg-green-100',  Icon: CheckCircle2, color: 'text-green-500'  },
@@ -389,8 +406,93 @@ const ACTIVITY_CONFIG: Record<ActivityType, { bg: string; Icon: React.ElementTyp
   badge:      { bg: 'bg-violet-100', Icon: Award,         color: 'text-violet-500' },
 };
 
-const AttivitaTab: React.FC = () => {
-  const activities = MOCK_ACTIVITIES; // ← sostituire con: await supabase.from('attendances').select(...)
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+
+const AttivitaTab: React.FC<{ userId: string; onOpenEvent: (eventId: string) => void }> = ({ userId, onOpenEvent }) => {
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [selectedBadge, setSelectedBadge] = useState<RealBadge | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      const [{ data: iscr }, { data: att }, { data: bdg }] = await Promise.all([
+        supabase
+          .from('iscrizioni_eventi')
+          .select('id, created_at, stato, event_id, events(name)')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('attendances')
+          .select('id, scanned_at, type, event_id, events(name)')
+          .eq('user_id', userId)
+          .order('scanned_at', { ascending: false }),
+        supabase
+          .from('badge_assegnazioni')
+          .select('id, assegnato_at, badges(id, nome, descrizione, icona_url, categoria, tags)')
+          .eq('user_id', userId)
+          .order('assegnato_at', { ascending: false }),
+      ]);
+
+      const items: ActivityItem[] = [];
+
+      for (const r of iscr ?? []) {
+        const ev = (r as any).events;
+        items.push({
+          id:        `iscr_${r.id}`,
+          type:      'iscritto',
+          title:     `Iscritto: ${ev?.name ?? 'Evento'}`,
+          subtitle:  r.stato === 'accettata' ? 'Iscrizione accettata' : r.stato === 'rifiutata' ? 'Iscrizione rifiutata' : 'In attesa di conferma',
+          timestamp: new Date(r.created_at).getTime(),
+          eventId:   (r as any).event_id,
+        });
+      }
+
+      for (const r of att ?? []) {
+        const ev = (r as any).events;
+        const isIngresso = r.type === 'ingresso';
+        items.push({
+          id:        `att_${r.id}`,
+          type:      isIngresso ? 'checkin' : 'completato',
+          title:     isIngresso ? `Check-in: ${ev?.name ?? 'Evento'}` : `Completato: ${ev?.name ?? 'Evento'}`,
+          subtitle:  fmtDate(r.scanned_at),
+          timestamp: new Date(r.scanned_at).getTime(),
+          eventId:   (r as any).event_id,
+        });
+      }
+
+      for (const r of bdg ?? []) {
+        const b = (r as any).badges;
+        items.push({
+          id:        `bdg_${r.id}`,
+          type:      'badge',
+          title:     `Badge ottenuto: ${b?.nome ?? 'Badge'}`,
+          subtitle:  fmtDate(r.assegnato_at),
+          timestamp: new Date(r.assegnato_at).getTime(),
+          badge: b ? {
+            id:           b.id,
+            nome:         b.nome,
+            descrizione:  b.descrizione,
+            icona_url:    b.icona_url,
+            categoria:    b.categoria ?? null,
+            tags:         b.tags ?? [],
+            assegnato_at: r.assegnato_at,
+          } : undefined,
+        });
+      }
+
+      items.sort((a, b) => b.timestamp - a.timestamp);
+      setActivities(items);
+      setLoading(false);
+    };
+    load();
+  }, [userId]);
+
+  if (loading) return (
+    <div className="flex justify-center py-20">
+      <div className="w-8 h-8 rounded-full border-2 border-orange-200 border-t-orange-500 animate-spin" />
+    </div>
+  );
 
   if (activities.length === 0) {
     return (
@@ -408,35 +510,31 @@ const AttivitaTab: React.FC = () => {
 
   return (
     <div className="px-4 py-5 max-w-md mx-auto">
+      {selectedBadge && <BadgeModal badge={selectedBadge} onClose={() => setSelectedBadge(null)} />}
       <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-1 mb-3">
         {activities.length} attività recenti
       </p>
       <div className="space-y-3">
         {activities.map(activity => {
           const { bg, Icon, color } = ACTIVITY_CONFIG[activity.type];
+          const clickable = !!(activity.eventId || activity.badge);
+          const handleClick = () => {
+            if (activity.badge) { setSelectedBadge(activity.badge); return; }
+            if (activity.eventId) onOpenEvent(activity.eventId);
+          };
           return (
             <div
               key={activity.id}
-              className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4 flex items-start gap-4"
+              onClick={clickable ? handleClick : undefined}
+              className={`bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4 flex items-start gap-4 ${clickable ? 'cursor-pointer active:scale-[0.98] transition-transform' : ''}`}
             >
-              {/* Icona stato */}
               <div className={`w-10 h-10 rounded-full ${bg} flex items-center justify-center shrink-0 mt-0.5`}>
                 <Icon size={18} className={color} strokeWidth={2} />
               </div>
-
-              {/* Testo */}
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-sm text-gray-900 leading-snug mb-0.5">{activity.title}</p>
                 {activity.subtitle && (
-                  <p className="text-xs text-gray-400 leading-snug mb-1">{activity.subtitle}</p>
-                )}
-                {activity.date && (
-                  <p className="text-[10px] text-gray-300 font-medium mb-2">{activity.date}</p>
-                )}
-                {activity.hasAction && (
-                  <button className="text-[11px] font-bold text-orange-500 bg-orange-50 px-3 py-1.5 rounded-xl border border-orange-100">
-                    Mostra dettagli
-                  </button>
+                  <p className="text-xs text-gray-400 leading-snug">{activity.subtitle}</p>
                 )}
               </div>
             </div>
@@ -448,39 +546,117 @@ const AttivitaTab: React.FC = () => {
 };
 
 // ── Tab Badge ─────────────────────────────────────────────────────────────────
-interface BadgeItem {
+
+interface RealBadge {
   id: string;
-  name: string;
-  description: string;
-  date: string;
-  Icon: React.ElementType;
-  color: string;
-  bg: string;
+  nome: string;
+  descrizione: string | null;
+  icona_url: string | null;
+  categoria: string | null;
+  tags: string[];
+  assegnato_at: string;
 }
 
-const MOCK_BADGES: BadgeItem[] = [
-  {
-    id: '1',
-    name: 'Robotics Enthusiast',
-    description: 'Completato il corso Robotica Lab',
-    date: '26 Ottobre 2025',
-    Icon: Award,
-    color: 'text-violet-500',
-    bg: 'bg-violet-100',
-  },
-  {
-    id: '2',
-    name: 'AI Pioneer',
-    description: "Partecipato all'AI Hackathon Milano",
-    date: '17 Novembre 2025',
-    Icon: Star,
-    color: 'text-orange-500',
-    bg: 'bg-orange-100',
-  },
-];
+const BadgeModal: React.FC<{ badge: RealBadge; onClose: () => void }> = ({ badge, onClose }) => (
+  <div
+    className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 px-0 sm:px-6"
+    onClick={onClose}
+  >
+    <div
+      className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl shadow-2xl"
+      onClick={e => e.stopPropagation()}
+    >
+      {/* Header bianco */}
+      <div className="px-6 pt-8 pb-5 flex flex-col items-center gap-3">
+        {badge.icona_url && !badge.icona_url.startsWith('blob:') ? (
+          <div className="w-24 h-24 rounded-2xl bg-white overflow-hidden">
+            <img
+              src={badge.icona_url}
+              alt={badge.nome}
+              className="w-full h-full object-contain"
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          </div>
+        ) : (
+          <div className="w-24 h-24 bg-[#FDEBDD] rounded-2xl flex items-center justify-center">
+            <Award size={44} className="text-[#E8792F]" strokeWidth={1.5} />
+          </div>
+        )}
+        <div className="text-center">
+          <p className="font-bold font-montserrat text-gray-900 text-lg leading-tight">{badge.nome}</p>
+          {badge.categoria && (
+            <p className="text-gray-400 text-xs mt-0.5">{badge.categoria}</p>
+          )}
+        </div>
+      </div>
 
-const BadgeTab: React.FC = () => {
-  const badges = MOCK_BADGES; // ← da sostituire con fetch Supabase
+      <div className="border-t border-[#E8792F]/30 mx-6" />
+
+      {/* Corpo */}
+      <div className="px-6 py-5 space-y-4">
+        {badge.descrizione && (
+          <p className="text-sm text-gray-600 leading-relaxed">{badge.descrizione}</p>
+        )}
+        {badge.tags && badge.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {badge.tags.map(tag => (
+              <span key={tag} className="px-2.5 py-1 rounded-full bg-[#FDEBDD] text-[#E8792F] text-xs font-semibold">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="flex items-center gap-2 text-xs text-gray-400">
+          <CheckCircle2 size={14} className="text-green-500 shrink-0" />
+          Ottenuto il {new Date(badge.assegnato_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="px-6 pb-6">
+        <button
+          onClick={onClose}
+          className="w-full py-3 rounded-xl border border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          Chiudi
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+const BadgeTab: React.FC<{ userId: string }> = ({ userId }) => {
+  const [badges, setBadges]     = useState<RealBadge[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [selected, setSelected] = useState<RealBadge | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from('badge_assegnazioni')
+      .select('assegnato_at, badges(id, nome, descrizione, icona_url, categoria, tags)')
+      .eq('user_id', userId)
+      .order('assegnato_at', { ascending: false })
+      .then(({ data }) => {
+        setBadges(
+          (data ?? []).map((row: any) => ({
+            id:           row.badges.id,
+            nome:         row.badges.nome,
+            descrizione:  row.badges.descrizione,
+            icona_url:    row.badges.icona_url,
+            categoria:    row.badges.categoria ?? null,
+            tags:         row.badges.tags ?? [],
+            assegnato_at: row.assegnato_at,
+          }))
+        );
+        setLoading(false);
+      });
+  }, [userId]);
+
+  if (loading) return (
+    <div className="flex justify-center py-20">
+      <div className="w-8 h-8 rounded-full border-2 border-orange-200 border-t-orange-500 animate-spin" />
+    </div>
+  );
 
   if (badges.length === 0) {
     return (
@@ -498,26 +674,36 @@ const BadgeTab: React.FC = () => {
 
   return (
     <div className="px-4 py-5 max-w-md mx-auto">
+      {selected && <BadgeModal badge={selected} onClose={() => setSelected(null)} />}
       <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-1 mb-3">
-        {badges.length} badge ottenuti
+        {badges.length} {badges.length === 1 ? 'badge ottenuto' : 'badge ottenuti'}
       </p>
       <div className="grid grid-cols-2 gap-3">
-        {badges.map(badge => {
-          const { Icon } = badge;
-          return (
+        {badges.map(badge => (
             <div
               key={badge.id}
-              className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col items-center text-center"
+              onClick={() => setSelected(badge)}
+              className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col items-center text-center cursor-pointer active:scale-95 transition-transform"
             >
-              <div className={`w-14 h-14 ${badge.bg} rounded-2xl flex items-center justify-center mb-3 shadow-sm`}>
-                <Icon size={26} className={badge.color} strokeWidth={1.75} />
-              </div>
-              <p className="font-bold font-montserrat text-gray-900 text-xs leading-snug mb-1">{badge.name}</p>
-              <p className="text-[10px] text-gray-400 leading-snug mb-2">{badge.description}</p>
-              <p className="text-[9px] text-gray-300 font-medium">{badge.date}</p>
+              {badge.icona_url && !badge.icona_url.startsWith('blob:') ? (
+                <img
+                  src={badge.icona_url}
+                  alt={badge.nome}
+                  className="w-14 h-14 rounded-xl object-contain mb-3"
+                  onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              ) : (
+                <div className="w-14 h-14 bg-[#FDEBDD] rounded-xl flex items-center justify-center mb-3">
+                  <Award size={26} className="text-[#E8792F]" strokeWidth={1.75} />
+                </div>
+              )}
+              <p className="font-bold font-montserrat text-gray-900 text-xs leading-snug mb-1">{badge.nome}</p>
+              {badge.descrizione && <p className="text-[10px] text-gray-400 leading-snug mb-2">{badge.descrizione}</p>}
+              <p className="text-[9px] text-gray-300 font-medium">
+                {new Date(badge.assegnato_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
             </div>
-          );
-        })}
+          ))}
       </div>
     </div>
   );
@@ -832,8 +1018,8 @@ const VisibilitaTab: React.FC<{ user: UserProfile; onLogout: () => void }> = ({ 
 };
 
 // ── Pagina principale ─────────────────────────────────────────────────────────
-export const ProfileSettingsPage: React.FC<Props> = ({ user, onBack, onLogout, onUserUpdate }) => {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('account');
+export const ProfileSettingsPage: React.FC<Props> = ({ user, onBack, onLogout, onUserUpdate, onOpenEvent, initialTab }) => {
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab ?? 'account');
   const initials = `${(user.first_name || '')[0] || ''}${(user.last_name || '')[0] || ''}`.toUpperCase() || '?';
 
   return (
@@ -887,8 +1073,8 @@ export const ProfileSettingsPage: React.FC<Props> = ({ user, onBack, onLogout, o
       {/* Contenuto */}
       <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         {activeTab === 'account'    && <AccountTab user={user} onUserUpdate={onUserUpdate} />}
-        {activeTab === 'attivita'   && <AttivitaTab />}
-        {activeTab === 'badge'      && <BadgeTab />}
+        {activeTab === 'attivita'   && <AttivitaTab userId={user.id} onOpenEvent={(id) => { onBack(); onOpenEvent?.(id); }} />}
+        {activeTab === 'badge'      && <BadgeTab userId={user.id} />}
         {activeTab === 'sicurezza'  && <SicurezzaTab user={user} />}
         {activeTab === 'visibilita' && <VisibilitaTab user={user} onLogout={onLogout} />}
       </div>

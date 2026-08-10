@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, CalendarDays, MapPin, Users, ChevronLeft, CheckCircle2, X, BookOpen, SlidersHorizontal } from 'lucide-react';
+import { Search, CalendarDays, MapPin, Users, ChevronLeft, CheckCircle2, X, BookOpen, SlidersHorizontal, ScrollText, Download } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { generateCertificatePDF } from '../lib/certificateGenerator';
 
 interface Evento {
   id: string;
@@ -70,6 +71,9 @@ const EventoCard: React.FC<{
   const isRifiutata = iscrizione?.stato === 'rifiutata';
   const isIscritto  = isAttesa || isAccettata;
 
+  const today = new Date().toISOString().split('T')[0];
+  const isConcluso = (ev.event_end || ev.event_date) < today;
+
   const badgeLabel = isAccettata ? 'Confermato' : isAttesa ? 'In attesa' : isRifiutata ? 'Rifiutato' : null;
   const badgeStyle = isAccettata ? 'bg-green-50 text-green-600' : isAttesa ? 'bg-orange-50 text-orange-500' : 'bg-red-50 text-red-500';
 
@@ -108,10 +112,14 @@ const EventoCard: React.FC<{
       <div className="flex items-center gap-2">
         {isRifiutata ? (
           <span className="flex-1 py-2.5 text-sm font-semibold text-red-500 text-center">Rifiutato</span>
+        ) : isAccettata && isConcluso ? (
+          <span className="flex-1 py-2.5 text-sm font-semibold text-gray-400 text-center">Concluso</span>
         ) : isAccettata ? (
           <span className="flex-1 py-2.5 text-sm font-semibold text-gray-900 text-center">Iscritto</span>
         ) : isAttesa ? (
           <span className="flex-1 py-2.5 text-sm font-semibold text-gray-400 text-center">In attesa di conferma</span>
+        ) : isConcluso ? (
+          <span className="flex-1 py-2.5 text-sm font-semibold text-gray-400 text-center">Concluso</span>
         ) : (
           <button onClick={onEnroll} className="flex-1 py-2.5 rounded-xl btn-primary-liquid text-sm font-bold">
             Partecipa
@@ -126,6 +134,15 @@ const EventoCard: React.FC<{
 };
 
 // ── Dettaglio ─────────────────────────────────────────────────────────────────
+interface CertificatoTemplate {
+  id: string;
+  titolo: string;
+  descrizione: string;
+  immagine_url: string | null;
+  campi_dinamici: string[];
+  visibilita: string;
+}
+
 const EventoDetail: React.FC<{
   ev: Evento;
   iscrizione: Iscrizione | undefined;
@@ -135,151 +152,302 @@ const EventoDetail: React.FC<{
 }> = ({ ev, iscrizione, onEnroll, onCancel, onBack }) => {
   const [tab, setTab] = useState<'dettagli' | 'materiali'>('dettagli');
   const [materiali, setMateriali] = useState<{ id: string; titolo: string; tipo: string; url: string }[]>([]);
+  const [certificato, setCertificato] = useState<CertificatoTemplate | null>(null);
+  const [profilo, setProfilo]         = useState<{ first_name: string; last_name: string; school: string | null } | null>(null);
+  const [generando, setGenerando]     = useState(false);
+  const [haPartecipato, setHaPartecipato] = useState<boolean | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.from('materiali_eventi').select('*').eq('event_id', ev.id).order('created_at')
       .then(({ data }) => setMateriali((data ?? []) as any[]));
+
+    supabase.from('certificati')
+      .select('id, titolo, descrizione, immagine_url, campi_dinamici, visibilita')
+      .eq('event_id', ev.id)
+      .eq('visibilita', 'studenti')
+      .limit(1)
+      .then(({ data }) => setCertificato(data?.[0] ?? null));
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      setCurrentUserId(user.id);
+      supabase.from('profiles').select('first_name, last_name, school').eq('id', user.id).single()
+        .then(({ data }) => setProfilo(data ?? null));
+    });
   }, [ev.id]);
 
-  const gradient = gradientForId(ev.id);
+  // Controlla se il certificato è stato assegnato all'utente dall'admin
+  useEffect(() => {
+    if (!certificato || !currentUserId) { setHaPartecipato(null); return; }
+    supabase.from('certificati_assegnazioni')
+      .select('id', { count: 'exact', head: true })
+      .eq('certificato_id', certificato.id)
+      .eq('user_id', currentUserId)
+      .then(({ count }) => setHaPartecipato((count ?? 0) > 0));
+  }, [certificato?.id, currentUserId]);
+
+  const handleDownloadCertificato = async () => {
+    if (!certificato) return;
+    setGenerando(true);
+    try {
+      await generateCertificatePDF(certificato, {
+        nome:           profilo?.first_name ?? '',
+        cognome:        profilo?.last_name ?? '',
+        scuola:         profilo?.school ?? null,
+        nome_evento:    ev.name,
+        data_emissione: new Date(ev.event_end ?? ev.event_date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }),
+      });
+    } catch {
+      // errore silenzioso: la card rimane visibile
+    } finally {
+      setGenerando(false);
+    }
+  };
+
+  const gradient  = gradientForId(ev.id);
   const isIscritto = !!iscrizione && iscrizione.stato !== 'rifiutata';
+  const today = new Date().toISOString().split('T')[0];
+  const isConcluso = (ev.event_end || ev.event_date) < today;
+
+  const TABS: { key: 'dettagli' | 'materiali'; label: string }[] = [
+    { key: 'dettagli',  label: 'Dettagli'  },
+    { key: 'materiali', label: 'Materiali' },
+  ];
 
   return (
-    <div className="max-w-md mx-auto flex flex-col min-h-full">
+    <div className="max-w-md mx-auto flex flex-col gap-4 pb-8" style={{ background: '#F8F9FA' }}>
 
-      <div className="flex items-center gap-1.5 px-4 pt-3 pb-2 text-xs text-gray-400 font-medium">
-        <button onClick={onBack} className="flex items-center gap-1 text-orange-500 font-bold">
-          <ChevronLeft size={14} /> Esperienze
+      {/* ── Breadcrumb ── */}
+      <div className="flex items-center gap-1 px-4 pt-3 text-xs font-semibold">
+        <button onClick={onBack} className="flex items-center gap-0.5 text-orange-500 active:opacity-60 transition-opacity">
+          <ChevronLeft size={13} /> Esperienze
         </button>
-        <span>›</span>
-        <span className="text-gray-500 truncate">{ev.name}</span>
+        <span className="text-gray-300 mx-0.5">›</span>
+        <span className="text-gray-400 truncate max-w-[160px]">{ev.name}</span>
       </div>
 
-      <div className="relative mx-4 rounded-2xl overflow-hidden h-44">
-        {ev.cover_url
-          ? <img src={ev.cover_url} alt={ev.name} className="w-full h-full object-cover" />
-          : <div className={`bg-gradient-to-br ${gradient} w-full h-full`} />
-        }
-        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent flex flex-col justify-end px-4 pb-4">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <h2 className="font-bold font-montserrat text-white text-lg leading-snug flex-1">{ev.name}</h2>
+      {/* ── CARD 1: Evento + Toggle bar ── */}
+      <div className="mx-4 bg-white rounded-3xl border border-gray-100 shadow-sm">
+
+        {/* Foto banner slim con padding interno */}
+        <div className="p-3">
+          <div className="rounded-2xl overflow-hidden" style={{ height: 150 }}>
+            {ev.cover_url
+              ? <img src={ev.cover_url} alt={ev.name} className="w-full h-full object-cover" />
+              : <div className={`bg-gradient-to-br ${gradient} w-full h-full`} />
+            }
+          </div>
+        </div>
+
+        {/* Intestazione compatta */}
+        <div className="px-4 pt-3 pb-4">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <h1 className="font-bold font-montserrat text-[#0F172A] text-lg leading-snug flex-1">
+              {ev.name}
+            </h1>
             {isIscritto && (
-              <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm ${
-                iscrizione?.stato === 'accettata' ? 'bg-green-500/70 text-white' : 'bg-orange-500/70 text-white'
+              <span className={`shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                iscrizione?.stato === 'accettata'
+                  ? isConcluso ? 'bg-gray-100 text-gray-500' : 'bg-green-50 text-green-600'
+                  : 'bg-orange-50 text-orange-500'
               }`}>
-                {iscrizione?.stato === 'accettata' ? 'Confermato' : 'In attesa'}
+                {iscrizione?.stato === 'accettata' ? (isConcluso ? 'Concluso' : 'Confermato') : 'In attesa'}
               </span>
             )}
           </div>
-          <div className="flex flex-wrap gap-x-3 gap-y-1 text-white/80 text-xs font-medium">
-            <span className="flex items-center gap-1"><CalendarDays size={11} />{fmtDateRange(ev.event_date, ev.event_end)}</span>
-            {ev.location && <span className="flex items-center gap-1"><MapPin size={11} />{ev.location}</span>}
-            {ev.max_partecipanti && <span className="flex items-center gap-1"><Users size={11} />{ev.max_partecipanti} partecipanti</span>}
+
+          {/* Metadati su riga sintetica — ogni chunk è non-spezzabile */}
+          <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-[#64748B] font-medium">
+            <span className="flex items-center gap-1 whitespace-nowrap">
+              <CalendarDays size={11} className="text-[#94A3B8] shrink-0" />
+              {fmtDateRange(ev.event_date, ev.event_end)}
+            </span>
+            {ev.location && (
+              <>
+                <span className="text-[#CBD5E1]">•</span>
+                <span className="flex items-center gap-1 whitespace-nowrap">
+                  <MapPin size={11} className="text-[#94A3B8] shrink-0" />
+                  {ev.location}
+                </span>
+              </>
+            )}
+            {ev.max_partecipanti && (
+              <>
+                <span className="text-[#CBD5E1]">•</span>
+                <span className="flex items-center gap-1 whitespace-nowrap">
+                  <Users size={11} className="text-[#94A3B8] shrink-0" />
+                  {ev.max_partecipanti} posti
+                </span>
+              </>
+            )}
           </div>
         </div>
+
       </div>
 
-      <div className="flex border-b border-gray-100 mx-4 mt-4">
-        {(['dettagli', 'materiali'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`flex-1 py-3 text-xs font-bold capitalize transition-colors border-b-2 -mb-px ${
-              tab === t ? 'text-orange-500 border-orange-500' : 'text-gray-400 border-transparent'
-            }`}>
-            {t.charAt(0).toUpperCase() + t.slice(1)}
-          </button>
-        ))}
-      </div>
+      {/* ── CARD 2: Contenuto dinamico + bottoni ── */}
+      <div className="mx-4 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col">
 
-      <div className="flex-1 px-5 py-5 space-y-5">
-        {tab === 'dettagli' && (
-          <>
-            {ev.descrizione && (
+        {/* Tab bar in cima a Card 2 */}
+        <div className="flex items-end gap-6 px-5 pt-5 pb-0">
+          {TABS.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className="relative pb-3 text-sm transition-colors"
+              style={{
+                fontWeight: tab === key ? 700 : 500,
+                color: tab === key ? '#0F172A' : '#94A3B8',
+              }}
+            >
+              {label}
+              {tab === key && (
+                <span
+                  className="absolute bottom-0 left-0 right-0 rounded-full"
+                  style={{ height: 2, background: '#FF7A00' }}
+                />
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Divisore sotto i tab */}
+        <div className="mx-5 border-b border-gray-100" />
+
+        {/* Contenuto tab */}
+        <div className="px-5 pt-5 pb-5 space-y-5">
+          {tab === 'dettagli' && (
+            <>
+              {ev.descrizione && (
+                <p className="text-sm text-[#475569] leading-relaxed">{ev.descrizione}</p>
+              )}
+              {ev.cosa_impari?.length > 0 && (
+                <div>
+                  <h2 className="font-bold font-montserrat text-[#0F172A] text-sm mb-2.5">Cosa porterai a casa</h2>
+                  <ul className="space-y-2.5">
+                    {ev.cosa_impari.map((item, i) => (
+                      <li key={i} className="flex items-start gap-2.5 text-sm text-[#475569]">
+                        <CheckCircle2 size={15} className="text-green-500 shrink-0 mt-0.5" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div>
-                <h3 className="font-bold font-montserrat text-gray-900 mb-2">Descrizione</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">{ev.descrizione}</p>
+                <h2 className="font-bold font-montserrat text-[#0F172A] text-sm mb-2">Requisiti</h2>
+                <p className="text-sm text-[#475569] leading-relaxed">
+                  {ev.requisiti || 'Nessun requisito specifico.'}
+                </p>
               </div>
-            )}
-            {ev.cosa_impari?.length > 0 && (
-              <div>
-                <h3 className="font-bold font-montserrat text-gray-900 mb-3">Cosa porterai a casa</h3>
-                <ul className="space-y-2.5">
-                  {ev.cosa_impari.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-sm text-gray-600">
-                      <CheckCircle2 size={16} className="text-green-500 shrink-0 mt-0.5" />{item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <div>
-              <h3 className="font-bold font-montserrat text-gray-900 mb-2">Requisiti</h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                {ev.requisiti || 'Nessun requisito specifico.'}
-              </p>
-            </div>
-          </>
-        )}
-        {tab === 'materiali' && (
-          materiali.length > 0 ? (
+            </>
+          )}
+
+          {tab === 'materiali' && (
             <div className="space-y-3">
+              {/* Certificato — sbloccato solo se ha scansionato il QR all'evento */}
+              {certificato && haPartecipato === true && (
+                <button
+                  onClick={handleDownloadCertificato}
+                  disabled={generando}
+                  className="w-full flex items-center gap-3 p-3 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-2xl active:opacity-80 transition-opacity disabled:opacity-60"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+                    {generando
+                      ? <div className="w-4 h-4 rounded-full border-2 border-orange-200 border-t-orange-500 animate-spin" />
+                      : <ScrollText size={14} className="text-orange-500" />
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-sm font-bold text-[#0F172A] truncate">{certificato.titolo}</p>
+                    <p className="text-xs text-orange-500 font-medium">{generando ? 'Generazione in corso…' : 'Tocca per scaricare il tuo certificato'}</p>
+                  </div>
+                  {!generando && <Download size={14} className="text-orange-400 shrink-0" />}
+                </button>
+              )}
+
+              {/* Materiali standard */}
               {materiali.map(m => (
                 <a key={m.id} href={m.url} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:border-orange-200 transition-colors">
-                  <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
-                    <BookOpen size={14} className="text-orange-400" />
+                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl active:bg-orange-50 transition-colors">
+                  <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+                    <BookOpen size={14} className="text-orange-500" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{m.titolo}</p>
+                    <p className="text-sm font-semibold text-[#0F172A] truncate">{m.titolo}</p>
                     <p className="text-xs text-gray-400">{m.tipo === 'link' ? 'Link esterno' : 'File'}</p>
                   </div>
                 </a>
               ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
-                <BookOpen size={24} className="text-gray-400" />
-              </div>
-              <p className="font-bold font-montserrat text-gray-700">
-                {isIscritto ? 'Nessun materiale disponibile' : 'Materiali non ancora disponibili'}
-              </p>
-              <p className="text-xs text-gray-400 max-w-[220px] leading-relaxed">
-                {isIscritto
-                  ? "I materiali saranno caricati qualche giorno prima dell'evento."
-                  : 'Le risorse sono visibili solo ai partecipanti.'}
-              </p>
-            </div>
-          )
-        )}
-      </div>
 
-      <div className="px-4 pb-6 pt-3 border-t border-gray-100 flex items-center gap-3">
-        {isIscritto ? (
-          <>
-            <button onClick={onCancel} className="text-sm font-bold text-red-400 hover:text-red-500 transition-colors">
-              Cancella Iscrizione
-            </button>
-            <button onClick={onBack} className="ml-auto text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">
-              Indietro
-            </button>
-          </>
-        ) : (
-          <>
-            <button onClick={onBack} className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-600 hover:border-gray-300 transition-all">
-              Indietro
-            </button>
-            {ev.form_esterno ? (
-              <a href={ev.form_esterno} target="_blank" rel="noopener noreferrer"
-                className="flex-1 py-3.5 rounded-2xl btn-primary-liquid font-bold text-sm text-center">
-                Partecipa
-              </a>
-            ) : (
-              <button onClick={onEnroll} className="flex-1 py-3.5 rounded-2xl btn-primary-liquid font-bold text-sm">
-                Partecipa
+              {haPartecipato !== true && materiali.length === 0 && (certificato === null || haPartecipato === false) && (
+                <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
+                  <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
+                    <BookOpen size={22} className="text-gray-300" />
+                  </div>
+                  <p className="font-bold font-montserrat text-gray-700 text-sm">
+                    {isIscritto ? 'Nessun materiale disponibile' : 'Materiali non ancora disponibili'}
+                  </p>
+                  <p className="text-xs text-gray-400 max-w-[200px] leading-relaxed">
+                    {isIscritto
+                      ? "I materiali saranno caricati al termine dell'evento."
+                      : 'Le risorse sono visibili solo ai partecipanti.'}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>
+
+        {/* Divisore + Bottoni fissi */}
+        <div className="border-t border-gray-100 px-4 py-4 flex items-center gap-3">
+          {isIscritto ? (
+            isConcluso ? (
+              <button onClick={onBack}
+                className="ml-auto text-sm font-bold text-gray-400 active:text-gray-600 transition-colors">
+                Indietro
               </button>
-            )}
-          </>
-        )}
+            ) : (
+              <>
+                <button onClick={onCancel}
+                  className="text-sm font-bold text-red-400 active:text-red-500 transition-colors">
+                  Cancella Iscrizione
+                </button>
+                <button onClick={onBack}
+                  className="ml-auto text-sm font-bold text-gray-400 active:text-gray-600 transition-colors">
+                  Indietro
+                </button>
+              </>
+            )
+          ) : isConcluso ? (
+            <button onClick={onBack}
+              className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-500 active:bg-gray-50 transition-all">
+              Indietro
+            </button>
+          ) : (
+            <>
+              <button onClick={onBack}
+                className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-500 active:bg-gray-50 transition-all">
+                Indietro
+              </button>
+              {ev.form_esterno ? (
+                <a href={ev.form_esterno} target="_blank" rel="noopener noreferrer"
+                  className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-white text-center active:opacity-80 transition-opacity"
+                  style={{ background: '#FF7A00', boxShadow: '0 4px 14px rgba(255,122,0,0.35)' }}>
+                  Partecipa
+                </a>
+              ) : (
+                <button onClick={onEnroll}
+                  className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-white active:opacity-80 transition-opacity"
+                  style={{ background: '#FF7A00', boxShadow: '0 4px 14px rgba(255,122,0,0.35)' }}>
+                  Partecipa
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -288,9 +456,11 @@ const EventoDetail: React.FC<{
 // ── Pagina principale ─────────────────────────────────────────────────────────
 interface EsperienzePageProps {
   onDetailChange?: (isDetail: boolean) => void;
+  initialEventId?: string;
+  onBackFromInitial?: () => void;
 }
 
-export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange }) => {
+export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange, initialEventId, onBackFromInitial }) => {
   const [eventi, setEventi]             = useState<Evento[]>([]);
   const [iscrizioni, setIscrizioni]     = useState<Iscrizione[]>([]);
   const [loading, setLoading]           = useState(true);
@@ -300,12 +470,18 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange }
   const [toast, setToast]               = useState<string | null>(null);
   const [scrolled, setScrolled]         = useState(false);
   const sentinelRef                     = useRef<HTMLDivElement>(null);
+  const openedFromExternal              = useRef(false);
 
   useEffect(() => {
     supabase.from('events').select('*').eq('stato', 'pubblicato').order('event_date', { ascending: true })
       .then(({ data }) => {
-        setEventi((data ?? []).map((e: any) => ({ ...e, tags: e.tags ?? [], cosa_impari: e.cosa_impari ?? [] })));
+        const evs = (data ?? []).map((e: any) => ({ ...e, tags: e.tags ?? [], cosa_impari: e.cosa_impari ?? [] }));
+        setEventi(evs);
         setLoading(false);
+        if (initialEventId) {
+          const target = evs.find((e: Evento) => e.id === initialEventId);
+          if (target) { openedFromExternal.current = true; setSelectedEv(target); onDetailChange?.(true); }
+        }
       });
 
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -344,7 +520,14 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange }
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
 
   const openDetail = (ev: Evento) => { setSelectedEv(ev); onDetailChange?.(true); };
-  const closeDetail = () => { setSelectedEv(null); onDetailChange?.(false); };
+  const closeDetail = () => {
+    setSelectedEv(null);
+    onDetailChange?.(false);
+    if (openedFromExternal.current) {
+      openedFromExternal.current = false;
+      onBackFromInitial?.();
+    }
+  };
 
   const handleEnroll = async (ev: Evento) => {
     const { data: { user } } = await supabase.auth.getUser();

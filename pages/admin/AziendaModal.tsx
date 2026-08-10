@@ -12,6 +12,7 @@ interface AziendaFull {
   email: string | null;
   email_account: string | null;
   password_temp: string | null;
+  referente: string | null;
   telefono: string | null;
   indirizzo: string | null;
   citta: string | null;
@@ -93,10 +94,13 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
   const [loading, setLoading] = useState(true);
 
   // ── Stato modifica account ──
-  const [editAccount, setEditAccount]     = useState(false);
-  const [editEmail, setEditEmail]         = useState('');
-  const [editPassword, setEditPassword]   = useState('');
-  const [savingAccount, setSavingAccount] = useState(false);
+  const [editAccount, setEditAccount]         = useState(false);
+  const [editEmail, setEditEmail]             = useState('');
+  const [editPassword, setEditPassword]       = useState('');
+  const [editReferente, setEditReferente]     = useState('');
+  const [editName, setEditName]               = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [savingAccount, setSavingAccount]     = useState(false);
   const [accountError, setAccountError]   = useState<string | null>(null);
 
   // ── Richieste form ──
@@ -115,7 +119,7 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
   // ── Stato modifica dati aziendali ──
   const [editDati, setEditDati]           = useState(false);
   const [datiForm, setDatiForm]           = useState({
-    name: '', settore: '', email: '', telefono: '',
+    settore: '', email: '', telefono: '',
     indirizzo: '', citta: '', cap: '', provincia: '',
     partita_iva: '', website: '',
   });
@@ -129,8 +133,9 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const logoPreviewRef  = useRef<string | null>(null);
   const coverPreviewRef = useRef<string | null>(null);
-  const logoInputRef  = useRef<HTMLInputElement>(null);
-  const coverInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef    = useRef<HTMLInputElement>(null);
+  const coverInputRef   = useRef<HTMLInputElement>(null);
+  const descRef         = useRef<HTMLTextAreaElement>(null);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return;
@@ -169,31 +174,52 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
     if (!azienda) return;
     setEditEmail(azienda.email_account ?? '');
     setEditPassword(azienda.password_temp ?? '');
+    setEditReferente(azienda.referente ?? '');
+    setEditName(azienda.name);
+    setEditDescription(azienda.description ?? '');
+    setLogoFile(null);  setLogoPreview(azienda.logo_url);  logoPreviewRef.current  = azienda.logo_url;
+    setCoverFile(null); setCoverPreview(azienda.cover_url); coverPreviewRef.current = azienda.cover_url;
     setAccountError(null);
     setEditAccount(true);
+    setTimeout(() => {
+      if (descRef.current) {
+        descRef.current.style.height = 'auto';
+        descRef.current.style.height = descRef.current.scrollHeight + 'px';
+      }
+    }, 0);
   };
   const cancelEditAccount = () => { setEditAccount(false); setAccountError(null); };
   const saveAccount = async () => {
     if (!azienda) return;
     if (!editEmail.trim()) { setAccountError("L'email è obbligatoria."); return; }
+    if (!editName.trim())  { setAccountError("Il nome azienda è obbligatorio."); return; }
     setSavingAccount(true);
     setAccountError(null);
+    const newLogoUrl  = logoFile  ? await uploadImage(logoFile,  'logo',  400,  400) : logoPreviewRef.current;
+    const newCoverUrl = coverFile ? await uploadImage(coverFile, 'cover', 1200, 480) : coverPreviewRef.current;
     const { error } = await supabase
       .from('aziende')
-      .update({ email_account: editEmail.trim(), password_temp: editPassword.trim() || null })
+      .update({
+        email_account: editEmail.trim(),
+        password_temp: editPassword.trim() || null,
+        referente:     editReferente.trim() || null,
+        name:          editName.trim(),
+        description:   editDescription.trim() || null,
+        logo_url:      newLogoUrl,
+        cover_url:     newCoverUrl,
+      })
       .eq('id', azienda.id);
     setSavingAccount(false);
     if (error) { setAccountError('Errore nel salvataggio: ' + error.message); return; }
-    setAzienda((prev: AziendaFull | null) => prev ? { ...prev, email_account: editEmail.trim(), password_temp: editPassword.trim() || null } : prev);
+    setAzienda((prev: AziendaFull | null) => prev ? { ...prev, email_account: editEmail.trim(), password_temp: editPassword.trim() || null, referente: editReferente.trim() || null, name: editName.trim(), description: editDescription.trim() || null, logo_url: newLogoUrl, cover_url: newCoverUrl } : prev);
     setEditAccount(false);
-    onUpdate?.(azienda.id, { email_account: editEmail.trim() });
+    onUpdate?.(azienda.id, { email_account: editEmail.trim(), name: editName.trim() });
   };
 
   // Dati aziendali
   const startEditDati = () => {
     if (!azienda) return;
     setDatiForm({
-      name:        azienda.name,
       settore:     azienda.settore ?? '',
       email:       azienda.email ?? '',
       telefono:    azienda.telefono ?? '',
@@ -204,8 +230,6 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
       partita_iva: azienda.partita_iva ?? '',
       website:     azienda.website ?? '',
     });
-    setLogoFile(null);  setLogoPreview(azienda.logo_url);  logoPreviewRef.current  = azienda.logo_url;
-    setCoverFile(null); setCoverPreview(azienda.cover_url); coverPreviewRef.current = azienda.cover_url;
     setDatiError(null);
     setEditDati(true);
   };
@@ -226,11 +250,7 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
     setSavingDati(true);
     setDatiError(null);
 
-    const newLogoUrl  = logoFile  ? await uploadImage(logoFile,  'logo',  400,  400) : logoPreviewRef.current;
-    const newCoverUrl = coverFile ? await uploadImage(coverFile, 'cover', 1200, 480) : coverPreviewRef.current;
-
     const update = {
-      name:        datiForm.name.trim(),
       settore:     datiForm.settore || null,
       email:       datiForm.email.trim() || null,
       telefono:    datiForm.telefono.trim() || null,
@@ -240,8 +260,6 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
       provincia:   datiForm.provincia.trim() || null,
       partita_iva: datiForm.partita_iva.trim() || null,
       website:     datiForm.website.trim() || null,
-      logo_url:    newLogoUrl,
-      cover_url:   newCoverUrl,
     };
 
     const { error } = await supabase
@@ -253,7 +271,7 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
     if (error) { setDatiError('Errore nel salvataggio: ' + error.message); return; }
     setAzienda((prev: AziendaFull | null) => prev ? { ...prev, ...update } : prev);
     setEditDati(false);
-    onUpdate?.(azienda.id, { name: update.name, settore: update.settore });
+    onUpdate?.(azienda.id, { settore: update.settore });
   };
 
   return (
@@ -309,68 +327,142 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
                 <div className="space-y-4">
                   {editAccount ? (
                     <>
-                      {/* Modalità modifica */}
-                      <div>
-                        <p className="text-xs font-semibold text-gray-500 mb-1">Email account</p>
-                        <input
-                          type="email"
-                          className={inputClass}
-                          value={editEmail}
-                          onChange={e => setEditEmail(e.target.value)}
-                          placeholder="admin@azienda.it"
-                        />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-500 mb-1">Password</p>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            className={inputClass}
-                            value={editPassword}
-                            onChange={e => setEditPassword(e.target.value)}
-                            placeholder="Inserisci o genera una password"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setEditPassword(generatePassword())}
-                            className="flex items-center gap-1.5 px-3 py-2.5 border border-gray-200 rounded-xl text-xs font-semibold text-gray-600 hover:border-orange-300 hover:text-orange-500 transition-colors shrink-0 bg-white"
+                      {/* Logo + Copertina sulla stessa riga */}
+                      <div className="flex gap-3 items-start">
+                        {/* Logo — quadrato */}
+                        <div className="shrink-0">
+                          <p className="text-xs font-semibold text-gray-500 mb-1">Logo</p>
+                          <div
+                            onClick={() => logoInputRef.current?.click()}
+                            className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-200 hover:border-orange-300 transition-colors cursor-pointer overflow-hidden flex items-center justify-center bg-gray-50"
                           >
-                            <RefreshCw size={13} /> Genera
-                          </button>
+                            {logoPreview
+                              ? <img src={logoPreview} alt="logo" className="w-full h-full object-contain p-2" />
+                              : <div className="flex flex-col items-center gap-1 text-gray-300"><Upload size={16} /><span className="text-[10px]">Logo</span></div>
+                            }
+                          </div>
+                          <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+                          {logoPreview && (
+                            <button type="button" onClick={() => { logoPreviewRef.current = null; setLogoPreview(null); setLogoFile(null); }}
+                              className="mt-1 text-[11px] text-red-400 hover:text-red-600 font-medium transition-colors">Rimuovi</button>
+                          )}
+                        </div>
+
+                        {/* Copertina — rettangolo */}
+                        <div className="flex-1">
+                          <p className="text-xs font-semibold text-gray-500 mb-1">Copertina</p>
+                          <div
+                            onClick={() => coverInputRef.current?.click()}
+                            className="w-full h-24 rounded-xl border-2 border-dashed border-gray-200 hover:border-orange-300 transition-colors cursor-pointer overflow-hidden flex items-center justify-center bg-gray-50"
+                          >
+                            {coverPreview
+                              ? <img src={coverPreview} alt="cover" className="w-full h-full object-cover" />
+                              : <div className="flex flex-col items-center gap-1 text-gray-300"><Upload size={16} /><span className="text-[10px]">Copertina</span></div>
+                            }
+                          </div>
+                          <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
+                          {coverPreview && (
+                            <button type="button" onClick={() => { coverPreviewRef.current = null; setCoverPreview(null); setCoverFile(null); }}
+                              className="mt-1 text-[11px] text-red-400 hover:text-red-600 font-medium transition-colors">Rimuovi</button>
+                          )}
                         </div>
                       </div>
 
-                      {accountError && (
-                        <p className="text-xs text-red-500 px-1">{accountError}</p>
-                      )}
+                      {/* Nome azienda */}
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 mb-1">Nome azienda <span className="text-red-400">*</span></p>
+                        <input className={inputClass} value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nome azienda" />
+                      </div>
 
-                      <div className="flex gap-3 pt-1">
-                        <button
-                          onClick={cancelEditAccount}
-                          className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-                        >
+                      {/* Descrizione */}
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 mb-1">Descrizione</p>
+                        <textarea
+                          ref={descRef}
+                          className={`${inputClass} resize-none overflow-hidden`}
+                          style={{ minHeight: '96px' }}
+                          value={editDescription}
+                          onChange={e => {
+                            setEditDescription(e.target.value);
+                            e.currentTarget.style.height = 'auto';
+                            e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px';
+                          }}
+                          placeholder="Descrivi l'azienda, la sua missione e i suoi valori..."
+                        />
+                      </div>
+
+                      <div className="border-t border-gray-100 pt-4 space-y-4">
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 mb-1">Referente</p>
+                          <input type="text" className={inputClass} value={editReferente} onChange={e => setEditReferente(e.target.value)} placeholder="Nome Cognome del referente" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 mb-1">Email account</p>
+                          <input type="email" className={inputClass} value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="admin@azienda.it" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 mb-1">Password</p>
+                          <div className="flex gap-2">
+                            <input type="text" className={inputClass} value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="Inserisci o genera una password" />
+                            <button type="button" onClick={() => setEditPassword(generatePassword())}
+                              className="flex items-center gap-1.5 px-3 py-2.5 border border-gray-200 rounded-xl text-xs font-semibold text-gray-600 hover:border-orange-300 hover:text-orange-500 transition-colors shrink-0 bg-white">
+                              <RefreshCw size={13} /> Genera
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {accountError && <p className="text-xs text-red-500 px-1">{accountError}</p>}
+
+                      <div className="flex gap-3 pt-1 pb-5">
+                        <button onClick={cancelEditAccount}
+                          className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
                           Annulla
                         </button>
-                        <button
-                          onClick={saveAccount}
-                          disabled={savingAccount}
-                          className="flex-1 py-2.5 rounded-xl bg-[#F0813C] text-white text-sm font-bold hover:bg-orange-500 transition-colors disabled:opacity-70"
-                        >
+                        <button onClick={saveAccount} disabled={savingAccount}
+                          className="flex-1 py-2.5 rounded-xl bg-[#F0813C] text-white text-sm font-bold hover:bg-orange-500 transition-colors disabled:opacity-70">
                           {savingAccount ? 'Salvataggio...' : 'Salva'}
                         </button>
                       </div>
                     </>
                   ) : (
                     <>
-                      {/* Modalità visualizzazione */}
+                      {/* Logo + Copertina sulla stessa riga */}
+                      <div className="flex gap-3 items-start">
+                        <div className="shrink-0">
+                          <p className="text-xs font-semibold text-gray-500 mb-1">Logo</p>
+                          <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex items-center justify-center">
+                            {azienda.logo_url
+                              ? <img src={azienda.logo_url} alt="logo" className="w-full h-full object-contain p-2" />
+                              : <span className="text-xs text-gray-300">—</span>}
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs font-semibold text-gray-500 mb-1">Copertina</p>
+                          <div className="w-full h-24 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex items-center justify-center">
+                            {azienda.cover_url
+                              ? <img src={azienda.cover_url} alt="cover" className="w-full h-full object-cover" />
+                              : <span className="text-xs text-gray-300">—</span>}
+                          </div>
+                        </div>
+                      </div>
+
+                      <Field label="Nome azienda" value={azienda.name} />
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 mb-1">Descrizione</p>
+                        <div className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm text-gray-700 leading-relaxed line-clamp-3">
+                          {azienda.description || <span className="text-gray-300">—</span>}
+                        </div>
+                      </div>
+                      <Field label="Referente"               value={azienda.referente} />
                       <Field label="Email account principale" value={azienda.email_account} />
-                      <Field label="Password" value={azienda.password_temp ? '••••••••••••' : null} />
-                      <button
-                        onClick={startEditAccount}
-                        className="text-sm font-semibold text-[#F0813C] hover:text-orange-600 transition-colors"
-                      >
-                        Modifica
-                      </button>
+                      <Field label="Password"                 value={azienda.password_temp ? '••••••••••••' : null} />
+                      <div className="pb-4">
+                        <button onClick={startEditAccount}
+                          className="text-sm font-semibold text-[#F0813C] hover:text-orange-600 transition-colors">
+                          Modifica
+                        </button>
+                      </div>
                     </>
                   )}
                 </div>
@@ -381,58 +473,6 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
                 <div className="space-y-4">
                   {editDati ? (
                     <>
-                      {/* Upload immagini */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs font-semibold text-gray-500 mb-1">Logo azienda</p>
-                          <div
-                            onClick={() => logoInputRef.current?.click()}
-                            className="w-full h-24 rounded-xl border-2 border-dashed border-gray-200 hover:border-orange-300 transition-colors cursor-pointer overflow-hidden flex items-center justify-center bg-gray-50"
-                          >
-                            {logoPreview
-                              ? <img src={logoPreview} alt="logo" className="w-full h-full object-contain p-2" />
-                              : <div className="flex flex-col items-center gap-1 text-gray-300">
-                                  <Upload size={20} /><span className="text-[10px]">Carica logo</span>
-                                </div>
-                            }
-                          </div>
-                          <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
-                          {logoPreview && (
-                            <button type="button"
-                              onClick={() => { logoPreviewRef.current = null; setLogoPreview(null); setLogoFile(null); }}
-                              className="mt-1 text-[11px] text-red-400 hover:text-red-600 font-medium transition-colors">
-                              Rimuovi logo
-                            </button>
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-gray-500 mb-1">Immagine copertina</p>
-                          <div
-                            onClick={() => coverInputRef.current?.click()}
-                            className="w-full h-24 rounded-xl border-2 border-dashed border-gray-200 hover:border-orange-300 transition-colors cursor-pointer overflow-hidden flex items-center justify-center bg-gray-50"
-                          >
-                            {coverPreview
-                              ? <img src={coverPreview} alt="cover" className="w-full h-full object-cover" />
-                              : <div className="flex flex-col items-center gap-1 text-gray-300">
-                                  <Upload size={20} /><span className="text-[10px]">Carica copertina</span>
-                                </div>
-                            }
-                          </div>
-                          <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
-                          {coverPreview && (
-                            <button type="button"
-                              onClick={() => { coverPreviewRef.current = null; setCoverPreview(null); setCoverFile(null); }}
-                              className="mt-1 text-[11px] text-red-400 hover:text-red-600 font-medium transition-colors">
-                              Rimuovi copertina
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-xs font-semibold text-gray-500 mb-1">Nome azienda <span className="text-red-400">*</span></p>
-                        <input className={inputClass} value={datiForm.name} onChange={e => setDati('name', e.target.value)} placeholder="Nome azienda" />
-                      </div>
                       <div>
                         <p className="text-xs font-semibold text-gray-500 mb-1">Settore</p>
                         <input className={inputClass} value={datiForm.settore} onChange={e => setDati('settore', e.target.value)} placeholder="es. IT, Energia..." />
@@ -476,7 +516,7 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
 
                       {datiError && <p className="text-xs text-red-500 px-1">{datiError}</p>}
 
-                      <div className="flex gap-3 pt-1">
+                      <div className="flex gap-3 pt-1 pb-5">
                         <button
                           onClick={cancelEditDati}
                           className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
@@ -494,29 +534,7 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
                     </>
                   ) : (
                     <>
-                      {/* Anteprima immagini in view mode */}
-                      {(azienda.logo_url || azienda.cover_url) && (
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-xs font-semibold text-gray-500 mb-1">Logo</p>
-                            <div className="w-full h-20 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex items-center justify-center">
-                              {azienda.logo_url
-                                ? <img src={azienda.logo_url} alt="logo" className="w-full h-full object-cover" />
-                                : <span className="text-xs text-gray-300">—</span>}
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold text-gray-500 mb-1">Copertina</p>
-                            <div className="w-full h-20 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex items-center justify-center">
-                              {azienda.cover_url
-                                ? <img src={azienda.cover_url} alt="cover" className="w-full h-full object-cover" />
-                                : <span className="text-xs text-gray-300">—</span>}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      <Field label="Nome azienda" value={azienda.name} />
-                      <Field label="Settore"       value={azienda.settore} />
+                      <Field label="Settore" value={azienda.settore} />
                       <div className="grid grid-cols-2 gap-4">
                         <Field label="Email di riferimento" value={azienda.email} />
                         <Field label="Telefono" value={azienda.telefono} />

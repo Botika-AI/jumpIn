@@ -92,8 +92,18 @@ const CompanyDetail: React.FC<{
   onInterest: () => void;
   onSave: () => void;
   onBack: () => void;
-}> = ({ company, isInterested, isSaved, onInterest, onSave, onBack }) => {
-  const idx = colorIndex(company.name);
+  onOpenJobsForCompany?: (companyId: string, companyName: string) => void;
+}> = ({ company, isInterested, isSaved, onInterest, onSave, onBack, onOpenJobsForCompany }) => {
+  const [jobCount, setJobCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from('job_positions')
+      .select('id', { count: 'exact', head: true })
+      .eq('azienda_id', company.id)
+      .neq('stato', 'chiuso')
+      .then(({ count }) => setJobCount(count ?? 0));
+  }, [company.id]);
 
   return (
     <div className="max-w-md mx-auto flex flex-col min-h-full">
@@ -116,9 +126,18 @@ const CompanyDetail: React.FC<{
         {/* Info card */}
         <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm px-5 pt-4 pb-4 relative z-10 ${company.cover_url ? '-mt-6' : ''}`}>
           <div className="flex items-start justify-between gap-2 mb-3">
-            <h2 className="font-bold font-montserrat text-gray-900 text-lg leading-snug flex-1">
-              {company.name}
-            </h2>
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              {/* Logo piccolo */}
+              {company.logo_url
+                ? <img src={company.logo_url} alt={company.name} className="shrink-0 w-8 h-8 object-contain" />
+                : <div className={`shrink-0 w-8 h-8 ${LOGO_COLORS[colorIndex(company.name)]} rounded-lg flex items-center justify-center`}>
+                    <span className="text-white font-bold text-[10px]">{initials(company.name)}</span>
+                  </div>
+              }
+              <h2 className="font-bold font-montserrat text-gray-900 text-lg leading-snug">
+                {company.name}
+              </h2>
+            </div>
             {isInterested && (
               <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-500">
                 Interesse
@@ -136,30 +155,35 @@ const CompanyDetail: React.FC<{
                 </a>
               </div>
             )}
-            <div className="flex items-center gap-1.5">
-              <Briefcase size={12} />
-              Posizioni aperte in arrivo
-            </div>
+            {jobCount !== null && jobCount > 0
+              ? (
+                <button
+                  onClick={() => onOpenJobsForCompany?.(company.id, company.name)}
+                  className="flex items-center gap-1.5 active:opacity-70 transition-opacity"
+                >
+                  <Briefcase size={12} className="text-gray-400" />
+                  <span className="text-gray-400 font-medium">{jobCount} posizion{jobCount === 1 ? 'e aperta' : 'i aperte'}</span>
+                  <span className="text-orange-500 font-bold">→</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <Briefcase size={12} />
+                  {jobCount === null ? 'Caricamento...' : 'Nessuna posizione aperta'}
+                </div>
+              )
+            }
           </div>
         </div>
       </div>
 
-      {/* Contenuto */}
-      <div className="flex-1 px-4 py-5 space-y-6">
-        <div>
-          <h3 className="font-bold font-montserrat text-gray-900 mb-2">Chi siamo</h3>
-          <p className="text-sm text-gray-600 leading-relaxed">
-            {company.description || 'Descrizione aziendale in arrivo.'}
-          </p>
-        </div>
-        <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
-          <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
-            <Briefcase size={24} className="text-gray-400" />
-          </div>
-          <p className="font-bold font-montserrat text-gray-700">Job Positions</p>
-          <p className="text-xs text-gray-400 max-w-[220px] leading-relaxed">
-            Le posizioni aperte saranno disponibili a breve nella sezione Job Positions.
-          </p>
+      {/* Chi siamo */}
+      <div className="flex-1 px-4 py-4">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+          <h3 className="font-bold font-montserrat text-gray-900 text-[15px] mb-3">Chi siamo</h3>
+          {company.description
+            ? <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{company.description}</p>
+            : <p className="text-sm text-gray-400 italic">Nessuna descrizione disponibile.</p>
+          }
         </div>
       </div>
 
@@ -190,9 +214,11 @@ const CompanyDetail: React.FC<{
 // ── Pagina principale ─────────────────────────────────────────────────────────
 interface AziendePageProps {
   onDetailChange?: (isDetail: boolean) => void;
+  onOpenJobsForCompany?: (companyId: string, companyName: string) => void;
+  initialCompanyId?: string;
 }
 
-export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange }) => {
+export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange, onOpenJobsForCompany, initialCompanyId }) => {
   const [companies, setCompanies]           = useState<Company[]>([]);
   const [loading, setLoading]               = useState(true);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -202,7 +228,23 @@ export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange }) => {
   const [filterSector, setFilterSector]     = useState('Tutti');
   const [toast, setToast]                   = useState<string | null>(null);
   const [scrolled, setScrolled]             = useState(false);
+  const [userId, setUserId]                 = useState<string | null>(null);
   const sentinelRef                         = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return;
+      const uid = data.user.id;
+      setUserId(uid);
+      supabase
+        .from('company_interests')
+        .select('company_id')
+        .eq('student_id', uid)
+        .then(({ data: rows }) => {
+          if (rows) setInterestedIds(rows.map((r: { company_id: string }) => r.company_id));
+        });
+    });
+  }, []);
 
   useEffect(() => {
     supabase
@@ -211,7 +253,15 @@ export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange }) => {
       .eq('stato', 'attivo')
       .eq('mostra_partner', true)
       .order('name', { ascending: true })
-      .then(({ data }) => { setCompanies((data ?? []) as Company[]); setLoading(false); });
+      .then(({ data }) => {
+        const list = (data ?? []) as Company[];
+        setCompanies(list);
+        setLoading(false);
+        if (initialCompanyId) {
+          const match = list.find(c => c.id === initialCompanyId);
+          if (match) { setSelectedCompany(match); onDetailChange?.(true); }
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -229,9 +279,17 @@ export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange }) => {
   const closeDetail = ()            => { setSelectedCompany(null); onDetailChange?.(false); };
   const showToast   = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
 
-  const handleInterest = (c: Company) => {
+  const handleInterest = async (c: Company) => {
     const was = interestedIds.includes(c.id);
     setInterestedIds(prev => was ? prev.filter(id => id !== c.id) : [...prev, c.id]);
+    if (userId) {
+      if (was) {
+        await supabase.from('company_interests').delete()
+          .eq('company_id', c.id).eq('student_id', userId);
+      } else {
+        await supabase.from('company_interests').insert({ company_id: c.id, student_id: userId });
+      }
+    }
     showToast(was ? 'Interesse rimosso' : `Interesse registrato: ${c.name}`);
   };
 
@@ -268,6 +326,7 @@ export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange }) => {
           onInterest={() => handleInterest(selectedCompany)}
           onSave={() => handleSave(selectedCompany)}
           onBack={closeDetail}
+          onOpenJobsForCompany={onOpenJobsForCompany}
         />
       ) : (
         <>

@@ -304,6 +304,8 @@ const EventiList: React.FC<{
   const [notificaEvento, setNotificaEvento] = useState<{ id: string; name: string } | null>(null);
   const [qrEvento, setQrEvento]             = useState<{ id: string; name: string } | null>(null);
 
+  const today = new Date().toISOString().split('T')[0];
+
   useEffect(() => {
     supabase
       .from('events')
@@ -396,11 +398,20 @@ const EventiList: React.FC<{
                   {fmtDateRange(ev.event_date, ev.event_end)}
                 </td>
                 <td className="px-6 py-3">
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    ev.stato === 'bozza' ? 'bg-orange-50 text-orange-400' : 'bg-[#E6F6EC] text-[#34A853]'
-                  }`}>
-                    {ev.stato === 'bozza' ? 'Bozza' : 'Pubblicato'}
-                  </span>
+                  {(() => {
+                    const concluso = ev.stato !== 'bozza' && (ev.event_end || ev.event_date) < today;
+                    const label = ev.stato === 'bozza' ? 'Bozza' : concluso ? 'Concluso' : 'Pubblicato';
+                    const style = ev.stato === 'bozza'
+                      ? 'bg-orange-50 text-orange-400'
+                      : concluso
+                        ? 'bg-gray-100 text-gray-500'
+                        : 'bg-[#E6F6EC] text-[#34A853]';
+                    return (
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${style}`}>
+                        {label}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td className="px-6 py-3">
                   <button onClick={() => onIscrizioni(ev.id, ev.name)}
@@ -586,7 +597,7 @@ const EventoForm: React.FC<{
   const [avanzateOpen, setAvanzateOpen]     = useState(false);
   const [slugEdited, setSlugEdited]         = useState(false);
   const [customTagInput, setCustomTagInput] = useState('');
-  const [inviaNotifica, setInviaNotifica]   = useState(!isEdit);
+  const [showNotificaModal, setShowNotificaModal] = useState(false);
   const [nuovaVoce, setNuovaVoce]           = useState('');
 
   const [form, setForm] = useState({
@@ -707,19 +718,6 @@ const EventoForm: React.FC<{
     setSaving(false);
     if (dbErr) { console.error('DB error:', dbErr); setError('Errore: ' + dbErr.message); return; }
 
-    if (inviaNotifica && stato === 'pubblicato') {
-      const { error: notifErr } = await supabase.from('notifiche').insert({
-        tipo:           'evento',
-        titolo:         isEdit ? `Aggiornamento: ${form.name.trim()}` : `Nuovo evento: ${form.name.trim()}`,
-        corpo:          form.descrizione.trim() || null,
-        riferimento_id: editId ?? form.id.trim(),
-      });
-      if (notifErr) console.error('Notifica error:', notifErr);
-      else console.log('Notifica inviata OK');
-    } else {
-      console.log('Notifica saltata — inviaNotifica:', inviaNotifica, 'stato:', stato);
-    }
-
     onSaved();
   };
 
@@ -827,24 +825,17 @@ const EventoForm: React.FC<{
               value={form.descrizione} onChange={e => setField('descrizione', e.target.value)} />
           </div>
 
-          {/* Toggle notifica */}
-          <div className="flex items-center justify-between pt-1">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
-                <Bell size={15} className="text-orange-500" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-800">Notifica agli studenti</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {inviaNotifica ? 'Verrà inviata una notifica in-app alla pubblicazione' : 'Nessuna notifica verrà inviata'}
-                </p>
-              </div>
+          {/* Bottone notifica */}
+          <button type="button" onClick={() => setShowNotificaModal(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 hover:border-orange-300 hover:bg-orange-50 transition-colors bg-white text-left">
+            <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
+              <Bell size={15} className="text-orange-500" />
             </div>
-            <button type="button" onClick={() => setInviaNotifica(p => !p)}
-              className={`w-11 h-6 rounded-full transition-colors relative overflow-hidden shrink-0 ${inviaNotifica ? 'bg-orange-500' : 'bg-gray-200'}`}>
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${inviaNotifica ? 'translate-x-5' : 'translate-x-0'}`} />
-            </button>
-          </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-800">Invia notifica agli studenti</p>
+              <p className="text-xs text-gray-400 mt-0.5">Componi e invia una notifica in-app a tutti gli studenti</p>
+            </div>
+          </button>
         </div>
 
         {/* Data e Luogo */}
@@ -1074,6 +1065,13 @@ const EventoForm: React.FC<{
           </div>
         )}
       </div>
+
+      {showNotificaModal && (
+        <NotificaModal
+          evento={{ id: editId ?? form.id, name: form.name || 'Nuovo evento' }}
+          onClose={() => setShowNotificaModal(false)}
+        />
+      )}
 
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-6">

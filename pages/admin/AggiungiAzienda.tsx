@@ -45,6 +45,7 @@ export const AggiungiAzienda: React.FC<Props> = ({ onBack, onCreated }) => {
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [password, setPassword] = useState('');
+  const [referente, setReferente] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -107,6 +108,8 @@ export const AggiungiAzienda: React.FC<Props> = ({ onBack, onCreated }) => {
       website:        form.website.trim() || null,
       email:          form.email.trim() || null,
       email_account:  form.email_account.trim() || null,
+      password_temp:  password.trim() || null,
+      referente:      referente.trim() || null,
       telefono:       form.telefono.trim() || null,
       indirizzo:      form.indirizzo.trim() || null,
       cap:            form.cap.trim() || null,
@@ -240,6 +243,12 @@ export const AggiungiAzienda: React.FC<Props> = ({ onBack, onCreated }) => {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
           <h2 className="font-bold font-montserrat text-[#1F2430] text-base">Account Azienda</h2>
           <p className="text-xs text-gray-400 -mt-2">L'account di accesso alla piattaforma verrà attivato in un secondo momento</p>
+
+          <div>
+            <label className={labelClass}>Referente</label>
+            <input className={inputClass} type="text" placeholder="Nome Cognome del referente"
+              value={referente} onChange={e => setReferente(e.target.value)} />
+          </div>
 
           <div>
             <label className={labelClass}>Email account principale <span className="text-orange-400">*</span></label>

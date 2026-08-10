@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   CalendarDays, MapPin, Users, ChevronLeft, CheckCircle2,
   QrCode, MessageSquare, BookOpen, X, Compass, LogIn, LogOut, Search,
+  ScrollText, Download,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
 import QrScanner from './QRScanner';
+import { generateCertificatePDF } from '../lib/certificateGenerator';
 
 // ── Tipi ──────────────────────────────────────────────────────────────────────
 
@@ -32,6 +34,14 @@ interface AttendanceRow {
   id: string;
   type: string;
   scanned_at: string;
+}
+
+interface CertificatoTemplate {
+  id: string;
+  titolo: string;
+  descrizione: string;
+  immagine_url: string | null;
+  campi_dinamici: string[];
 }
 
 type View = 'list' | 'detail' | 'feedback' | 'success';
@@ -224,144 +234,267 @@ const DetailView: React.FC<{
   onFeedback: () => void;
   onScan: () => void;
 }> = ({ ev, userId, onBack, onFeedback, onScan }) => {
-  const [tab, setTab]         = useState<'dettagli' | 'materiali' | 'registro'>('dettagli');
+  const [tab, setTab]             = useState<'dettagli' | 'materiali' | 'registro'>('dettagli');
   const [materiali, setMateriali] = useState<{ id: string; titolo: string; tipo: string; url: string }[]>([]);
-  const gradient   = gradientForId(ev.id);
-  const status     = eventoStatus(ev);
-  const isConcluso = status === 'concluso';
+  const [certificato, setCertificato] = useState<CertificatoTemplate | null>(null);
+  const [profilo, setProfilo]         = useState<{ first_name: string; last_name: string; school: string | null } | null>(null);
+  const [generando, setGenerando]     = useState(false);
+  const [haPartecipato, setHaPartecipato] = useState<boolean | null>(null);
+  const gradient     = gradientForId(ev.id);
+  const status       = eventoStatus(ev);
+  const isConcluso   = status === 'concluso';
   const isConfermato = ev.statoIscrizione === 'accettata';
+
+  const TABS = [
+    { key: 'dettagli'  as const, label: 'Dettagli'         },
+    { key: 'materiali' as const, label: 'Materiali'        },
+    { key: 'registro'  as const, label: 'Registro' },
+  ];
 
   useEffect(() => {
     supabase.from('materiali_eventi').select('*').eq('event_id', ev.id).order('created_at')
       .then(({ data }) => setMateriali((data ?? []) as any[]));
-  }, [ev.id]);
+
+    supabase.from('certificati')
+      .select('id, titolo, descrizione, immagine_url, campi_dinamici')
+      .eq('event_id', ev.id)
+      .eq('visibilita', 'studenti')
+      .limit(1)
+      .then(({ data }) => setCertificato(data?.[0] ?? null));
+
+    supabase.from('profiles').select('first_name, last_name, school').eq('id', userId).single()
+      .then(({ data }) => setProfilo(data ?? null));
+  }, [ev.id, userId]);
+
+  // Controlla se il certificato è stato assegnato all'utente dall'admin
+  useEffect(() => {
+    if (!certificato) { setHaPartecipato(null); return; }
+    supabase.from('certificati_assegnazioni')
+      .select('id', { count: 'exact', head: true })
+      .eq('certificato_id', certificato.id)
+      .eq('user_id', userId)
+      .then(({ count }) => setHaPartecipato((count ?? 0) > 0));
+  }, [certificato?.id, userId]);
+
+  const handleDownloadCertificato = async () => {
+    if (!certificato) return;
+    setGenerando(true);
+    try {
+      await generateCertificatePDF(certificato, {
+        nome:           profilo?.first_name ?? '',
+        cognome:        profilo?.last_name ?? '',
+        scuola:         profilo?.school ?? null,
+        nome_evento:    ev.name,
+        data_emissione: new Date(ev.event_end ?? ev.event_date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }),
+      });
+    } catch {
+      // errore silenzioso: la card rimane visibile
+    } finally {
+      setGenerando(false);
+    }
+  };
 
   return (
-    <div className="max-w-md mx-auto flex flex-col min-h-full">
+    <div className="max-w-md mx-auto flex flex-col gap-4 pb-8" style={{ background: '#F8F9FA' }}>
+
       {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 px-4 pt-3 pb-2 text-xs text-gray-400 font-medium">
-        <button onClick={onBack} className="flex items-center gap-1 text-orange-500 font-bold">
-          <ChevronLeft size={14} /> I Miei
+      <div className="flex items-center gap-1 px-4 pt-3 text-xs font-semibold">
+        <button onClick={onBack} className="flex items-center gap-0.5 text-orange-500 active:opacity-60 transition-opacity">
+          <ChevronLeft size={13} /> I Miei
         </button>
-        <span>›</span>
-        <span className="text-gray-500 truncate">{ev.name}</span>
+        <span className="text-gray-300 mx-0.5">›</span>
+        <span className="text-gray-400 truncate max-w-[160px]">{ev.name}</span>
       </div>
 
-      {/* Hero */}
-      <div className="relative mx-4 rounded-2xl overflow-hidden h-44">
-        {ev.cover_url
-          ? <img src={ev.cover_url} alt={ev.name} className="w-full h-full object-cover" />
-          : <div className={`bg-gradient-to-br ${gradient} w-full h-full`} />
-        }
-        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent flex flex-col justify-end px-4 pb-4">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <h2 className="font-bold font-montserrat text-white text-lg leading-snug flex-1">{ev.name}</h2>
+      {/* ── Card 1: Evento ── */}
+      <div className="mx-4 bg-white rounded-3xl border border-gray-100 shadow-sm">
+        {/* Foto incorniciata */}
+        <div className="p-3">
+          <div className="rounded-2xl overflow-hidden" style={{ height: 150 }}>
+            {ev.cover_url
+              ? <img src={ev.cover_url} alt={ev.name} className="w-full h-full object-cover" />
+              : <div className={`bg-gradient-to-br ${gradient} w-full h-full`} />
+            }
+          </div>
+        </div>
+
+        {/* Intestazione compatta */}
+        <div className="px-4 pt-1 pb-4">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <h1 className="font-bold font-montserrat text-[#0F172A] text-lg leading-snug flex-1">{ev.name}</h1>
             {isConfermato && (
-              <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm ${
-                isConcluso ? 'bg-white/30 text-white' : 'bg-green-500/70 text-white'
+              <span className={`shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                isConcluso ? 'bg-blue-50 text-blue-500' : 'bg-green-50 text-green-600'
               }`}>
                 {isConcluso ? 'Completato' : 'Confermato'}
               </span>
             )}
+            {!isConfermato && (
+              <span className="shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full bg-orange-50 text-orange-500">
+                In attesa
+              </span>
+            )}
           </div>
-          <div className="flex flex-wrap gap-x-3 gap-y-1 text-white/80 text-xs font-medium">
-            <span className="flex items-center gap-1"><CalendarDays size={11} />{fmtDateRange(ev.event_date, ev.event_end)}</span>
-            {ev.location && <span className="flex items-center gap-1"><MapPin size={11} />{ev.location}</span>}
-            {ev.max_partecipanti && <span className="flex items-center gap-1"><Users size={11} />{ev.max_partecipanti} partecipanti</span>}
+          {/* Metadati riga sintetica */}
+          <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-[#64748B] font-medium">
+            <span className="flex items-center gap-1 whitespace-nowrap">
+              <CalendarDays size={11} className="text-[#94A3B8] shrink-0" />
+              {fmtDateRange(ev.event_date, ev.event_end)}
+            </span>
+            {ev.location && (
+              <>
+                <span className="text-[#CBD5E1]">•</span>
+                <span className="flex items-center gap-1 whitespace-nowrap">
+                  <MapPin size={11} className="text-[#94A3B8] shrink-0" />
+                  {ev.location}
+                </span>
+              </>
+            )}
+            {ev.max_partecipanti && (
+              <>
+                <span className="text-[#CBD5E1]">•</span>
+                <span className="flex items-center gap-1 whitespace-nowrap">
+                  <Users size={11} className="text-[#94A3B8] shrink-0" />
+                  {ev.max_partecipanti} posti
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex border-b border-gray-100 mx-4 mt-4">
-        {(['dettagli', 'materiali', 'registro'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`flex-1 py-3 text-xs font-bold transition-colors border-b-2 -mb-px ${
-              tab === t ? 'text-orange-500 border-orange-500' : 'text-gray-400 border-transparent'
-            }`}>
-            {t === 'dettagli' ? 'Dettagli' : t === 'materiali' ? 'Materiali' : 'Registro Attività'}
-          </button>
-        ))}
-      </div>
+      {/* ── Card 2: Contenuto + Footer ── */}
+      <div className="mx-4 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col">
 
-      {/* Tab content */}
-      <div className="flex-1 px-5 py-5 space-y-5">
-        {tab === 'dettagli' && (
-          <>
-            {ev.descrizione && (
+        {/* Tab bar */}
+        <div className="flex items-end gap-6 px-5 pt-5 pb-0">
+          {TABS.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className="relative pb-3 text-sm transition-colors"
+              style={{
+                fontWeight: tab === key ? 700 : 500,
+                color: tab === key ? '#0F172A' : '#94A3B8',
+              }}
+            >
+              {label}
+              {tab === key && (
+                <span
+                  className="absolute bottom-0 left-0 right-0 rounded-full"
+                  style={{ height: 2, background: '#FF7A00' }}
+                />
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="mx-5 border-b border-gray-100" />
+
+        {/* Contenuto */}
+        <div className="px-5 pt-5 pb-5 space-y-5">
+          {tab === 'dettagli' && (
+            <>
+              {ev.descrizione && (
+                <p className="text-sm text-[#475569] leading-relaxed">{ev.descrizione}</p>
+              )}
+              {ev.cosa_impari?.length > 0 && (
+                <div>
+                  <h2 className="font-bold font-montserrat text-[#0F172A] text-sm mb-2.5">Cosa porterai a casa</h2>
+                  <ul className="space-y-2.5">
+                    {ev.cosa_impari.map((item, i) => (
+                      <li key={i} className="flex items-start gap-2.5 text-sm text-[#475569]">
+                        <CheckCircle2 size={15} className="text-green-500 shrink-0 mt-0.5" />{item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div>
-                <h3 className="font-bold font-montserrat text-gray-900 mb-2">Descrizione</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">{ev.descrizione}</p>
+                <h2 className="font-bold font-montserrat text-[#0F172A] text-sm mb-2">Requisiti</h2>
+                <p className="text-sm text-[#475569] leading-relaxed">
+                  {ev.requisiti || 'Nessun requisito specifico.'}
+                </p>
               </div>
-            )}
-            {ev.cosa_impari?.length > 0 && (
-              <div>
-                <h3 className="font-bold font-montserrat text-gray-900 mb-3">Cosa porterai a casa</h3>
-                <ul className="space-y-2.5">
-                  {ev.cosa_impari.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-sm text-gray-600">
-                      <CheckCircle2 size={16} className="text-green-500 shrink-0 mt-0.5" />{item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <div>
-              <h3 className="font-bold font-montserrat text-gray-900 mb-2">Requisiti</h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                {ev.requisiti || 'Nessun requisito specifico.'}
-              </p>
-            </div>
-          </>
-        )}
-        {tab === 'materiali' && (
-          materiali.length > 0 ? (
+            </>
+          )}
+
+          {tab === 'materiali' && (
             <div className="space-y-3">
+              {/* Certificato — visibile solo se assegnato dall'admin */}
+              {certificato && haPartecipato === true && (
+                <button
+                  onClick={handleDownloadCertificato}
+                  disabled={generando}
+                  className="w-full flex items-center gap-3 p-3 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-2xl active:opacity-80 transition-opacity disabled:opacity-60"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+                    {generando
+                      ? <div className="w-4 h-4 rounded-full border-2 border-orange-200 border-t-orange-500 animate-spin" />
+                      : <ScrollText size={14} className="text-orange-500" />
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-sm font-bold text-[#0F172A] truncate">{certificato.titolo}</p>
+                    <p className="text-xs text-orange-500 font-medium">{generando ? 'Generazione in corso…' : 'Tocca per scaricare il tuo certificato'}</p>
+                  </div>
+                  {!generando && <Download size={14} className="text-orange-400 shrink-0" />}
+                </button>
+              )}
+
+              {/* Materiali standard */}
               {materiali.map(m => (
                 <a key={m.id} href={m.url} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:border-orange-200 transition-colors">
-                  <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
-                    <BookOpen size={14} className="text-orange-400" />
+                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl active:bg-orange-50 transition-colors">
+                  <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+                    <BookOpen size={14} className="text-orange-500" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{m.titolo}</p>
+                    <p className="text-sm font-semibold text-[#0F172A] truncate">{m.titolo}</p>
                     <p className="text-xs text-gray-400">{m.tipo === 'link' ? 'Link esterno' : 'File'}</p>
                   </div>
                 </a>
               ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
-                <BookOpen size={24} className="text-gray-400" />
-              </div>
-              <p className="font-bold font-montserrat text-gray-700">Nessun materiale disponibile</p>
-              <p className="text-xs text-gray-400 max-w-[220px] leading-relaxed">
-                I materiali saranno caricati qualche giorno prima dell'evento.
-              </p>
-            </div>
-          )
-        )}
-        {tab === 'registro' && (
-          <RegistroAttivita eventId={ev.id} userId={userId} />
-        )}
-      </div>
 
-      {/* Footer */}
-      <div className="px-4 pb-6 pt-3 border-t border-gray-100 flex items-center gap-3">
-        <button onClick={onBack} className="py-3.5 px-5 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-600 hover:border-gray-300 transition-colors">
-          Indietro
-        </button>
-        {isConfermato && !isConcluso && (
-          <button onClick={onScan} className="flex-1 py-3.5 rounded-2xl btn-primary-liquid font-bold text-sm flex items-center justify-center gap-2">
-            <QrCode size={16} /> Inquadra QR
+              {haPartecipato !== true && materiali.length === 0 && (certificato === null || haPartecipato === false) && (
+                <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
+                  <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
+                    <BookOpen size={22} className="text-gray-300" />
+                  </div>
+                  <p className="font-bold font-montserrat text-gray-700 text-sm">Nessun materiale disponibile</p>
+                  <p className="text-xs text-gray-400 max-w-[200px] leading-relaxed">
+                    I materiali saranno caricati qualche giorno prima dell'evento.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === 'registro' && (
+            <RegistroAttivita eventId={ev.id} userId={userId} />
+          )}
+        </div>
+
+        {/* Footer bottoni */}
+        <div className="border-t border-gray-100 px-4 py-4 flex items-center gap-3">
+          <button onClick={onBack}
+            className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-500 active:bg-gray-50 transition-all">
+            Indietro
           </button>
-        )}
-        {isConfermato && isConcluso && (
-          <button onClick={onFeedback} className="flex-1 py-3.5 rounded-2xl btn-primary-liquid font-bold text-sm flex items-center justify-center gap-2">
-            <MessageSquare size={16} /> Lascia Feedback
-          </button>
-        )}
+          {isConfermato && !isConcluso && (
+            <button onClick={onScan}
+              className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 active:opacity-80 transition-opacity"
+              style={{ background: '#FF7A00', boxShadow: '0 4px 14px rgba(255,122,0,0.35)' }}>
+              <QrCode size={15} /> Inquadra QR
+            </button>
+          )}
+          {isConfermato && isConcluso && (
+            <button onClick={onFeedback}
+              className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 active:opacity-80 transition-opacity"
+              style={{ background: '#FF7A00', boxShadow: '0 4px 14px rgba(255,122,0,0.35)' }}>
+              <MessageSquare size={15} /> Lascia Feedback
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -479,9 +612,10 @@ const FeedbackSuccess: React.FC<{ onBack: () => void }> = ({ onBack }) => (
 interface Props {
   user: UserProfile;
   onNavigate: (section: string) => void;
+  onDetailChange?: (inDetail: boolean) => void;
 }
 
-export const IMieiPage: React.FC<Props> = ({ user, onNavigate }) => {
+export const IMieiPage: React.FC<Props> = ({ user, onNavigate, onDetailChange }) => {
   const [eventi, setEventi]           = useState<EventoIscritto[]>([]);
   const [loading, setLoading]         = useState(true);
   const [view, setView]               = useState<View>('list');
@@ -538,6 +672,7 @@ export const IMieiPage: React.FC<Props> = ({ user, onNavigate }) => {
     const full = await fetchFull(ev);
     setSelectedEv(full);
     setView('detail');
+    onDetailChange?.(true);
   };
 
   const openFeedback = async (ev: EventoIscritto) => {
@@ -546,6 +681,7 @@ export const IMieiPage: React.FC<Props> = ({ user, onNavigate }) => {
       setSelectedEv(full);
     }
     setView('feedback');
+    onDetailChange?.(true);
   };
 
   const handleScan = async (text: string) => {
@@ -555,13 +691,16 @@ export const IMieiPage: React.FC<Props> = ({ user, onNavigate }) => {
     setTimeout(() => setScanResult(null), 4000);
   };
 
+  const backToList = () => { setView('list'); onDetailChange?.(false); };
+  const backToDetail = () => setView('detail');
+
   // ── Vista dettaglio
   if (view === 'detail' && selectedEv) return (
     <>
       <DetailView
         ev={selectedEv}
         userId={user.id}
-        onBack={() => setView('list')}
+        onBack={backToList}
         onFeedback={() => setView('feedback')}
         onScan={() => setShowScanner(true)}
       />
@@ -573,14 +712,14 @@ export const IMieiPage: React.FC<Props> = ({ user, onNavigate }) => {
   if (view === 'feedback' && selectedEv) return (
     <FeedbackForm
       ev={selectedEv}
-      onBack={() => setView('detail')}
+      onBack={backToDetail}
       onSuccess={() => setView('success')}
     />
   );
 
   // ── Vista successo feedback
   if (view === 'success') return (
-    <FeedbackSuccess onBack={() => { setView('list'); setSelectedEv(null); }} />
+    <FeedbackSuccess onBack={() => { setView('list'); setSelectedEv(null); onDetailChange?.(false); }} />
   );
 
   // ── Vista lista

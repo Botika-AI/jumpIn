@@ -1,46 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CalendarDays, MapPin, Users, X, Info, Briefcase } from 'lucide-react';
 import { UserProfile } from '../types';
+import { supabase } from '../lib/supabase';
 
-interface Experience {
+interface Evento {
   id: string;
-  title: string;
-  description: string;
+  name: string;
+  breve_descrizione: string | null;
+  descrizione: string | null;
+  event_date: string;
+  event_end: string | null;
+  location: string | null;
   tags: string[];
-  dateRange: string;
-  modalDate: string;
-  location: string;
-  enrolled: number;
-  total: number;
-  gradient: string;
+  max_partecipanti: number | null;
 }
 
-const MOCK_EXPERIENCES: Experience[] = [
-  {
-    id: 'ai_hackathon_2025',
-    title: 'AI Hackathon Milano 2025',
-    description: '48 ore di coding intensivo per creare soluzioni AI innovative. Premio di €5.000 per il team vincitore.',
-    tags: ['AI', 'Hackathon', 'Team'],
-    dateRange: '15-17 Nov 2025',
-    modalDate: '15-17 Novembre 2025',
-    location: 'Milano, Politecnico',
-    enrolled: 45,
-    total: 60,
-    gradient: 'from-orange-400 to-orange-600',
-  },
-  {
-    id: 'design_thinking_101',
-    title: 'Workshop: Design Thinking 101',
-    description: 'Impara le basi del design thinking con esperti del settore.',
-    tags: ['Design', 'Workshop'],
-    dateRange: '22 Nov 2025',
-    modalDate: '22 Novembre 2025',
-    location: 'Online',
-    enrolled: 120,
-    total: 150,
-    gradient: 'from-violet-500 to-purple-600',
-  },
-];
+interface Iscrizione {
+  event_id: string;
+  stato: string;
+}
+
+function fmtDateRange(start: string, end: string | null) {
+  const s = new Date(start);
+  const e = end ? new Date(end) : null;
+  const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+  if (!e || end === start) return s.toLocaleDateString('it-IT', { ...opts, year: 'numeric' });
+  if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear())
+    return `${s.getDate()}-${e.getDate()} ${e.toLocaleDateString('it-IT', { month: 'short' })} ${e.getFullYear()}`;
+  return `${s.toLocaleDateString('it-IT', opts)} – ${e.toLocaleDateString('it-IT', { ...opts, year: 'numeric' })}`;
+}
+
+function fmtDateFull(start: string, end: string | null) {
+  const s = new Date(start);
+  const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' };
+  if (!end || end === start) return s.toLocaleDateString('it-IT', opts);
+  const e = new Date(end);
+  return `${s.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })} – ${e.toLocaleDateString('it-IT', opts)}`;
+}
 
 const MOCK_UPCOMING = [
   { id: 'robotica', title: 'Robotica Lab', when: 'Domani, 14:00', iconBg: 'bg-orange-100 text-orange-500', isCalendar: true },
@@ -50,17 +46,37 @@ const MOCK_UPCOMING = [
 interface Props {
   user: UserProfile;
   onNavigate: (section: string) => void;
+  onOpenEvent?: (eventId: string) => void;
 }
 
-export const HomeDashboard: React.FC<Props> = ({ user, onNavigate }) => {
-  const [enrolledIds, setEnrolledIds] = useState<string[]>([]);
-  const [confirmExp, setConfirmExp] = useState<Experience | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+export const HomeDashboard: React.FC<Props> = ({ user, onNavigate, onOpenEvent }) => {
+  const [eventi, setEventi]         = useState<Evento[]>([]);
+  const [iscrizioni, setIscrizioni] = useState<Iscrizione[]>([]);
+  const [confirmExp, setConfirmExp] = useState<Evento | null>(null);
+  const [toast, setToast]           = useState<string | null>(null);
 
-  const handleConfirm = () => {
+  useEffect(() => {
+    supabase.from('events').select('id,name,breve_descrizione,descrizione,event_date,event_end,location,tags,max_partecipanti')
+      .eq('stato', 'pubblicato').order('event_date', { ascending: true })
+      .then(({ data }) => setEventi((data ?? []).map((e: any) => ({ ...e, tags: e.tags ?? [] }))));
+
+    supabase.auth.getUser().then(({ data: { user: u } }) => {
+      if (!u) return;
+      supabase.from('iscrizioni_eventi').select('event_id, stato').eq('user_id', u.id)
+        .then(({ data }) => setIscrizioni((data ?? []) as Iscrizione[]));
+    });
+  }, []);
+
+  const handleConfirm = async () => {
     if (!confirmExp) return;
-    setEnrolledIds(prev => [...prev, confirmExp.id]);
-    setToast(confirmExp.title);
+    const { data: { user: u } } = await supabase.auth.getUser();
+    if (!u) return;
+    const { error } = await supabase.from('iscrizioni_eventi')
+      .insert({ event_id: confirmExp.id, user_id: u.id, stato: 'in_attesa' });
+    if (!error) {
+      setIscrizioni(prev => [...prev, { event_id: confirmExp.id, stato: 'in_attesa' }]);
+      setToast(confirmExp.name);
+    }
     setConfirmExp(null);
     setTimeout(() => setToast(null), 4000);
   };
@@ -115,43 +131,59 @@ export const HomeDashboard: React.FC<Props> = ({ user, onNavigate }) => {
       {/* Esperienze in evidenza */}
       <h2 className="text-base font-bold font-montserrat text-gray-900 mb-3">Esperienze in evidenza</h2>
       <div className="space-y-3 mb-6">
-        {MOCK_EXPERIENCES.map(exp => {
-          const isEnrolled = enrolledIds.includes(exp.id);
+        {eventi.length === 0 ? (
+          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-center">
+            <p className="text-sm text-gray-400">Nessuna esperienza disponibile al momento</p>
+          </div>
+        ) : eventi.map(ev => {
+          const isc = iscrizioni.find(i => i.event_id === ev.id);
+          const isAccettata = isc?.stato === 'accettata';
+          const isAttesa    = isc?.stato === 'in_attesa';
+          const isIscritto  = isAccettata || isAttesa;
+          const endDate = ev.event_end ? new Date(ev.event_end) : new Date(ev.event_date);
+          endDate.setHours(23, 59, 59, 999);
+          const iscrizioniAperte = endDate >= new Date();
           return (
-            <div key={exp.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+            <div key={ev.id} onClick={() => onOpenEvent?.(ev.id)} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer active:bg-gray-50 transition-colors">
               {/* Header row */}
               <div className="flex items-start justify-between gap-2 mb-1.5">
                 <h3 className="font-bold text-gray-900 text-sm font-montserrat leading-snug flex-1">
-                  {exp.title}
+                  {ev.name}
                 </h3>
-                <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  isEnrolled ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'
-                }`}>
-                  {isEnrolled ? 'Confermato' : 'Aperte'}
+                <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                  {iscrizioniAperte ? 'Aperte' : 'Chiuse'}
                 </span>
               </div>
               {/* Description */}
-              <p className="text-xs text-gray-500 mb-2 leading-relaxed line-clamp-2">{exp.description}</p>
+              <p className="text-xs text-gray-500 mb-2 leading-relaxed line-clamp-2">
+                {ev.breve_descrizione || ev.descrizione || ''}
+              </p>
               {/* Meta row */}
-              <div className="flex items-center gap-3 text-xs text-gray-400 font-medium mb-2.5">
-                <span className="flex items-center gap-1"><CalendarDays size={12} />{exp.dateRange}</span>
-                <span className="flex items-center gap-1"><MapPin size={12} />{exp.location}</span>
-                <span className="flex items-center gap-1"><Users size={12} />{exp.enrolled}/{exp.total}</span>
+              <div className="flex items-center gap-3 text-xs text-gray-400 font-medium mb-2.5 flex-wrap">
+                <span className="flex items-center gap-1"><CalendarDays size={12} />{fmtDateRange(ev.event_date, ev.event_end)}</span>
+                {ev.location && <span className="flex items-center gap-1"><MapPin size={12} />{ev.location}</span>}
+                {ev.max_partecipanti && <span className="flex items-center gap-1"><Users size={12} />{ev.max_partecipanti} posti</span>}
               </div>
               {/* Footer row: tags + action */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex gap-1.5 flex-wrap">
-                  {exp.tags.map(tag => (
+                  {ev.tags.slice(0, 3).map(tag => (
                     <span key={tag} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-orange-500 border border-orange-100">
                       {tag}
                     </span>
                   ))}
                 </div>
-                {isEnrolled ? (
-                  <span className="text-xs font-bold text-green-600 shrink-0">Iscritto ✓</span>
+                {isAccettata && !iscrizioniAperte ? (
+                  <span className="text-xs font-bold text-gray-400 shrink-0">Concluso</span>
+                ) : isIscritto ? (
+                  <span className="text-xs font-bold text-green-600 shrink-0">
+                    {isAccettata ? 'Iscritto ✓' : 'In attesa…'}
+                  </span>
+                ) : !iscrizioniAperte ? (
+                  <span className="text-xs font-bold text-gray-400 shrink-0">Concluso</span>
                 ) : (
                   <button
-                    onClick={() => setConfirmExp(exp)}
+                    onClick={e => { e.stopPropagation(); setConfirmExp(ev); }}
                     className="shrink-0 px-4 py-1.5 rounded-xl btn-primary-liquid text-xs font-bold"
                   >
                     Partecipa
@@ -227,17 +259,19 @@ export const HomeDashboard: React.FC<Props> = ({ user, onNavigate }) => {
               </button>
             </div>
             <p className="text-sm text-gray-600 mb-5 leading-relaxed">
-              Sei sicuro di voler partecipare a "{confirmExp.title}"?
+              Sei sicuro di voler partecipare a "{confirmExp.name}"?
             </p>
             <div className="space-y-2.5 mb-6">
               <div className="flex items-center gap-2.5 text-sm text-gray-500">
                 <CalendarDays size={16} className="text-gray-400 shrink-0" />
-                <span>{confirmExp.modalDate}</span>
+                <span>{fmtDateFull(confirmExp.event_date, confirmExp.event_end)}</span>
               </div>
-              <div className="flex items-center gap-2.5 text-sm text-gray-500">
-                <MapPin size={16} className="text-gray-400 shrink-0" />
-                <span>{confirmExp.location}</span>
-              </div>
+              {confirmExp.location && (
+                <div className="flex items-center gap-2.5 text-sm text-gray-500">
+                  <MapPin size={16} className="text-gray-400 shrink-0" />
+                  <span>{confirmExp.location}</span>
+                </div>
+              )}
             </div>
             <div className="flex gap-3">
               <button onClick={handleConfirm} className="flex-1 py-3 rounded-2xl btn-primary-liquid font-bold text-sm">

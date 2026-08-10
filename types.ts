@@ -8,6 +8,7 @@ export interface UserProfile {
   last_checkin?: string;
   is_admin?: boolean;
   bio?: string;
+  citta?: string;
   interests?: string[];
   goals?: string[];
 }

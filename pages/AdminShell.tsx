@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import {
   LayoutDashboard, Users, Building2, Calendar, Briefcase,
-  Award, FileText, Settings, LogOut, Menu, Search, Bell,
+  Award, FileText, Settings, LogOut, Menu,
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { AdminDashboard } from './admin/AdminDashboard';
 import { AdminStudenti } from './admin/AdminStudenti';
 import { AdminAziende } from './admin/AdminAziende';
 import { AdminEventi } from './admin/AdminEventi';
+import { AdminJobPost } from './admin/AdminJobPost';
+import { AdminBadge } from './admin/AdminBadge';
+import { AdminCandidature } from './admin/AdminCandidature';
 
 type AdminSection =
   | 'dashboard' | 'studenti' | 'aziende' | 'eventi'
@@ -68,8 +71,8 @@ export const AdminShell: React.FC<Props> = ({ user, onLogout }) => {
         {/* Logo */}
         <div className="px-5 py-6 border-b border-gray-50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center shrink-0">
-              <span className="text-white font-bold text-sm font-montserrat">JI</span>
+            <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shrink-0 overflow-hidden">
+              <img src="/logo.png" alt="JumpIn" className="w-full h-full object-contain p-0.5" />
             </div>
             <div>
               <p className="font-bold font-montserrat text-gray-900 text-sm leading-tight">JumpIn</p>
@@ -133,23 +136,6 @@ export const AdminShell: React.FC<Props> = ({ user, onLogout }) => {
           <p className="font-bold font-montserrat text-gray-900 text-sm">{activeNav.label}</p>
         </div>
 
-        {/* Topbar desktop: search + campanella — solo in Dashboard */}
-        {activeSection === 'dashboard' && (
-          <div className="hidden md:flex items-center justify-between px-8 py-4 bg-white border-b border-gray-100 shrink-0">
-            <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-full px-4 py-2 w-72">
-              <Search size={15} className="text-gray-300 shrink-0" />
-              <input
-                type="text"
-                placeholder="Cerca..."
-                className="bg-transparent text-sm text-gray-700 placeholder-gray-300 outline-none flex-1"
-              />
-            </div>
-            <button className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
-              <Bell size={20} strokeWidth={1.75} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />
-            </button>
-          </div>
-        )}
 
         {/* Area contenuto */}
         <main className="flex-1 overflow-y-auto p-6 md:p-8 bg-[#F5F6F8]">
@@ -157,7 +143,10 @@ export const AdminShell: React.FC<Props> = ({ user, onLogout }) => {
           {activeSection === 'studenti'  && <AdminStudenti />}
           {activeSection === 'aziende'   && <AdminAziende />}
           {activeSection === 'eventi'    && <AdminEventi />}
-          {activeSection !== 'dashboard' && activeSection !== 'studenti' && activeSection !== 'aziende' && activeSection !== 'eventi' && (
+          {activeSection === 'jobpost'   && <AdminJobPost />}
+          {activeSection === 'badge'        && <AdminBadge />}
+          {activeSection === 'candidature'  && <AdminCandidature />}
+          {activeSection !== 'dashboard' && activeSection !== 'studenti' && activeSection !== 'aziende' && activeSection !== 'eventi' && activeSection !== 'jobpost' && activeSection !== 'badge' && activeSection !== 'candidature' && (
             <PlaceholderSection label={activeNav.label} Icon={activeNav.Icon} />
           )}
         </main>

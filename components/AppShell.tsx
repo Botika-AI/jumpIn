@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Compass, Calendar, Building2, Briefcase, ChevronLeft, Bell, User, CalendarDays, Star, Users2 } from 'lucide-react';
+import { Home, Compass, Calendar, Building2, Briefcase, ChevronLeft, Bell, User, CalendarDays, Star, Users2, X } from 'lucide-react';
 import { UserProfile } from '../types';
 import { HomeDashboard } from './HomeDashboard';
 import { EsperienzePage } from './EsperienzePage';
@@ -65,18 +65,28 @@ export const AppShell: React.FC<Props> = ({ user, onLogout, onUserUpdate }) => {
   const [showTu, setShowTu]                 = useState(false);
   const [showNotifiche, setShowNotifiche]   = useState(false);
   const [isInDetail, setIsInDetail]         = useState(false);
+  const [jobCompanyFilter, setJobCompanyFilter] = useState<{ id: string; name: string } | undefined>(undefined);
   const [notifiche, setNotifiche]           = useState<Notifica[]>([]);
   const [letteIds, setLetteIds]             = useState<Set<string>>(new Set());
   const [tabNotif, setTabNotif]             = useState<'tutte' | 'non_lette'>('tutte');
 
-  const storageKey = `notif_lette_${user.id}`;
+  const storageKey        = `notif_lette_${user.id}`;
+  const storageDeletedKey = `notif_deleted_${user.id}`;
+
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem(storageDeletedKey);
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
 
   useEffect(() => {
     const saved = localStorage.getItem(storageKey);
     if (saved) setLetteIds(new Set(JSON.parse(saved)));
 
     supabase.from('notifiche').select('*').order('created_at', { ascending: false }).limit(50)
-      .then(({ data }) => setNotifiche((data ?? []) as Notifica[]));
+      .then(({ data }) => {
+        const deleted = new Set<string>(JSON.parse(localStorage.getItem(storageDeletedKey) ?? '[]'));
+        setNotifiche(((data ?? []) as Notifica[]).filter(n => !deleted.has(n.id)));
+      });
   }, []);
 
   const markLetta = (id: string) => {
@@ -88,13 +98,69 @@ export const AppShell: React.FC<Props> = ({ user, onLogout, onUserUpdate }) => {
     });
   };
 
+  const deleteNotifica = (id: string) => {
+    setNotifiche(prev => prev.filter(n => n.id !== id));
+    setLetteIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+    setDeletedIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      localStorage.setItem(storageDeletedKey, JSON.stringify([...next]));
+      return next;
+    });
+  };
+
+  const deleteAll = () => {
+    const ids = visibili.map(n => n.id);
+    setNotifiche(prev => prev.filter(n => !ids.includes(n.id)));
+    setDeletedIds(prev => {
+      const next = new Set(prev);
+      ids.forEach(id => next.add(id));
+      localStorage.setItem(storageDeletedKey, JSON.stringify([...next]));
+      return next;
+    });
+  };
+
   const nonLetteCount = notifiche.filter(n => !letteIds.has(n.id)).length;
 
   const visibili = tabNotif === 'non_lette'
     ? notifiche.filter(n => !letteIds.has(n.id))
     : notifiche;
 
-  const navigate = (section: string) => setActiveSection(section as AppSection);
+  const navigate = (section: string) => {
+    if (section === 'profilo') { setShowTu(true); return; }
+    setActiveSection(section as AppSection);
+  };
+
+  const handleOpenJobsForCompany = (companyId: string, companyName: string) => {
+    setJobCompanyFilter({ id: companyId, name: companyName });
+    setActiveSection('job');
+  };
+
+  const [pendingCompanyId, setPendingCompanyId] = useState<string | undefined>(undefined);
+  const [pendingEventId, setPendingEventId]       = useState<string | undefined>(undefined);
+  const [profileInitialTab, setProfileInitialTab] = useState<'account' | 'attivita'>('account');
+  const returnToProfileRef = React.useRef(false);
+
+  const handleOpenCompany = (companyId: string) => {
+    setPendingCompanyId(companyId);
+    setActiveSection('aziende');
+  };
+
+  const handleOpenEvent = (eventId: string) => {
+    setPendingEventId(eventId);
+    setActiveSection('esperienze');
+  };
+
+  const handleBackFromEvent = () => {
+    setPendingEventId(undefined);
+    if (returnToProfileRef.current) {
+      returnToProfileRef.current = false;
+      setActiveSection('home');
+      setShowTu(true);
+    } else {
+      setActiveSection('home');
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-gray-50 flex flex-col z-10">
@@ -122,11 +188,11 @@ export const AppShell: React.FC<Props> = ({ user, onLogout, onUserUpdate }) => {
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto" style={{ paddingBottom: '64px' }}>
-        {activeSection === 'home'       && <HomeDashboard user={user} onNavigate={navigate} />}
-        {activeSection === 'esperienze' && <EsperienzePage onDetailChange={setIsInDetail} />}
-        {activeSection === 'eventi'     && <IMieiPage user={user} onNavigate={navigate} />}
-        {activeSection === 'aziende'    && <AziendePage onDetailChange={setIsInDetail} />}
-        {activeSection === 'job'        && <JobPage onDetailChange={setIsInDetail} />}
+        {activeSection === 'home'       && <HomeDashboard user={user} onNavigate={navigate} onOpenEvent={handleOpenEvent} />}
+        {activeSection === 'esperienze' && <EsperienzePage onDetailChange={setIsInDetail} initialEventId={pendingEventId} onBackFromInitial={handleBackFromEvent} />}
+        {activeSection === 'eventi'     && <IMieiPage user={user} onNavigate={navigate} onDetailChange={setIsInDetail} />}
+        {activeSection === 'aziende'    && <AziendePage onDetailChange={setIsInDetail} onOpenJobsForCompany={handleOpenJobsForCompany} initialCompanyId={pendingCompanyId} />}
+        {activeSection === 'job'        && <JobPage onDetailChange={setIsInDetail} initialCompanyFilter={jobCompanyFilter} onOpenCompany={handleOpenCompany} />}
       </div>
 
       {/* Bottom tab bar */}
@@ -150,7 +216,19 @@ export const AppShell: React.FC<Props> = ({ user, onLogout, onUserUpdate }) => {
 
       {/* Pannello profilo */}
       {showTu && (
-        <ProfileSettingsPage user={user} onBack={() => setShowTu(false)} onLogout={onLogout} onUserUpdate={onUserUpdate} />
+        <ProfileSettingsPage
+          user={user}
+          onBack={() => { setShowTu(false); setProfileInitialTab('account'); }}
+          onLogout={onLogout}
+          onUserUpdate={onUserUpdate}
+          initialTab={profileInitialTab}
+          onOpenEvent={(id) => {
+            returnToProfileRef.current = true;
+            setProfileInitialTab('attivita');
+            setShowTu(false);
+            handleOpenEvent(id);
+          }}
+        />
       )}
 
       {/* Pannello Notifiche */}
@@ -169,7 +247,11 @@ export const AppShell: React.FC<Props> = ({ user, onLogout, onUserUpdate }) => {
                 </button>
                 <h1 className="text-2xl font-bold font-montserrat text-gray-900">Notifiche</h1>
               </div>
-              <button className="text-orange-500 text-xs font-semibold mt-2">Preferenze</button>
+              {visibili.length > 0 && (
+                <button onClick={deleteAll} className="text-red-400 text-xs font-semibold mt-2 active:opacity-60 transition-opacity">
+                  Cancella tutte
+                </button>
+              )}
             </div>
 
             {/* Tab bar */}
@@ -214,27 +296,36 @@ export const AppShell: React.FC<Props> = ({ user, onLogout, onUserUpdate }) => {
                 {visibili.map((n, idx) => {
                   const isLetta = letteIds.has(n.id);
                   return (
-                    <button
+                    <div
                       key={n.id}
-                      onClick={() => markLetta(n.id)}
-                      className={`w-full text-left px-4 py-4 flex items-start gap-3 hover:bg-gray-50 active:bg-gray-100 transition-colors ${idx > 0 ? 'border-t border-gray-100' : ''}`}
+                      className={`w-full px-4 py-4 flex items-start gap-3 active:bg-gray-50 transition-colors ${idx > 0 ? 'border-t border-gray-100' : ''}`}
                     >
-                      <NotificaIcon tipo={n.tipo} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <p className={`text-sm leading-snug ${isLetta ? 'font-medium text-gray-500' : 'font-bold text-gray-900'}`}>
-                            {n.titolo}
-                          </p>
-                          {!isLetta && (
-                            <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
+                      {/* Parte cliccabile per marcare come letta */}
+                      <div onClick={() => markLetta(n.id)} className="flex items-start gap-3 flex-1 min-w-0 cursor-pointer">
+                        <NotificaIcon tipo={n.tipo} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <p className={`text-sm leading-snug ${isLetta ? 'font-medium text-gray-500' : 'font-bold text-gray-900'}`}>
+                              {n.titolo}
+                            </p>
+                            {!isLetta && (
+                              <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
+                            )}
+                          </div>
+                          {n.corpo && (
+                            <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{n.corpo}</p>
                           )}
+                          <p className="text-xs text-gray-400 mt-1">{timeAgo(n.created_at)}</p>
                         </div>
-                        {n.corpo && (
-                          <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{n.corpo}</p>
-                        )}
                       </div>
-                      <p className="text-xs text-gray-400 shrink-0 mt-0.5 whitespace-nowrap">{timeAgo(n.created_at)}</p>
-                    </button>
+                      {/* Pulsante elimina */}
+                      <button
+                        onClick={() => deleteNotifica(n.id)}
+                        className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-gray-300 hover:text-gray-500 hover:bg-gray-100 active:bg-gray-200 transition-colors mt-0.5"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
                   );
                 })}
               </div>
