@@ -7,12 +7,6 @@ type Visibilita = 'studenti' | 'interno' | 'bozza';
 
 const ALL_TAGS = ['Leadership', 'Innovation', 'Teamwork', 'Technical', 'Design', 'Communication'];
 
-const VISIBILITA_OPTIONS: { key: Visibilita; label: string; sub: string }[] = [
-  { key: 'studenti', label: 'Visibile agli studenti',        sub: 'Il badge sarà visibile nel profilo dello studente' },
-  { key: 'interno',  label: 'Visibile solo internamente',    sub: 'Visibile solo agli amministratori e insegnanti' },
-  { key: 'bozza',    label: 'Nascosto (bozza)',              sub: 'Il badge non sarà visibile a nessuno' },
-];
-
 
 export interface BadgeData {
   nome: string;
@@ -45,6 +39,7 @@ export const CreaBadgeForm: React.FC<Props> = ({ onBack, onSave, initialData }) 
   const [categoria, setCategoria]     = useState(initialData?.categoria ?? '');
   const [visibilita, setVisibilita]   = useState<Visibilita>((initialData?.visibilita as Visibilita) ?? 'studenti');
   const [tags, setTags]               = useState<string[]>(initialData?.tags ?? []);
+  const [customTagInput, setCustomTagInput] = useState('');
   const [iconaFile, setIconaFile]     = useState<File | null>(null);
   const [iconaUrl, setIconaUrl]       = useState<string | null>(
     // ignora blob: URL salvati in sessioni precedenti — non sono persistenti
@@ -83,6 +78,16 @@ export const CreaBadgeForm: React.FC<Props> = ({ onBack, onSave, initialData }) 
 
   const toggleTag = (tag: string) =>
     setTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+
+  const addCustomTag = () => {
+    const val = customTagInput.trim();
+    if (!val || tags.includes(val)) { setCustomTagInput(''); return; }
+    setTags(prev => [...prev, val]);
+    setCustomTagInput('');
+  };
+
+  const removeTag = (tag: string) =>
+    setTags(prev => prev.filter(t => t !== tag));
 
   const handleSubmit = (asDraft = false) => {
     if (uploading) return;
@@ -219,45 +224,11 @@ export const CreaBadgeForm: React.FC<Props> = ({ onBack, onSave, initialData }) 
                 onChange={e => setCategoria(e.target.value)}
               />
             </div>
-          </div>
-        </div>
-
-        <div className="border-t border-gray-100" />
-
-        {/* ── Sezione 2: Assegnazione e visibilità ── */}
-        <div className="px-8 py-7">
-          <p className="text-sm font-bold text-gray-900 mb-5">Assegnazione e visibilità</p>
-
-          <div className="space-y-5">
-
-            {/* Visibilità */}
-            <div>
-              <label className={labelClass}>
-                Visibilità <span className="text-red-500">*</span>
-              </label>
-              <div className="space-y-2">
-                {VISIBILITA_OPTIONS.map(opt => (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    onClick={() => setVisibilita(opt.key)}
-                    className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
-                      visibilita === opt.key
-                        ? 'border-orange-400 bg-[#FDEBDD]'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-gray-800">{opt.label}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{opt.sub}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
 
             {/* Tag */}
             <div>
               <label className={labelClass}>Tag (opzionali)</label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mb-2">
                 {ALL_TAGS.map(tag => (
                   <button
                     key={tag}
@@ -273,7 +244,44 @@ export const CreaBadgeForm: React.FC<Props> = ({ onBack, onSave, initialData }) 
                   </button>
                 ))}
               </div>
+              {tags.filter(t => !ALL_TAGS.includes(t)).length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {tags.filter(t => !ALL_TAGS.includes(t)).map(tag => (
+                    <span key={tag} className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#FDEBDD] text-[#E8792F] border border-orange-300">
+                      {tag}
+                      <button type="button" onClick={() => removeTag(tag)} className="ml-0.5 hover:text-orange-800 transition-colors">
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className={`${inputClass} flex-1`}
+                  placeholder="Tag personalizzato..."
+                  value={customTagInput}
+                  onChange={e => setCustomTagInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomTag(); } }}
+                />
+                <button
+                  type="button"
+                  onClick={addCustomTag}
+                  className="px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:border-orange-300 hover:text-orange-500 transition-colors bg-white shrink-0"
+                >
+                  + Aggiungi
+                </button>
+              </div>
             </div>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-100" />
+
+        {/* ── Sezione 2: Modalità di assegnazione ── */}
+        <div className="px-8 py-7">
+          <div className="space-y-5">
 
             {/* Modalità di assegnazione — informativo */}
             <div>

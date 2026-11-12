@@ -12,7 +12,7 @@ interface Azienda {
   description: string | null;
 }
 
-interface JobPost {
+export interface JobPost {
   id: string;
   azienda_id: string | null;
   titolo: string;
@@ -121,24 +121,15 @@ const JobCard: React.FC<{
   );
 };
 
-// ── Blocco accordion espandibile ─────────────────────────────────────────────
-const AccordionBlock: React.FC<{ title: string; text: string }> = ({ title, text }) => {
-  const [open, setOpen] = useState(false);
-  return (
-    <div>
-      <h3 className="font-bold font-montserrat text-gray-900 text-[15px] mb-1.5">{title}</h3>
-      <p className={`text-sm text-gray-600 leading-relaxed whitespace-pre-line ${open ? '' : 'line-clamp-3'}`}>
-        {text}
-      </p>
-      <button onClick={() => setOpen(o => !o)} className="mt-1 text-xs font-semibold text-orange-500">
-        {open ? 'Leggi meno ↑' : 'Leggi tutto ↓'}
-      </button>
-    </div>
-  );
-};
+const RichTextBlock: React.FC<{ title: string; text: string }> = ({ title, text }) => (
+  <div>
+    <h3 className="font-bold font-montserrat text-gray-900 text-[15px] mb-1.5">{title}</h3>
+    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{text}</p>
+  </div>
+);
 
 // ── Vista dettaglio ───────────────────────────────────────────────────────────
-type DetailTab = 'dettagli' | 'contatti';
+type DetailTab = 'dettagli' | 'altre-offerte';
 
 const JobDetail: React.FC<{
   job: JobPost;
@@ -147,20 +138,33 @@ const JobDetail: React.FC<{
   onInterest: () => void;
   onSave: () => void;
   onBack: () => void;
-  onOpenCompany?: (companyId: string) => void;
-}> = ({ job, isInterested, isSaved, onInterest, onSave, onBack, onOpenCompany }) => {
+  onOpenCompany?: (companyId: string, job: JobPost) => void;
+  onSelectJob?: (job: JobPost) => void;
+}> = ({ job, isInterested, isSaved, onInterest, onSave, onBack, onOpenCompany, onSelectJob }) => {
   const [tab, setTab]             = useState<DetailTab>('dettagli');
-  const [showModal, setShowModal] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
+  const [otherJobs, setOtherJobs] = useState<JobPost[] | null>(null);
+
+  useEffect(() => {
+    setTab('dettagli');
+    if (!job.azienda_id) { setOtherJobs([]); return; }
+    setOtherJobs(null);
+    supabase
+      .from('job_positions')
+      .select('id, azienda_id, titolo, modalita, sede, descrizione, responsabilita, requisiti, deadline_candidature, form_esterno, created_at, aziende(name, settore, logo_url, description)')
+      .eq('azienda_id', job.azienda_id)
+      .neq('id', job.id)
+      .eq('stato', 'attivo')
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) console.error('altre offerte fetch error:', error);
+        setOtherJobs((data ?? []) as unknown as JobPost[]);
+      });
+  }, [job.id, job.azienda_id]);
 
   const handleInterestClick = () => {
-    if (isInterested) { onInterest(); return; }
-    setShowModal(true);
-  };
-  const handleConfirm = () => {
     onInterest();
-    setShowModal(false);
-    setShowBanner(true);
+    if (!isInterested) setShowBanner(true);
   };
 
   const city = extractCity(job.sede);
@@ -180,7 +184,7 @@ const JobDetail: React.FC<{
 
   const TAB_LABELS: Record<DetailTab, string> = {
     dettagli: 'Dettagli',
-    contatti: 'Contatti',
+    'altre-offerte': 'Altre Offerte',
   };
 
   return (
@@ -198,7 +202,7 @@ const JobDetail: React.FC<{
 
         {/* Logo + nome azienda — cliccabile */}
         <button
-          onClick={() => job.azienda_id && onOpenCompany?.(job.azienda_id)}
+          onClick={() => job.azienda_id && onOpenCompany?.(job.azienda_id, job)}
           className="flex items-center gap-2.5 mb-2 active:opacity-70 transition-opacity"
         >
           {job.aziende?.logo_url
@@ -226,7 +230,7 @@ const JobDetail: React.FC<{
 
       {/* ── Tabs ── */}
       <div className="flex border-b border-gray-100 px-4">
-        {(['dettagli', 'contatti'] as DetailTab[]).map(t => (
+        {(['dettagli', 'altre-offerte'] as DetailTab[]).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -244,100 +248,98 @@ const JobDetail: React.FC<{
 
         {tab === 'dettagli' && (
           <>
-            {job.descrizione    && <AccordionBlock title="Descrizione"             text={job.descrizione} />}
-            {job.responsabilita && <AccordionBlock title="Responsabilità principali" text={job.responsabilita} />}
-            {job.requisiti      && <AccordionBlock title="Requisiti"               text={job.requisiti} />}
-            {job.deadline_candidature && (
-              <div className="bg-orange-50 rounded-2xl px-4 py-3 flex items-center gap-3">
-                <Clock size={15} className="text-orange-400 shrink-0" />
-                <div>
-                  <p className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Scadenza candidature</p>
-                  <p className="text-sm font-semibold text-orange-700">
-                    {new Date(job.deadline_candidature).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })}
-                  </p>
-                </div>
+            {(job.descrizione || job.responsabilita || job.requisiti) && (
+              <div className="divide-y divide-gray-200">
+                {job.descrizione    && <div className="pb-4 first:pt-0 last:pb-0"><RichTextBlock title="Descrizione"              text={job.descrizione} /></div>}
+                {job.responsabilita && <div className="py-4 first:pt-0 last:pb-0"><RichTextBlock title="Responsabilità principali" text={job.responsabilita} /></div>}
+                {job.requisiti      && <div className="pt-4 first:pt-0 last:pb-0"><RichTextBlock title="Requisiti"                 text={job.requisiti} /></div>}
               </div>
             )}
+            {job.deadline_candidature && (() => {
+              const giorni = Math.ceil((new Date(job.deadline_candidature).getTime() - Date.now()) / 86400000);
+              return (
+                <div className="bg-orange-50 rounded-2xl px-4 py-3 flex items-center gap-3">
+                  <Clock size={15} className="text-orange-400 shrink-0" />
+                  <div>
+                    <p className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Scadenza candidature</p>
+                    <p className="text-sm font-semibold text-orange-700">
+                      {new Date(job.deadline_candidature).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })}
+                      {giorni >= 0 && (
+                        <span className="ml-1.5 font-medium text-orange-500">
+                          · {giorni === 0 ? 'scade oggi' : giorni === 1 ? 'tra 1 giorno' : `tra ${giorni} giorni`}
+                        </span>
+                      )}
+                      {giorni < 0 && <span className="ml-1.5 font-medium text-red-400">· scaduta</span>}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
           </>
         )}
 
-        {tab === 'contatti' && (
-          <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
-            <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
-              <Building2 size={24} className="text-gray-300" />
+        {tab === 'altre-offerte' && (
+          otherJobs === null ? (
+            <div className="flex justify-center py-10">
+              <div className="w-7 h-7 rounded-full border-2 border-orange-200 border-t-orange-500 animate-spin" />
             </div>
-            <p className="font-bold font-montserrat text-gray-700">Contatti non disponibili</p>
-            <p className="text-xs text-gray-400 max-w-[220px] leading-relaxed">
-              Le informazioni di contatto per questa offerta non sono ancora disponibili.
-            </p>
-          </div>
+          ) : otherJobs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
+              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
+                <Building2 size={24} className="text-gray-300" />
+              </div>
+              <p className="font-bold font-montserrat text-gray-700">Nessun'altra offerta</p>
+              <p className="text-xs text-gray-400 max-w-[220px] leading-relaxed">
+                {job.aziende?.name || "Quest'azienda"} non ha altre posizioni aperte al momento.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-gray-400">
+                {otherJobs.length} offert{otherJobs.length === 1 ? 'a' : 'e'} disponibil{otherJobs.length === 1 ? 'e' : 'i'}
+              </p>
+              {otherJobs.map(oj => (
+                <JobCard
+                  key={oj.id}
+                  job={oj}
+                  isInterested={false}
+                  onDetail={() => onSelectJob?.(oj)}
+                  onInterest={() => {}}
+                />
+              ))}
+            </div>
+          )
         )}
       </div>
 
-      {/* ── Footer bottoni ── */}
-      <div className="px-4 pb-6 pt-3 border-t border-gray-100 flex items-center gap-3">
-        {showBanner && (
-          <div className="absolute bottom-20 left-4 right-4 flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
-            <CheckCircle2 size={13} className="text-green-500 shrink-0" />
-            <p className="text-xs font-semibold text-green-700 flex-1">Candidatura inviata con successo!</p>
-            <button onClick={() => setShowBanner(false)} className="text-green-400 shrink-0"><X size={13} /></button>
-          </div>
-        )}
-        <button
-          onClick={handleInterestClick}
-          className={`flex-1 py-3.5 rounded-2xl font-medium text-sm transition-all flex items-center justify-center gap-2 ${
-            isInterested ? 'bg-orange-100 text-orange-600 border-2 border-orange-200' : 'btn-primary-liquid'
-          }`}
-        >
-          {isInterested && <Heart size={15} className="fill-orange-500" />}
-          {isInterested ? 'Candidato' : 'Mi interessa'}
-        </button>
-        <button
-          onClick={onSave}
-          className={`px-5 py-3.5 rounded-2xl border-2 font-medium text-sm transition-all flex items-center gap-2 ${
-            isSaved ? 'border-orange-300 text-orange-500 bg-orange-50' : 'border-gray-200 text-gray-600'
-          }`}
-        >
-          <Star size={16} className={isSaved ? 'fill-orange-500' : ''} />
-          Salva
-        </button>
-      </div>
-
-      {/* ── Bottom Sheet — Conferma Candidatura ── */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div
-            className="relative bg-white rounded-t-3xl px-6 pt-6 shadow-2xl animate-in slide-in-from-bottom duration-300"
-            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
+      {/* ── Footer bottoni — solo sulla tab Dettagli ── */}
+      {tab === 'dettagli' && (
+        <div className="px-4 pb-6 pt-3 border-t border-gray-100 flex items-center gap-3">
+          {showBanner && (
+            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm rounded-2xl shadow-xl border border-gray-100 bg-white p-4 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300">
+              <CheckCircle2 size={16} className="text-green-500 shrink-0" />
+              <p className="text-xs font-semibold text-gray-700 flex-1">Candidatura inviata con successo!</p>
+              <button onClick={() => setShowBanner(false)} className="text-gray-300 hover:text-gray-500 shrink-0"><X size={14} /></button>
+            </div>
+          )}
+          <button
+            onClick={handleInterestClick}
+            className={`flex-1 py-3.5 rounded-2xl font-medium text-sm transition-all flex items-center justify-center gap-2 ${
+              isInterested ? 'bg-orange-100 text-orange-600 border-2 border-orange-200' : 'btn-primary-liquid'
+            }`}
           >
-            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
-            <button onClick={() => setShowModal(false)} className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-600">
-              <X size={18} />
-            </button>
-            <h3 className="font-bold font-montserrat text-gray-900 text-lg mb-1.5">Conferma Candidatura</h3>
-            <p className="text-sm text-gray-400 mb-5 leading-relaxed">Vuoi candidarti per questa offerta di lavoro?</p>
-            <div className="space-y-3 mb-6">
-              <div className="bg-gray-50 rounded-2xl p-4">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Ruolo</p>
-                <p className="text-sm font-semibold text-gray-900">{job.titolo}</p>
-              </div>
-              <div className="bg-gray-50 rounded-2xl p-4">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Azienda</p>
-                <p className="text-sm font-semibold text-gray-900">{job.aziende?.name ?? '—'}</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => setShowModal(false)}
-                className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 text-gray-600 font-bold text-sm">
-                Annulla
-              </button>
-              <button onClick={handleConfirm}
-                className="flex-1 py-3.5 rounded-2xl btn-primary-liquid text-sm font-bold">
-                Conferma
-              </button>
-            </div>
-          </div>
+            {isInterested && <Heart size={15} className="fill-orange-500" />}
+            {isInterested ? 'Candidato' : 'Mi interessa'}
+          </button>
+          <button
+            onClick={onSave}
+            className={`px-5 py-3.5 rounded-2xl border-2 font-medium text-sm transition-all flex items-center gap-2 ${
+              isSaved ? 'border-orange-300 text-orange-500 bg-orange-50' : 'border-gray-200 text-gray-600'
+            }`}
+          >
+            <Star size={16} className={isSaved ? 'fill-orange-500' : ''} />
+            Salva
+          </button>
         </div>
       )}
     </div>
@@ -348,13 +350,15 @@ const JobDetail: React.FC<{
 interface JobPageProps {
   onDetailChange?: (isDetail: boolean) => void;
   initialCompanyFilter?: { id: string; name: string };
-  onOpenCompany?: (companyId: string) => void;
+  onOpenCompany?: (companyId: string, job: JobPost) => void;
+  initialJob?: JobPost;
+  onConsumedInitialJob?: () => void;
 }
 
-export const JobPage: React.FC<JobPageProps> = ({ onDetailChange, initialCompanyFilter, onOpenCompany }) => {
+export const JobPage: React.FC<JobPageProps> = ({ onDetailChange, initialCompanyFilter, onOpenCompany, initialJob, onConsumedInitialJob }) => {
   const [jobs, setJobs]           = useState<JobPost[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [selectedJob, setSelectedJob] = useState<JobPost | null>(null);
+  const [selectedJob, setSelectedJob] = useState<JobPost | null>(initialJob ?? null);
   const [appliedIds, setAppliedIds]   = useState<Set<string>>(new Set());
   const [savedIds, setSavedIds]       = useState<Set<string>>(new Set());
   const [search, setSearch]           = useState('');
@@ -371,6 +375,10 @@ export const JobPage: React.FC<JobPageProps> = ({ onDetailChange, initialCompany
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
 
+  useEffect(() => {
+    if (initialJob) { onDetailChange?.(true); onConsumedInitialJob?.(); }
+  }, []);
+
   // Fetch user + jobs + existing applications
   const fetchData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -379,7 +387,7 @@ export const JobPage: React.FC<JobPageProps> = ({ onDetailChange, initialCompany
     const { data, error } = await supabase
       .from('job_positions')
       .select('id, azienda_id, titolo, modalita, sede, descrizione, responsabilita, requisiti, deadline_candidature, form_esterno, created_at, aziende(name, settore, logo_url, description)')
-      .neq('stato', 'chiuso')
+      .eq('stato', 'attivo')
       .order('created_at', { ascending: false });
 
     if (error) console.error('JobPage fetch error:', error);
@@ -457,6 +465,7 @@ export const JobPage: React.FC<JobPageProps> = ({ onDetailChange, initialCompany
           onSave={() => handleSave(selectedJob)}
           onBack={closeDetail}
           onOpenCompany={onOpenCompany}
+          onSelectJob={openDetail}
         />
       ) : (
         <>

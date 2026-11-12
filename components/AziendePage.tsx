@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, MapPin, Briefcase, ChevronLeft, ChevronRight, CheckCircle2, X, Star, SlidersHorizontal, Building2 } from 'lucide-react';
+import { Search, MapPin, Briefcase, ChevronLeft, ChevronRight, CheckCircle2, X, SlidersHorizontal, Building2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Company {
@@ -88,12 +88,9 @@ const CompanyCard: React.FC<{ company: Company; onDetail: () => void }> = ({ com
 const CompanyDetail: React.FC<{
   company: Company;
   isInterested: boolean;
-  isSaved: boolean;
-  onInterest: () => void;
-  onSave: () => void;
   onBack: () => void;
   onOpenJobsForCompany?: (companyId: string, companyName: string) => void;
-}> = ({ company, isInterested, isSaved, onInterest, onSave, onBack, onOpenJobsForCompany }) => {
+}> = ({ company, isInterested, onBack, onOpenJobsForCompany }) => {
   const [jobCount, setJobCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -101,19 +98,17 @@ const CompanyDetail: React.FC<{
       .from('job_positions')
       .select('id', { count: 'exact', head: true })
       .eq('azienda_id', company.id)
-      .neq('stato', 'chiuso')
+      .eq('stato', 'attivo')
       .then(({ count }) => setJobCount(count ?? 0));
   }, [company.id]);
 
   return (
     <div className="max-w-md mx-auto flex flex-col min-h-full">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 px-4 pt-3 pb-2 text-xs text-gray-400 font-medium">
-        <button onClick={onBack} className="flex items-center gap-1 text-orange-500 font-bold">
-          <ChevronLeft size={14} /> Aziende
+      {/* Back */}
+      <div className="px-4 pt-3 pb-2">
+        <button onClick={onBack} className="flex items-center gap-1 text-orange-500 font-bold text-xs">
+          <ChevronLeft size={14} /> Job Position
         </button>
-        <span>›</span>
-        <span className="text-gray-500 truncate">{company.name}</span>
       </div>
 
       {/* Hero — solo se c'è la copertina */}
@@ -187,26 +182,6 @@ const CompanyDetail: React.FC<{
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="px-4 pb-6 pt-3 border-t border-gray-100 flex items-center gap-3">
-        <button
-          onClick={onInterest}
-          className={`flex-1 py-3.5 rounded-2xl font-bold text-sm transition-all ${
-            isInterested ? 'bg-orange-100 text-orange-600 border-2 border-orange-200' : 'btn-primary-liquid'
-          }`}
-        >
-          {isInterested ? '✓ Mi interessa' : 'Mi interessa'}
-        </button>
-        <button
-          onClick={onSave}
-          className={`px-5 py-3.5 rounded-2xl border-2 font-bold text-sm transition-all flex items-center gap-2 ${
-            isSaved ? 'border-orange-300 text-orange-500 bg-orange-50' : 'border-gray-200 text-gray-600'
-          }`}
-        >
-          <Star size={16} className={isSaved ? 'fill-orange-500' : ''} />
-          Salva
-        </button>
-      </div>
     </div>
   );
 };
@@ -216,26 +191,25 @@ interface AziendePageProps {
   onDetailChange?: (isDetail: boolean) => void;
   onOpenJobsForCompany?: (companyId: string, companyName: string) => void;
   initialCompanyId?: string;
+  onBackFromInitial?: () => void;
 }
 
-export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange, onOpenJobsForCompany, initialCompanyId }) => {
+export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange, onOpenJobsForCompany, initialCompanyId, onBackFromInitial }) => {
   const [companies, setCompanies]           = useState<Company[]>([]);
   const [loading, setLoading]               = useState(true);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [interestedIds, setInterestedIds]   = useState<string[]>([]);
-  const [savedIds, setSavedIds]             = useState<string[]>([]);
   const [search, setSearch]                 = useState('');
   const [filterSector, setFilterSector]     = useState('Tutti');
   const [toast, setToast]                   = useState<string | null>(null);
   const [scrolled, setScrolled]             = useState(false);
-  const [userId, setUserId]                 = useState<string | null>(null);
   const sentinelRef                         = useRef<HTMLDivElement>(null);
+  const openedFromExternal                  = useRef(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) return;
       const uid = data.user.id;
-      setUserId(uid);
       supabase
         .from('company_interests')
         .select('company_id')
@@ -247,6 +221,20 @@ export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange, onOpen
   }, []);
 
   useEffect(() => {
+    if (initialCompanyId) {
+      // Fetch diretto per id: evita di aspettare l'intera lista aziende prima di aprire il dettaglio
+      supabase
+        .from('aziende')
+        .select('id, name, settore, indirizzo, cap, provincia, description, website, logo_url, cover_url')
+        .eq('id', initialCompanyId)
+        .single()
+        .then(({ data }) => {
+          if (data) { openedFromExternal.current = true; setSelectedCompany(data as Company); onDetailChange?.(true); }
+          setLoading(false);
+        });
+      return;
+    }
+
     supabase
       .from('aziende')
       .select('id, name, settore, indirizzo, cap, provincia, description, website, logo_url, cover_url')
@@ -254,13 +242,8 @@ export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange, onOpen
       .eq('mostra_partner', true)
       .order('name', { ascending: true })
       .then(({ data }) => {
-        const list = (data ?? []) as Company[];
-        setCompanies(list);
+        setCompanies((data ?? []) as Company[]);
         setLoading(false);
-        if (initialCompanyId) {
-          const match = list.find(c => c.id === initialCompanyId);
-          if (match) { setSelectedCompany(match); onDetailChange?.(true); }
-        }
       });
   }, []);
 
@@ -276,28 +259,15 @@ export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange, onOpen
   }, []);
 
   const openDetail  = (c: Company) => { setSelectedCompany(c); onDetailChange?.(true); };
-  const closeDetail = ()            => { setSelectedCompany(null); onDetailChange?.(false); };
-  const showToast   = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
-
-  const handleInterest = async (c: Company) => {
-    const was = interestedIds.includes(c.id);
-    setInterestedIds(prev => was ? prev.filter(id => id !== c.id) : [...prev, c.id]);
-    if (userId) {
-      if (was) {
-        await supabase.from('company_interests').delete()
-          .eq('company_id', c.id).eq('student_id', userId);
-      } else {
-        await supabase.from('company_interests').insert({ company_id: c.id, student_id: userId });
-      }
+  const closeDetail = () => {
+    setSelectedCompany(null);
+    onDetailChange?.(false);
+    if (openedFromExternal.current) {
+      openedFromExternal.current = false;
+      onBackFromInitial?.();
     }
-    showToast(was ? 'Interesse rimosso' : `Interesse registrato: ${c.name}`);
   };
-
-  const handleSave = (c: Company) => {
-    const was = savedIds.includes(c.id);
-    setSavedIds(prev => was ? prev.filter(id => id !== c.id) : [...prev, c.id]);
-    showToast(was ? 'Rimosso dai salvati' : `${c.name} salvata`);
-  };
+  const showToast   = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
 
   const settori = ['Tutti', ...new Set(companies.map(c => c.settore).filter(Boolean))] as string[];
 
@@ -306,6 +276,14 @@ export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange, onOpen
     const matchSector = filterSector === 'Tutti' || c.settore === filterSector;
     return matchSearch && matchSector;
   });
+
+  if (initialCompanyId && !selectedCompany && loading) {
+    return (
+      <div className="min-h-full flex items-center justify-center py-20">
+        <div className="w-8 h-8 rounded-full border-2 border-orange-200 border-t-orange-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-full">
@@ -322,9 +300,6 @@ export const AziendePage: React.FC<AziendePageProps> = ({ onDetailChange, onOpen
         <CompanyDetail
           company={selectedCompany}
           isInterested={interestedIds.includes(selectedCompany.id)}
-          isSaved={savedIds.includes(selectedCompany.id)}
-          onInterest={() => handleInterest(selectedCompany)}
-          onSave={() => handleSave(selectedCompany)}
           onBack={closeDetail}
           onOpenJobsForCompany={onOpenJobsForCompany}
         />

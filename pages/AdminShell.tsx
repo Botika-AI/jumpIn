@@ -11,6 +11,7 @@ import { AdminEventi } from './admin/AdminEventi';
 import { AdminJobPost } from './admin/AdminJobPost';
 import { AdminBadge } from './admin/AdminBadge';
 import { AdminCandidature } from './admin/AdminCandidature';
+import { AdminHomepage } from './admin/AdminHomepage';
 
 type AdminSection =
   | 'dashboard' | 'studenti' | 'aziende' | 'eventi'
@@ -31,16 +32,6 @@ interface Props {
   user: UserProfile;
   onLogout: () => void;
 }
-
-const PlaceholderSection: React.FC<{ label: string; Icon: React.ElementType }> = ({ label, Icon }) => (
-  <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-3">
-    <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
-      <Icon size={24} className="text-gray-400" />
-    </div>
-    <p className="font-bold font-montserrat text-gray-700">{label}</p>
-    <p className="text-sm text-gray-400">Sezione in costruzione</p>
-  </div>
-);
 
 export const AdminShell: React.FC<Props> = ({ user, onLogout }) => {
   const [activeSection, setActiveSection] = useState<AdminSection>('dashboard');
@@ -146,9 +137,7 @@ export const AdminShell: React.FC<Props> = ({ user, onLogout }) => {
           {activeSection === 'jobpost'   && <AdminJobPost />}
           {activeSection === 'badge'        && <AdminBadge />}
           {activeSection === 'candidature'  && <AdminCandidature />}
-          {activeSection !== 'dashboard' && activeSection !== 'studenti' && activeSection !== 'aziende' && activeSection !== 'eventi' && activeSection !== 'jobpost' && activeSection !== 'badge' && activeSection !== 'candidature' && (
-            <PlaceholderSection label={activeNav.label} Icon={activeNav.Icon} />
-          )}
+          {activeSection === 'homepage'     && <AdminHomepage />}
         </main>
       </div>
     </div>

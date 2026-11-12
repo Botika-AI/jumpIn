@@ -46,6 +46,17 @@ const Label: React.FC<{ children: React.ReactNode; required?: boolean }> = ({ ch
 const inputCls = "w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-[#1F2430] placeholder-gray-300 outline-none focus:border-orange-400 transition-colors";
 const textareaCls = `${inputCls} resize-none min-h-[110px]`;
 
+// ── Anteprima: mostra il testo esattamente come scritto (stesso rendering della vista studente) ──
+const RichTextPreview: React.FC<{ title: string; text: string }> = ({ title, text }) => {
+  if (!text.trim()) return null;
+  return (
+    <div>
+      <h4 className="font-bold font-montserrat text-gray-900 text-sm mb-1.5">{title}</h4>
+      <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{text}</p>
+    </div>
+  );
+};
+
 export const JobPostForm: React.FC<Props> = ({ mode, editId, onBack, onSaved }) => {
   const isEdit = mode === 'edit';
   const [form, setForm]         = useState<Omit<JobPostData, 'id'>>(EMPTY);
@@ -217,6 +228,17 @@ export const JobPostForm: React.FC<Props> = ({ mode, editId, onBack, onSaved }) 
             placeholder="Quali sono i requisiti minimi per questa posizione?"
             value={form.requisiti} onChange={e => set('requisiti', e.target.value)} />
         </div>
+
+        {(form.descrizione.trim() || form.responsabilita.trim() || form.requisiti.trim()) && (
+          <div>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Anteprima</p>
+            <div className="divide-y divide-gray-200">
+              {form.descrizione.trim()    && <div className="pb-4 first:pt-0 last:pb-0"><RichTextPreview title="Descrizione"              text={form.descrizione} /></div>}
+              {form.responsabilita.trim() && <div className="py-4 first:pt-0 last:pb-0"><RichTextPreview title="Responsabilità principali" text={form.responsabilita} /></div>}
+              {form.requisiti.trim()      && <div className="pt-4 first:pt-0 last:pb-0"><RichTextPreview title="Requisiti"                 text={form.requisiti} /></div>}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Dettagli candidatura */}

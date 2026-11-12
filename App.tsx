@@ -28,11 +28,12 @@ const AuthApp: React.FC = () => {
   const [privacyError, setPrivacyError] = useState(false);
 
   const loadProfile = async (userId: string): Promise<UserProfile | null> => {
-    const { data: profile } = await supabase
+    const { data: profile, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
+    if (error) console.error('loadProfile error:', error);
     if (profile) {
       setUser(profile as UserProfile);
       setAuthState('dashboard');
@@ -104,6 +105,10 @@ const AuthApp: React.FC = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!privacyAccepted) {
+      setPrivacyError(true);
+      return;
+    }
     setIsLoading(true);
     setLoginError(null);
 
@@ -157,6 +162,7 @@ const AuthApp: React.FC = () => {
       dob: formData.dob,
       is_admin: false,
       last_checkin: null,
+      created_at: new Date().toISOString(),
     });
 
     supabase.from('access_logs').insert({ user_id: data.user.id, user_type: 'studente' })
@@ -300,6 +306,26 @@ const AuthApp: React.FC = () => {
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Password</label>
               <input type="password" required minLength={8} className="w-full px-4 py-3 rounded-2xl glass-input text-sm"
                 value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-start gap-3 ml-1">
+                <input type="checkbox" id="privacy-register"
+                  checked={privacyAccepted}
+                  onChange={(e) => { setPrivacyAccepted(e.target.checked); setPrivacyError(false); }}
+                  className="mt-0.5 w-4 h-4 accent-orange-500 cursor-pointer shrink-0" />
+                <label htmlFor="privacy-register" className="text-xs text-gray-500 font-medium leading-relaxed cursor-pointer">
+                  Ho letto e accetto la{' '}
+                  <button type="button" onClick={() => window.open('https://www.fattorcomune.com/privacy-policy/', '_blank')}
+                    className="text-orange-500 font-bold hover:text-orange-600 hover:underline underline-offset-4 transition-all">
+                    normativa sulla privacy
+                  </button>
+                </label>
+              </div>
+              {privacyError && (
+                <p className="text-xs text-gray-500 font-medium ml-1 animate-in slide-in-from-top-1 duration-200">
+                  <span className="text-red-500">*</span> Devi accettare la normativa sulla privacy per continuare.
+                </p>
+              )}
             </div>
             <button type="submit" disabled={isLoading}
               className="w-full py-5 rounded-2xl btn-primary-liquid font-bold mt-6 disabled:opacity-70 transition-all">

@@ -11,7 +11,6 @@ interface Student { id: string; first_name: string | null; last_name: string | n
 
 interface ManualState {
   eventId: string;
-  selezione: 'tutti' | 'manuale' | null;
   studentIds: string[];
 }
 
@@ -41,13 +40,23 @@ const ManualPanel: React.FC<{
   const [partCount, setPartCount]       = useState(0);
   const [search, setSearch]             = useState('');
   const [saving, setSaving]             = useState(false);
+  const [originalAssignedIds, setOriginalAssignedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     supabase.from('events').select('id, name').order('event_date', { ascending: false })
       .then(({ data }) => setEventi((data ?? []) as Evento[]));
     supabase.from('profiles').select('id, first_name, last_name, email, school').order('last_name')
       .then(({ data }) => setStudents((data ?? []) as Student[]));
-  }, []);
+    // Precarica gli studenti a cui il badge è già assegnato: compaiono già spuntati,
+    // così togliendo la spunta si può rimuovere il badge a chi lo ha già.
+    supabase.from('badge_assegnazioni').select('user_id').eq('badge_id', badge.id)
+      .then(({ data }) => {
+        const ids = new Set((data ?? []).map((r: any) => r.user_id as string));
+        setOriginalAssignedIds(ids);
+        onChange({ ...state, studentIds: [...ids] });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [badge.id]);
 
   useEffect(() => {
     if (!state.eventId) { setPartCount(0); setParticipantIds(new Set()); return; }
@@ -65,29 +74,46 @@ const ManualPanel: React.FC<{
   const toggleStudent = (id: string) =>
     set({ studentIds: state.studentIds.includes(id) ? state.studentIds.filter(s => s !== id) : [...state.studentIds, id] });
 
-  // In selezione manuale: se c'è un evento mostra solo i partecipanti, poi applica la ricerca
-  const visibleStudents = students
-    .filter(s => !state.eventId || participantIds.has(s.id))
-    .filter(s => {
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
-      const name = [s.first_name, s.last_name].filter(Boolean).join(' ').toLowerCase();
-      return name.includes(q) || s.email.toLowerCase().includes(q);
-    });
+  // Se c'è un evento selezionato mostra solo i suoi partecipanti, altrimenti tutti gli studenti
+  const eligibleStudents = students.filter(s => !state.eventId || participantIds.has(s.id));
+  // Applica poi la ricerca sopra l'elenco già filtrato per evento
+  const visibleStudents = eligibleStudents.filter(s => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    const name = [s.first_name, s.last_name].filter(Boolean).join(' ').toLowerCase();
+    return name.includes(q) || s.email.toLowerCase().includes(q);
+  });
 
-  const badgeCount = state.selezione === 'tutti' ? partCount : state.studentIds.length;
-  const canSave    = !!state.selezione && (state.selezione === 'tutti' || state.studentIds.length > 0);
+  const allSelected = eligibleStudents.length > 0 && eligibleStudents.every(s => state.studentIds.includes(s.id));
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      const eligibleIds = new Set(eligibleStudents.map(s => s.id));
+      set({ studentIds: state.studentIds.filter(id => !eligibleIds.has(id)) });
+    } else {
+      set({ studentIds: [...new Set([...state.studentIds, ...eligibleStudents.map(s => s.id)])] });
+    }
+  };
+
+  const toAdd    = state.studentIds.filter(id => !originalAssignedIds.has(id));
+  const toRemove = [...originalAssignedIds].filter(id => !state.studentIds.includes(id));
+
+  const badgeCount = state.studentIds.length;
+  const canSave    = toAdd.length > 0 || toRemove.length > 0;
 
   const handleSave = async () => {
     if (!canSave) return;
     setSaving(true);
-    const ids = state.selezione === 'tutti'
-      ? [...participantIds]
-      : state.studentIds;
-    await supabase.from('badge_assegnazioni').upsert(
-      ids.map(uid => ({ badge_id: badge.id, user_id: uid })),
-      { onConflict: 'badge_id,user_id' }
-    );
+    if (toAdd.length > 0) {
+      await supabase.from('badge_assegnazioni').upsert(
+        toAdd.map(uid => ({ badge_id: badge.id, user_id: uid })),
+        { onConflict: 'badge_id,user_id' }
+      );
+    }
+    if (toRemove.length > 0) {
+      await supabase.from('badge_assegnazioni').delete()
+        .eq('badge_id', badge.id)
+        .in('user_id', toRemove);
+    }
     setSaving(false);
     onSave();
   };
@@ -102,7 +128,7 @@ const ManualPanel: React.FC<{
           <div className="mb-4">
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Seleziona Evento <span className="text-red-500">*</span></label>
             <div className="relative">
-              <select value={state.eventId} onChange={e => set({ eventId: e.target.value, selezione: null, studentIds: [] })} className={inputClass}>
+              <select value={state.eventId} onChange={e => set({ eventId: e.target.value })} className={inputClass}>
                 <option value="">Seleziona Evento...</option>
                 {eventi.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
               </select>
@@ -128,54 +154,53 @@ const ManualPanel: React.FC<{
             <p className="text-xs text-gray-500 mt-1">Iscritti all'Evento</p>
           </div>
           <div>
-            <p className="text-xs text-gray-400 mb-0.5">Badge da Assegnare</p>
-            <p className="text-xl font-bold text-gray-900">{badgeCount > 0 ? `${badgeCount} badge` : '—'}</p>
+            <p className="text-xs text-gray-400 mb-0.5">Studenti selezionati</p>
+            <p className="text-xl font-bold text-gray-900">{badgeCount > 0 ? `${badgeCount} student${badgeCount === 1 ? 'e' : 'i'}` : '—'}</p>
           </div>
+          {(toAdd.length > 0 || toRemove.length > 0) && (
+            <div className="flex items-center gap-3 text-xs">
+              {toAdd.length > 0 && <span className="font-semibold text-green-600">+{toAdd.length} nuovo{toAdd.length === 1 ? '' : 'i'}</span>}
+              {toRemove.length > 0 && <span className="font-semibold text-red-500">-{toRemove.length} rimoss{toRemove.length === 1 ? 'o' : 'i'}</span>}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Selezione studenti */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <p className="text-sm font-bold text-gray-900 mb-4">Selezione degli studenti</p>
-        <div className="flex items-center gap-6 mb-4">
-          {(['tutti', 'manuale'] as const).map(opt => (
-            <label key={opt} className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={state.selezione === opt}
-                onChange={() => { set({ selezione: state.selezione === opt ? null : opt, studentIds: [] }); setSearch(''); }}
-                className="w-4 h-4 accent-[#E8792F] rounded" />
-              <span className="text-sm font-semibold text-gray-700">{opt === 'tutti' ? 'Tutti i Partecipanti' : 'Selezione Manuale'}</span>
-            </label>
-          ))}
-        </div>
-        {state.selezione === 'manuale' && (
-          <>
-            {/* Barra di ricerca */}
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder={state.eventId ? 'Cerca tra i partecipanti...' : 'Cerca studente per nome o email...'}
-              className="w-full px-3.5 py-2.5 mb-3 rounded-xl border border-gray-200 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 bg-white"
-            />
-            {state.eventId && participantIds.size === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">Nessun iscritto per questo evento.</p>
-            ) : visibleStudents.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">Nessun risultato per "{search}".</p>
-            ) : (
-              <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden max-h-64 overflow-y-auto">
-                {visibleStudents.map(s => (
-                  <label key={s.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors">
-                    <input type="checkbox" checked={state.studentIds.includes(s.id)} onChange={() => toggleStudent(s.id)}
-                      className="w-4 h-4 accent-[#E8792F] rounded shrink-0" />
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">{[s.first_name, s.last_name].filter(Boolean).join(' ') || s.email}</p>
-                      <p className="text-xs text-gray-400">{s.school ?? s.email}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            )}
-          </>
+
+        <label className="flex items-center gap-2 cursor-pointer mb-4">
+          <input type="checkbox" checked={allSelected} onChange={toggleSelectAll}
+            className="w-4 h-4 accent-[#E8792F] rounded" />
+          <span className="text-sm font-semibold text-gray-700">Seleziona tutti i partecipanti</span>
+        </label>
+
+        {/* Barra di ricerca */}
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder={state.eventId ? 'Cerca tra i partecipanti...' : 'Cerca studente per nome o email...'}
+          className="w-full px-3.5 py-2.5 mb-3 rounded-xl border border-gray-200 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 bg-white"
+        />
+        {state.eventId && participantIds.size === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-6">Nessun iscritto per questo evento.</p>
+        ) : visibleStudents.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-6">Nessun risultato per "{search}".</p>
+        ) : (
+          <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden max-h-64 overflow-y-auto">
+            {visibleStudents.map(s => (
+              <label key={s.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors">
+                <input type="checkbox" checked={state.studentIds.includes(s.id)} onChange={() => toggleStudent(s.id)}
+                  className="w-4 h-4 accent-[#E8792F] rounded shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">{[s.first_name, s.last_name].filter(Boolean).join(' ') || s.email}</p>
+                  <p className="text-xs text-gray-400">{s.school ?? s.email}</p>
+                </div>
+              </label>
+            ))}
+          </div>
         )}
       </div>
 
@@ -184,7 +209,7 @@ const ManualPanel: React.FC<{
         <button onClick={onBack} className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">Annulla</button>
         <button onClick={handleSave} disabled={!canSave || saving}
           className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-[#E8792F] hover:bg-[#d06a25] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-          {saving ? 'Assegnazione in corso...' : 'Assegna Badge'}
+          {saving ? 'Salvataggio...' : 'Salva modifiche'}
         </button>
       </div>
     </div>
@@ -379,10 +404,10 @@ export const AssegnazioneBadge: React.FC<Props> = ({ badge, onBack }) => {
   const [mode, setMode] = useState<Mode>('manual');
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const [manualState, setManualState] = useState<ManualState>({ eventId: '', selezione: null, studentIds: [] });
+  const [manualState, setManualState] = useState<ManualState>({ eventId: '', studentIds: [] });
 
   const handleManualSaved = () => {
-    setSuccessMsg('Badge assegnati con successo!');
+    setSuccessMsg('Modifiche salvate con successo!');
     setTimeout(() => { setSuccessMsg(null); onBack(); }, 1800);
   };
 

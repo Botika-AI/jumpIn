@@ -14,7 +14,7 @@ const INTERESTS = [
 ];
 
 const GOALS = [
-  { key: 'hackathon', label: 'Partecipare ad Hackathon', Icon: Zap         },
+  { key: 'hackathon', label: "Partecipare ai Jump'In",   Icon: Zap         },
   { key: 'labs',      label: 'Frequentare Laboratori',   Icon: FlaskConical },
   { key: 'content',   label: 'Accedere a Contenuti',     Icon: BookOpen    },
 ];

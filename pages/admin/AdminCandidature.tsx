@@ -15,6 +15,7 @@ interface EventoRow {
   event_end: string | null;
   tipo: string | null;
   stato: string | null;
+  max_partecipanti: number | null;
   iscrizioni_count: number;
 }
 
@@ -86,11 +87,19 @@ function JobStatoBadge({ stato }: { stato: 'attivo' | 'bozza' | 'chiuso' }) {
   );
 }
 
-function EventoStatoBadge({ stato }: { stato: string | null }) {
+function EventoStatoBadge({ stato, eventDate, eventEnd }: { stato: string | null; eventDate: string; eventEnd: string | null }) {
   const isBozza = stato === 'bozza';
+  const today = new Date().toISOString().split('T')[0];
+  const concluso = !isBozza && (eventEnd || eventDate) < today;
+  const label = isBozza ? 'Bozza' : concluso ? 'Concluso' : 'Pubblicato';
+  const style = isBozza
+    ? 'bg-orange-50 text-orange-400'
+    : concluso
+      ? 'bg-gray-100 text-gray-500'
+      : 'bg-[#E6F6EC] text-[#34A853]';
   return (
-    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${isBozza ? 'bg-orange-50 text-orange-400' : 'bg-[#E6F6EC] text-[#34A853]'}`}>
-      {isBozza ? 'Bozza' : 'Pubblicato'}
+    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${style}`}>
+      {label}
     </span>
   );
 }
@@ -129,10 +138,11 @@ interface EventoDetailProps {
   entityId: string;
   titolo: string;
   nomeEntita: string;
+  maxPartecipanti: number | null;
   onBack: () => void;
 }
 
-const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeEntita, onBack }) => {
+const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeEntita, maxPartecipanti, onBack }) => {
   const [candidature, setCandidature] = useState<Candidatura[]>([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState('');
@@ -152,8 +162,11 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
   const inAttesa  = candidature.filter(c => c.stato === 'in_attesa').length;
   const accettate = candidature.filter(c => c.stato === 'accettata').length;
   const rifiutate = candidature.filter(c => c.stato === 'rifiutata').length;
+  const remaining = maxPartecipanti != null ? Math.max(0, maxPartecipanti - accettate) : null;
+  const isFull    = remaining !== null && remaining <= 0;
 
   const updateStato = async (id: string, stato: StatoCandidatura) => {
+    if (stato === 'accettata' && isFull) return;
     await supabase.from('iscrizioni_eventi').update({ stato }).eq('id', id);
     setCandidature(prev => prev.map(c => c.id === id ? { ...c, stato } : c));
     const cand = candidature.find(c => c.id === id);
@@ -171,7 +184,11 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
   };
 
   const bulkUpdate = async (stato: StatoCandidatura) => {
-    const targets = candidature.filter(c => c.stato === 'in_attesa');
+    let targets = candidature.filter(c => c.stato === 'in_attesa');
+    if (stato === 'accettata' && remaining !== null) {
+      if (remaining <= 0) return;
+      targets = targets.slice(0, remaining);
+    }
     if (targets.length === 0) return;
     await supabase.from('iscrizioni_eventi').update({ stato }).in('id', targets.map(c => c.id));
     setCandidature(prev => prev.map(c => c.stato === 'in_attesa' ? { ...c, stato } : c));
@@ -226,13 +243,25 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
         </button>
       </div>
 
+      {!loading && isFull && (
+        <div className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3">
+          <p className="text-sm font-semibold text-gray-600">
+            Numero massimo di partecipanti raggiunto ({maxPartecipanti}). Non è più possibile accettare nuove candidature.
+          </p>
+        </div>
+      )}
+
       {!loading && inAttesa > 0 && (
         <div className="flex items-center justify-between gap-4 bg-orange-50 border border-orange-100 rounded-2xl px-5 py-3 flex-wrap">
           <p className="text-sm font-semibold text-orange-700">
             Hai <span className="font-bold">{inAttesa}</span> candidatur{inAttesa === 1 ? 'a' : 'e'} in attesa di revisione
+            {remaining !== null && !isFull && remaining < inAttesa && ` · ${remaining} post${remaining === 1 ? 'o' : 'i'} disponibil${remaining === 1 ? 'e' : 'i'}`}
           </p>
           <div className="flex items-center gap-2">
-            <button onClick={() => bulkUpdate('accettata')} className="px-4 py-1.5 rounded-xl text-sm font-bold text-white bg-green-500 hover:bg-green-600 transition-colors">Accetta tutte</button>
+            <button onClick={() => bulkUpdate('accettata')} disabled={isFull}
+              className="px-4 py-1.5 rounded-xl text-sm font-bold text-white bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
+              Accetta tutte
+            </button>
             <button onClick={() => bulkUpdate('rifiutata')} className="px-4 py-1.5 rounded-xl text-sm font-bold text-white bg-red-500 hover:bg-red-600 transition-colors">Rifiuta tutte</button>
           </div>
         </div>
@@ -289,8 +318,9 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
                   <div className="flex items-center gap-2">
                     {c.stato === 'in_attesa' && (
                       <>
-                        <button onClick={() => updateStato(c.id, 'accettata')} title="Accetta"
-                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors">
+                        <button onClick={() => updateStato(c.id, 'accettata')} disabled={isFull}
+                          title={isFull ? 'Posti esauriti' : 'Accetta'}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-green-50 text-green-600 hover:bg-green-100 disabled:bg-gray-100 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors">
                           <Check size={13} />
                         </button>
                         <button onClick={() => updateStato(c.id, 'rifiutata')} title="Rifiuta"
@@ -437,7 +467,7 @@ const EventiList: React.FC<{ onDetail: (ev: EventoRow) => void }> = ({ onDetail 
   useEffect(() => {
     supabase
       .from('events')
-      .select('id, name, event_date, event_end, tipo, stato, iscrizioni_eventi(count)')
+      .select('id, name, event_date, event_end, tipo, stato, max_partecipanti, iscrizioni_eventi(count)')
       .order('event_date', { ascending: false })
       .then(({ data }) => {
         setEvents((data ?? []).map((e: any) => ({
@@ -492,7 +522,7 @@ const EventiList: React.FC<{ onDetail: (ev: EventoRow) => void }> = ({ onDetail 
                 <td className="px-6 py-3 text-sm text-gray-500 whitespace-nowrap">
                   {fmtDateRange(ev.event_date, ev.event_end)}
                 </td>
-                <td className="px-6 py-3"><EventoStatoBadge stato={ev.stato} /></td>
+                <td className="px-6 py-3"><EventoStatoBadge stato={ev.stato} eventDate={ev.event_date} eventEnd={ev.event_end} /></td>
                 <td className="px-6 py-3">
                   <button onClick={() => onDetail(ev)}
                     className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-orange-500 transition-colors group">
@@ -643,6 +673,7 @@ export const AdminCandidature: React.FC = () => {
         entityId={selectedEvento.id}
         titolo={`Candidature: ${selectedEvento.name}`}
         nomeEntita={selectedEvento.name}
+        maxPartecipanti={selectedEvento.max_partecipanti}
         onBack={backToList}
       />
     );

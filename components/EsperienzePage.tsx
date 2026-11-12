@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, CalendarDays, MapPin, Users, ChevronLeft, CheckCircle2, X, BookOpen, SlidersHorizontal, ScrollText, Download } from 'lucide-react';
+import { Search, CalendarDays, MapPin, Users, ChevronLeft, CheckCircle2, X, BookOpen, SlidersHorizontal, ScrollText, Download, Globe } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { generateCertificatePDF } from '../lib/certificateGenerator';
 
@@ -59,13 +59,19 @@ function fmtDateRange(start: string, end: string | null) {
   return `${sDay} ${sMon} – ${eDay} ${mon} ${yr}`;
 }
 
+function extractCity(location: string | null): string | null {
+  if (!location) return null;
+  return location.split(',')[0].trim();
+}
+
 // ── Card ──────────────────────────────────────────────────────────────────────
 const EventoCard: React.FC<{
   ev: Evento;
   iscrizione: Iscrizione | undefined;
+  accettati: number;
   onDetail: () => void;
   onEnroll: () => void;
-}> = ({ ev, iscrizione, onDetail, onEnroll }) => {
+}> = ({ ev, iscrizione, accettati, onDetail, onEnroll }) => {
   const isAttesa    = iscrizione?.stato === 'in_attesa';
   const isAccettata = iscrizione?.stato === 'accettata';
   const isRifiutata = iscrizione?.stato === 'rifiutata';
@@ -73,6 +79,7 @@ const EventoCard: React.FC<{
 
   const today = new Date().toISOString().split('T')[0];
   const isConcluso = (ev.event_end || ev.event_date) < today;
+  const isFull = ev.max_partecipanti != null && accettati >= ev.max_partecipanti;
 
   const badgeLabel = isAccettata ? 'Confermato' : isAttesa ? 'In attesa' : isRifiutata ? 'Rifiutato' : null;
   const badgeStyle = isAccettata ? 'bg-green-50 text-green-600' : isAttesa ? 'bg-orange-50 text-orange-500' : 'bg-red-50 text-red-500';
@@ -104,8 +111,13 @@ const EventoCard: React.FC<{
       {/* Data + location + partecipanti */}
       <div className="flex items-center gap-2.5 text-xs text-gray-400 font-medium mb-4 flex-nowrap">
         <span className="flex items-center gap-1"><CalendarDays size={12} />{fmtDateRange(ev.event_date, ev.event_end)}</span>
-        {ev.location && <span className="flex items-center gap-1"><MapPin size={12} />{ev.location}</span>}
-        {ev.max_partecipanti && <span className="flex items-center gap-1"><Users size={12} />{ev.max_partecipanti}</span>}
+        {(extractCity(ev.location) || ev.modalita) && (
+          <span className="flex items-center gap-1">
+            {extractCity(ev.location) ? <MapPin size={12} /> : <Globe size={12} />}
+            {[extractCity(ev.location), ev.modalita].filter(Boolean).join(' · ')}
+          </span>
+        )}
+        {ev.max_partecipanti && <span className="flex items-center gap-1"><Users size={12} />{accettati}/{ev.max_partecipanti}</span>}
       </div>
 
       {/* Bottoni */}
@@ -120,6 +132,8 @@ const EventoCard: React.FC<{
           <span className="flex-1 py-2.5 text-sm font-semibold text-gray-400 text-center">In attesa di conferma</span>
         ) : isConcluso ? (
           <span className="flex-1 py-2.5 text-sm font-semibold text-gray-400 text-center">Concluso</span>
+        ) : isFull ? (
+          <span className="flex-1 py-2.5 text-sm font-semibold text-gray-400 text-center">Posti esauriti</span>
         ) : (
           <button onClick={onEnroll} className="flex-1 py-2.5 rounded-xl btn-primary-liquid text-sm font-bold">
             Partecipa
@@ -146,10 +160,11 @@ interface CertificatoTemplate {
 const EventoDetail: React.FC<{
   ev: Evento;
   iscrizione: Iscrizione | undefined;
+  accettati: number;
   onEnroll: () => void;
   onCancel: () => void;
   onBack: () => void;
-}> = ({ ev, iscrizione, onEnroll, onCancel, onBack }) => {
+}> = ({ ev, iscrizione, accettati, onEnroll, onCancel, onBack }) => {
   const [tab, setTab] = useState<'dettagli' | 'materiali'>('dettagli');
   const [materiali, setMateriali] = useState<{ id: string; titolo: string; tipo: string; url: string }[]>([]);
   const [certificato, setCertificato] = useState<CertificatoTemplate | null>(null);
@@ -177,15 +192,23 @@ const EventoDetail: React.FC<{
     });
   }, [ev.id]);
 
-  // Controlla se il certificato è stato assegnato all'utente dall'admin
+  // Certificato sbloccato automaticamente se l'evento è concluso ed è stato
+  // registrato almeno un ingresso e un'uscita, oppure se assegnato manualmente dall'admin
   useEffect(() => {
     if (!certificato || !currentUserId) { setHaPartecipato(null); return; }
-    supabase.from('certificati_assegnazioni')
-      .select('id', { count: 'exact', head: true })
-      .eq('certificato_id', certificato.id)
-      .eq('user_id', currentUserId)
-      .then(({ count }) => setHaPartecipato((count ?? 0) > 0));
-  }, [certificato?.id, currentUserId]);
+    const today = new Date().toISOString().split('T')[0];
+    const concluso = (ev.event_end || ev.event_date) < today;
+    Promise.all([
+      supabase.from('attendances').select('type').eq('event_id', ev.id).eq('user_id', currentUserId),
+      supabase.from('certificati_assegnazioni').select('id', { count: 'exact', head: true })
+        .eq('certificato_id', certificato.id).eq('user_id', currentUserId),
+    ]).then(([attRes, assegRes]) => {
+      const tipi = new Set((attRes.data ?? []).map((a: any) => a.type));
+      const haFattoIngressoEUscita = tipi.has('ingresso') && tipi.has('uscita');
+      const assegnatoManualmente = (assegRes.count ?? 0) > 0;
+      setHaPartecipato(concluso && (haFattoIngressoEUscita || assegnatoManualmente));
+    });
+  }, [certificato?.id, currentUserId, ev.id, ev.event_date, ev.event_end]);
 
   const handleDownloadCertificato = async () => {
     if (!certificato) return;
@@ -206,9 +229,11 @@ const EventoDetail: React.FC<{
   };
 
   const gradient  = gradientForId(ev.id);
+  const isRifiutata = iscrizione?.stato === 'rifiutata';
   const isIscritto = !!iscrizione && iscrizione.stato !== 'rifiutata';
   const today = new Date().toISOString().split('T')[0];
   const isConcluso = (ev.event_end || ev.event_date) < today;
+  const isFull = ev.max_partecipanti != null && accettati >= ev.max_partecipanti;
 
   const TABS: { key: 'dettagli' | 'materiali'; label: string }[] = [
     { key: 'dettagli',  label: 'Dettagli'  },
@@ -246,7 +271,11 @@ const EventoDetail: React.FC<{
             <h1 className="font-bold font-montserrat text-[#0F172A] text-lg leading-snug flex-1">
               {ev.name}
             </h1>
-            {isIscritto && (
+            {isRifiutata ? (
+              <span className="shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full bg-red-50 text-red-500">
+                Rifiutato
+              </span>
+            ) : isIscritto && (
               <span className={`shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full ${
                 iscrizione?.stato === 'accettata'
                   ? isConcluso ? 'bg-gray-100 text-gray-500' : 'bg-green-50 text-green-600'
@@ -263,12 +292,14 @@ const EventoDetail: React.FC<{
               <CalendarDays size={11} className="text-[#94A3B8] shrink-0" />
               {fmtDateRange(ev.event_date, ev.event_end)}
             </span>
-            {ev.location && (
+            {(extractCity(ev.location) || ev.modalita) && (
               <>
                 <span className="text-[#CBD5E1]">•</span>
                 <span className="flex items-center gap-1 whitespace-nowrap">
-                  <MapPin size={11} className="text-[#94A3B8] shrink-0" />
-                  {ev.location}
+                  {extractCity(ev.location)
+                    ? <MapPin size={11} className="text-[#94A3B8] shrink-0" />
+                    : <Globe size={11} className="text-[#94A3B8] shrink-0" />}
+                  {[extractCity(ev.location), ev.modalita].filter(Boolean).join(' · ')}
                 </span>
               </>
             )}
@@ -277,7 +308,7 @@ const EventoDetail: React.FC<{
                 <span className="text-[#CBD5E1]">•</span>
                 <span className="flex items-center gap-1 whitespace-nowrap">
                   <Users size={11} className="text-[#94A3B8] shrink-0" />
-                  {ev.max_partecipanti} posti
+                  {accettati}/{ev.max_partecipanti} posti
                 </span>
               </>
             )}
@@ -421,11 +452,31 @@ const EventoDetail: React.FC<{
                 </button>
               </>
             )
+          ) : isRifiutata ? (
+            <>
+              <button onClick={onBack}
+                className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-500 active:bg-gray-50 transition-all">
+                Indietro
+              </button>
+              <span className="flex-1 py-3.5 rounded-2xl bg-red-50 font-bold text-sm text-red-500 text-center">
+                Rifiutato
+              </span>
+            </>
           ) : isConcluso ? (
             <button onClick={onBack}
               className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-500 active:bg-gray-50 transition-all">
               Indietro
             </button>
+          ) : isFull ? (
+            <>
+              <button onClick={onBack}
+                className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-500 active:bg-gray-50 transition-all">
+                Indietro
+              </button>
+              <span className="flex-1 py-3.5 rounded-2xl bg-gray-100 font-bold text-sm text-gray-400 text-center">
+                Posti esauriti
+              </span>
+            </>
           ) : (
             <>
               <button onClick={onBack}
@@ -463,6 +514,7 @@ interface EsperienzePageProps {
 export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange, initialEventId, onBackFromInitial }) => {
   const [eventi, setEventi]             = useState<Evento[]>([]);
   const [iscrizioni, setIscrizioni]     = useState<Iscrizione[]>([]);
+  const [acceptedCounts, setAcceptedCounts] = useState<Record<string, number>>({});
   const [loading, setLoading]           = useState(true);
   const [selectedEv, setSelectedEv]     = useState<Evento | null>(null);
   const [search, setSearch]             = useState('');
@@ -482,6 +534,15 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange, 
           const target = evs.find((e: Evento) => e.id === initialEventId);
           if (target) { openedFromExternal.current = true; setSelectedEv(target); onDetailChange?.(true); }
         }
+      });
+
+    supabase.from('iscrizioni_eventi').select('event_id').eq('stato', 'accettata')
+      .then(({ data }) => {
+        const counts: Record<string, number> = {};
+        for (const row of (data ?? []) as { event_id: string }[]) {
+          counts[row.event_id] = (counts[row.event_id] ?? 0) + 1;
+        }
+        setAcceptedCounts(counts);
       });
 
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -530,6 +591,10 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange, 
   };
 
   const handleEnroll = async (ev: Evento) => {
+    if (ev.max_partecipanti != null && (acceptedCounts[ev.id] ?? 0) >= ev.max_partecipanti) {
+      showToast('Posti esauriti per questo evento');
+      return;
+    }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { error } = await supabase.from('iscrizioni_eventi')
@@ -556,6 +621,14 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange, 
     (ev.tags ?? []).some((t: string) => t.toLowerCase().includes(search.toLowerCase()))
   );
 
+  if (initialEventId && !selectedEv && loading) {
+    return (
+      <div className="min-h-full flex items-center justify-center py-20">
+        <div className="w-8 h-8 rounded-full border-2 border-orange-200 border-t-orange-500 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-full">
       {toast && (
@@ -570,6 +643,7 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange, 
         <EventoDetail
           ev={selectedEv}
           iscrizione={iscrizioni.find(i => i.event_id === selectedEv.id)}
+          accettati={acceptedCounts[selectedEv.id] ?? 0}
           onEnroll={() => handleEnroll(selectedEv)}
           onCancel={() => setConfirmCancel(selectedEv)}
           onBack={closeDetail}
@@ -606,6 +680,7 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange, 
                     key={ev.id}
                     ev={ev}
                     iscrizione={iscrizioni.find(i => i.event_id === ev.id)}
+                    accettati={acceptedCounts[ev.id] ?? 0}
                     onDetail={() => openDetail(ev)}
                     onEnroll={() => handleEnroll(ev)}
                   />

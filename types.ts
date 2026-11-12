@@ -11,6 +11,8 @@ export interface UserProfile {
   citta?: string;
   interests?: string[];
   goals?: string[];
+  created_at?: string;
+  profile_completed_at?: string | null;
 }
 
 export type AuthState = 'loading' | 'login' | 'register' | 'onboarding' | 'dashboard' | 'reset' | 'set-password';

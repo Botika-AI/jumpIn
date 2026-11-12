@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Building2, Calendar, MessageSquare } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { JumpInEvent } from '../../types';
+import { AdminFeedbackList } from './AdminFeedbackList';
 
 // ── Tipi ─────────────────────────────────────────────────────────────────────
 
@@ -105,10 +106,13 @@ const LineChart: React.FC<{ data: ChartBin[] }> = ({ data }) => {
 
 // ── Sotto-componenti ───────────────────────────────────────────────────────────
 
-const KpiCard: React.FC<{ label: string; value: number; delta?: string; Icon: React.ElementType }> = ({
-  label, value, delta, Icon,
+const KpiCard: React.FC<{ label: string; value: number; delta?: string; Icon: React.ElementType; onClick?: () => void }> = ({
+  label, value, delta, Icon, onClick,
 }) => (
-  <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex-1 min-w-0">
+  <div
+    onClick={onClick}
+    className={`bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex-1 min-w-0 ${onClick ? 'cursor-pointer hover:border-orange-200 hover:shadow-md transition-all' : ''}`}
+  >
     <div className="flex items-start justify-between mb-3">
       <p className="text-xs text-gray-400 font-medium leading-snug">{label}</p>
       <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center shrink-0 ml-2">
@@ -134,6 +138,7 @@ const StatusBadge: React.FC<{ status: EventStatus }> = ({ status }) => {
 // ── Dashboard principale ───────────────────────────────────────────────────────
 
 export const AdminDashboard: React.FC = () => {
+  const [view, setView] = useState<'dashboard' | 'feedback'>('dashboard');
   const [loading, setLoading] = useState(true);
   const [kpi, setKpi] = useState<KPI>({ studenti: 0, aziende: 0, esperienze: 0, feedback: 0 });
   const [eventiRows, setEventiRows] = useState<EventRow[]>([]);
@@ -146,7 +151,7 @@ export const AdminDashboard: React.FC = () => {
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-    const [studentiRes, eventiRes, attendancesRes, logsRes, recentLogsRes] = await Promise.all([
+    const [studentiRes, eventiRes, attendancesRes, logsRes, recentLogsRes, feedbackRes] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_admin', false),
       supabase.from('events').select('id, name, event_date, event_end').order('event_date', { ascending: false }),
       supabase.from('iscrizioni_eventi').select('user_id, event_id, stato'),
@@ -159,6 +164,7 @@ export const AdminDashboard: React.FC = () => {
         .select('user_id, user_type, accessed_at, profiles(first_name, last_name, email, is_admin)')
         .order('accessed_at', { ascending: false })
         .limit(50),
+      supabase.from('feedback_eventi').select('*', { count: 'exact', head: true }),
     ]);
 
     // Aziende: tabella potrebbe non esistere ancora
@@ -174,9 +180,10 @@ export const AdminDashboard: React.FC = () => {
 
     // KPI
     const esperienze = allEvents.filter(e => eventStatus(e) !== 'Concluso').length;
-    setKpi({ studenti: studentiRes.count ?? 0, aziende: aziendeCount, esperienze, feedback: 0 });
+    setKpi({ studenti: studentiRes.count ?? 0, aziende: aziendeCount, esperienze, feedback: feedbackRes.count ?? 0 });
 
-    // Partecipazioni recenti: ultimi 3 eventi + conteggio iscritti accettati da iscrizioni_eventi
+    // Partecipazioni recenti: i 3 eventi più vicini a oggi (non i più lontani nel tempo)
+    // + conteggio iscritti accettati da iscrizioni_eventi
     const partsPerEvento = allAttendances.reduce<Record<string, Set<string>>>((acc, a) => {
       if (a.stato !== 'accettata') return acc;
       if (!acc[a.event_id]) acc[a.event_id] = new Set();
@@ -184,7 +191,14 @@ export const AdminDashboard: React.FC = () => {
       return acc;
     }, {});
 
-    setEventiRows(allEvents.slice(0, 3).map(e => ({
+    const oggi = Date.now();
+    const eventiPerVicinanza = [...allEvents].sort((a, b) => {
+      const distA = Math.abs(new Date(a.event_date).getTime() - oggi);
+      const distB = Math.abs(new Date(b.event_date).getTime() - oggi);
+      return distA - distB;
+    });
+
+    setEventiRows(eventiPerVicinanza.slice(0, 3).map(e => ({
       id: e.id, name: e.name, event_date: e.event_date, event_end: e.event_end ?? null,
       partecipanti: partsPerEvento[e.id]?.size ?? 0,
       stato: eventStatus(e),
@@ -228,6 +242,10 @@ export const AdminDashboard: React.FC = () => {
     );
   }
 
+  if (view === 'feedback') {
+    return <AdminFeedbackList onBack={() => setView('dashboard')} />;
+  }
+
   return (
     <div className="space-y-6 max-w-7xl">
       {/* Header */}
@@ -241,7 +259,7 @@ export const AdminDashboard: React.FC = () => {
         <KpiCard label="Studenti totali"   value={kpi.studenti}   Icon={Users}          />
         <KpiCard label="Aziende totali"    value={kpi.aziende}    Icon={Building2}      />
         <KpiCard label="Esperienze attive" value={kpi.esperienze} Icon={Calendar}       />
-        <KpiCard label="Feedback raccolti" value={kpi.feedback}   Icon={MessageSquare}  />
+        <KpiCard label="Feedback raccolti" value={kpi.feedback}   Icon={MessageSquare}  onClick={() => setView('feedback')} />
       </div>
 
       {/* Partecipazioni recenti */}

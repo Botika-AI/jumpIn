@@ -6,14 +6,14 @@ import {
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { supabase } from '../lib/supabase';
+import { RealBadge, BadgeModal } from './BadgeModal';
 
-type SettingsTab = 'account' | 'attivita' | 'badge' | 'sicurezza' | 'visibilita';
+type SettingsTab = 'account' | 'attivita' | 'sicurezza' | 'visibilita';
 type EditingField = 'nome' | 'bio' | 'citta' | 'interessi' | null;
 
 const SETTINGS_TABS: { key: SettingsTab; label: string; Icon: React.ElementType }[] = [
   { key: 'account',    label: 'Account',    Icon: User     },
   { key: 'attivita',   label: 'Attività',   Icon: Activity },
-  { key: 'badge',      label: 'Badge',      Icon: Award    },
   { key: 'sicurezza',  label: 'Sicurezza',  Icon: Lock     },
   { key: 'visibilita', label: 'Visibilità e Privacy', Icon: Shield },
 ];
@@ -51,12 +51,64 @@ const AccountTab: React.FC<{ user: UserProfile; onUserUpdate?: (u: Partial<UserP
   const [saving,  setSaving]  = useState(false);
   const [toast,   setToast]   = useState<{ msg: string; ok: boolean } | null>(null);
 
+  const [badgeCount, setBadgeCount]         = useState(0);
+  const [esperienzeCount, setEsperienzeCount] = useState(0);
+
+  useEffect(() => {
+    supabase.from('badge_assegnazioni').select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .then(({ count }) => setBadgeCount(count ?? 0));
+
+    supabase.from('attendances').select('event_id, type').eq('user_id', user.id)
+      .then(({ data }) => {
+        const tipiPerEvento = new Map<string, Set<string>>();
+        for (const a of (data ?? []) as { event_id: string; type: string }[]) {
+          if (!tipiPerEvento.has(a.event_id)) tipiPerEvento.set(a.event_id, new Set());
+          tipiPerEvento.get(a.event_id)!.add(a.type);
+        }
+        let completate = 0;
+        for (const tipi of tipiPerEvento.values()) {
+          if (tipi.has('ingresso') && tipi.has('uscita')) completate++;
+        }
+        setEsperienzeCount(completate);
+      });
+  }, [user.id]);
+
   const initials = `${displayFirstName[0] || ''}${displayLastName[0] || ''}`.toUpperCase() || '?';
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 3000);
   };
+
+  const maybeMarkProfileCompleted = async (nowBio: string, nowCitta: string, nowInterests: string[]) => {
+    if (!(nowBio && nowCitta && nowInterests.length > 0)) return;
+    const completedAt = new Date().toISOString();
+    // Update condizionale e atomico: va a buon fine SOLO se profile_completed_at
+    // è ancora NULL, quindi anche con più chiamate quasi simultanee (mount +
+    // salvataggio) al massimo una sola può davvero "vincere" e notificare.
+    const { data, error: completeErr } = await supabase
+      .from('profiles')
+      .update({ profile_completed_at: completedAt })
+      .eq('id', user.id)
+      .is('profile_completed_at', null)
+      .select('id');
+    if (completeErr) { console.error('profile_completed_at update error:', completeErr); return; }
+    if (data && data.length > 0) {
+      onUserUpdate?.({ profile_completed_at: completedAt });
+      supabase.rpc('notify_profile_completed', { p_user_id: user.id })
+        .then(({ error }) => { if (error) console.error('notify_profile_completed error:', error); });
+    }
+  };
+
+  // Copre il caso in cui bio/città/interessi risultino già tutti compilati
+  // all'apertura della pagina (es. impostati dall'admin, o in un ordine
+  // diverso in una sessione precedente) senza che un salvataggio "nuovo"
+  // abbia mai fatto scattare il controllo.
+  useEffect(() => {
+    maybeMarkProfileCompleted(user.bio || '', user.citta || '', user.interests || []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id]);
 
   const openEdit = (field: EditingField) => {
     setEditing(field);
@@ -107,6 +159,14 @@ const AccountTab: React.FC<{ user: UserProfile; onUserUpdate?: (u: Partial<UserP
     }
     setEditing(null);
     showToast('Salvato');
+
+    // Prima volta che bio + città + almeno un interesse sono tutti presenti
+    {
+      const nowBio       = field === 'bio'       ? draftBio.trim()       : displayBio;
+      const nowCitta     = field === 'citta'     ? draftCitta.trim()     : displayCitta;
+      const nowInterests = field === 'interessi' ? draftInterests        : displayInterests;
+      await maybeMarkProfileCompleted(nowBio, nowCitta, nowInterests);
+    }
   };
 
   const addInterest = () => {
@@ -160,12 +220,12 @@ const AccountTab: React.FC<{ user: UserProfile; onUserUpdate?: (u: Partial<UserP
           <div className="flex items-center gap-3 text-xs text-gray-400 font-medium">
             <span className="flex items-center gap-1.5">
               <Award size={13} className="text-orange-400" />
-              0 badge
+              {badgeCount} badge
             </span>
             <span className="w-px h-3.5 bg-gray-200" />
             <span className="flex items-center gap-1.5">
               <Activity size={13} className="text-orange-400" />
-              0 esperienze
+              {esperienzeCount} esperienz{esperienzeCount === 1 ? 'a' : 'e'}
             </span>
           </div>
         </div>
@@ -208,6 +268,15 @@ const AccountTab: React.FC<{ user: UserProfile; onUserUpdate?: (u: Partial<UserP
         {/* Email — sola lettura */}
         <FieldRow label="Email">
           <p className="text-sm font-semibold text-gray-900">{user.email}</p>
+        </FieldRow>
+
+        <Divider />
+
+        {/* Istituto scolastico — sola lettura */}
+        <FieldRow label="Istituto scolastico">
+          <p className="text-sm font-semibold text-gray-900">
+            {user.school || <span className="text-gray-400 italic text-xs font-normal">Non inserito</span>}
+          </p>
         </FieldRow>
 
         <Divider />
@@ -387,7 +456,7 @@ const FieldRow: React.FC<{
 );
 
 // ── Tab Attività ──────────────────────────────────────────────────────────────
-type ActivityType = 'completato' | 'iscritto' | 'checkin' | 'badge';
+type ActivityType = 'completato' | 'iscritto' | 'checkin' | 'badge' | 'profilo';
 
 interface ActivityItem {
   id: string;
@@ -404,19 +473,26 @@ const ACTIVITY_CONFIG: Record<ActivityType, { bg: string; Icon: React.ElementTyp
   iscritto:   { bg: 'bg-orange-100', Icon: Star,         color: 'text-orange-500' },
   checkin:    { bg: 'bg-blue-100',   Icon: MapPin,        color: 'text-blue-500'   },
   badge:      { bg: 'bg-violet-100', Icon: Award,         color: 'text-violet-500' },
+  profilo:    { bg: 'bg-teal-100',   Icon: User,          color: 'text-teal-500'   },
 };
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
 
-const AttivitaTab: React.FC<{ userId: string; onOpenEvent: (eventId: string) => void }> = ({ userId, onOpenEvent }) => {
+const AttivitaTab: React.FC<{
+  userId: string;
+  profileCompletedAt?: string | null;
+  onOpenEvent: (eventId: string) => void;
+}> = ({ userId, profileCompletedAt, onOpenEvent }) => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading]       = useState(true);
   const [selectedBadge, setSelectedBadge] = useState<RealBadge | null>(null);
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: iscr }, { data: att }, { data: bdg }] = await Promise.all([
+      // Promise.allSettled: se una richiesta fallisce, le altre (incluso
+      // "Profilo completato" più sotto) devono comunque comparire.
+      const [iscrRes, attRes, bdgRes] = await Promise.allSettled([
         supabase
           .from('iscrizioni_eventi')
           .select('id, created_at, stato, event_id, events(name)')
@@ -434,15 +510,24 @@ const AttivitaTab: React.FC<{ userId: string; onOpenEvent: (eventId: string) => 
           .order('assegnato_at', { ascending: false }),
       ]);
 
+      if (iscrRes.status === 'rejected') console.error('iscrizioni_eventi fetch error:', iscrRes.reason);
+      if (attRes.status === 'rejected')  console.error('attendances fetch error:', attRes.reason);
+      if (bdgRes.status === 'rejected')  console.error('badge_assegnazioni fetch error:', bdgRes.reason);
+
+      const iscr = iscrRes.status === 'fulfilled' ? iscrRes.value.data : null;
+      const att  = attRes.status  === 'fulfilled' ? attRes.value.data  : null;
+      const bdg  = bdgRes.status  === 'fulfilled' ? bdgRes.value.data  : null;
+
       const items: ActivityItem[] = [];
 
       for (const r of iscr ?? []) {
+        if (r.stato === 'rifiutata') continue;
         const ev = (r as any).events;
         items.push({
           id:        `iscr_${r.id}`,
           type:      'iscritto',
           title:     `Iscritto: ${ev?.name ?? 'Evento'}`,
-          subtitle:  r.stato === 'accettata' ? 'Iscrizione accettata' : r.stato === 'rifiutata' ? 'Iscrizione rifiutata' : 'In attesa di conferma',
+          subtitle:  r.stato === 'accettata' ? 'Iscrizione accettata' : 'In attesa di conferma',
           timestamp: new Date(r.created_at).getTime(),
           eventId:   (r as any).event_id,
         });
@@ -481,12 +566,22 @@ const AttivitaTab: React.FC<{ userId: string; onOpenEvent: (eventId: string) => 
         });
       }
 
+      if (profileCompletedAt) {
+        items.push({
+          id:        'profilo_completato',
+          type:      'profilo',
+          title:     'Profilo completato',
+          subtitle:  fmtDate(profileCompletedAt),
+          timestamp: new Date(profileCompletedAt).getTime(),
+        });
+      }
+
       items.sort((a, b) => b.timestamp - a.timestamp);
       setActivities(items);
       setLoading(false);
     };
     load();
-  }, [userId]);
+  }, [userId, profileCompletedAt]);
 
   if (loading) return (
     <div className="flex justify-center py-20">
@@ -545,169 +640,9 @@ const AttivitaTab: React.FC<{ userId: string; onOpenEvent: (eventId: string) => 
   );
 };
 
-// ── Tab Badge ─────────────────────────────────────────────────────────────────
-
-interface RealBadge {
-  id: string;
-  nome: string;
-  descrizione: string | null;
-  icona_url: string | null;
-  categoria: string | null;
-  tags: string[];
-  assegnato_at: string;
-}
-
-const BadgeModal: React.FC<{ badge: RealBadge; onClose: () => void }> = ({ badge, onClose }) => (
-  <div
-    className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 px-0 sm:px-6"
-    onClick={onClose}
-  >
-    <div
-      className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl shadow-2xl"
-      onClick={e => e.stopPropagation()}
-    >
-      {/* Header bianco */}
-      <div className="px-6 pt-8 pb-5 flex flex-col items-center gap-3">
-        {badge.icona_url && !badge.icona_url.startsWith('blob:') ? (
-          <div className="w-24 h-24 rounded-2xl bg-white overflow-hidden">
-            <img
-              src={badge.icona_url}
-              alt={badge.nome}
-              className="w-full h-full object-contain"
-              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
-          </div>
-        ) : (
-          <div className="w-24 h-24 bg-[#FDEBDD] rounded-2xl flex items-center justify-center">
-            <Award size={44} className="text-[#E8792F]" strokeWidth={1.5} />
-          </div>
-        )}
-        <div className="text-center">
-          <p className="font-bold font-montserrat text-gray-900 text-lg leading-tight">{badge.nome}</p>
-          {badge.categoria && (
-            <p className="text-gray-400 text-xs mt-0.5">{badge.categoria}</p>
-          )}
-        </div>
-      </div>
-
-      <div className="border-t border-[#E8792F]/30 mx-6" />
-
-      {/* Corpo */}
-      <div className="px-6 py-5 space-y-4">
-        {badge.descrizione && (
-          <p className="text-sm text-gray-600 leading-relaxed">{badge.descrizione}</p>
-        )}
-        {badge.tags && badge.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {badge.tags.map(tag => (
-              <span key={tag} className="px-2.5 py-1 rounded-full bg-[#FDEBDD] text-[#E8792F] text-xs font-semibold">
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-        <div className="flex items-center gap-2 text-xs text-gray-400">
-          <CheckCircle2 size={14} className="text-green-500 shrink-0" />
-          Ottenuto il {new Date(badge.assegnato_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="px-6 pb-6">
-        <button
-          onClick={onClose}
-          className="w-full py-3 rounded-xl border border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          Chiudi
-        </button>
-      </div>
-    </div>
-  </div>
-);
-
-const BadgeTab: React.FC<{ userId: string }> = ({ userId }) => {
-  const [badges, setBadges]     = useState<RealBadge[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [selected, setSelected] = useState<RealBadge | null>(null);
-
-  useEffect(() => {
-    supabase
-      .from('badge_assegnazioni')
-      .select('assegnato_at, badges(id, nome, descrizione, icona_url, categoria, tags)')
-      .eq('user_id', userId)
-      .order('assegnato_at', { ascending: false })
-      .then(({ data }) => {
-        setBadges(
-          (data ?? []).map((row: any) => ({
-            id:           row.badges.id,
-            nome:         row.badges.nome,
-            descrizione:  row.badges.descrizione,
-            icona_url:    row.badges.icona_url,
-            categoria:    row.badges.categoria ?? null,
-            tags:         row.badges.tags ?? [],
-            assegnato_at: row.assegnato_at,
-          }))
-        );
-        setLoading(false);
-      });
-  }, [userId]);
-
-  if (loading) return (
-    <div className="flex justify-center py-20">
-      <div className="w-8 h-8 rounded-full border-2 border-orange-200 border-t-orange-500 animate-spin" />
-    </div>
-  );
-
-  if (badges.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 px-6 text-center gap-3">
-        <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
-          <Award size={24} className="text-gray-400" />
-        </div>
-        <p className="font-bold font-montserrat text-gray-700">Nessun badge ancora</p>
-        <p className="text-xs text-gray-400 leading-relaxed max-w-[200px]">
-          Completa esperienze e partecipa agli eventi per guadagnare badge
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="px-4 py-5 max-w-md mx-auto">
-      {selected && <BadgeModal badge={selected} onClose={() => setSelected(null)} />}
-      <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-1 mb-3">
-        {badges.length} {badges.length === 1 ? 'badge ottenuto' : 'badge ottenuti'}
-      </p>
-      <div className="grid grid-cols-2 gap-3">
-        {badges.map(badge => (
-            <div
-              key={badge.id}
-              onClick={() => setSelected(badge)}
-              className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col items-center text-center cursor-pointer active:scale-95 transition-transform"
-            >
-              {badge.icona_url && !badge.icona_url.startsWith('blob:') ? (
-                <img
-                  src={badge.icona_url}
-                  alt={badge.nome}
-                  className="w-14 h-14 rounded-xl object-contain mb-3"
-                  onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                />
-              ) : (
-                <div className="w-14 h-14 bg-[#FDEBDD] rounded-xl flex items-center justify-center mb-3">
-                  <Award size={26} className="text-[#E8792F]" strokeWidth={1.75} />
-                </div>
-              )}
-              <p className="font-bold font-montserrat text-gray-900 text-xs leading-snug mb-1">{badge.nome}</p>
-              {badge.descrizione && <p className="text-[10px] text-gray-400 leading-snug mb-2">{badge.descrizione}</p>}
-              <p className="text-[9px] text-gray-300 font-medium">
-                {new Date(badge.assegnato_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
-              </p>
-            </div>
-          ))}
-      </div>
-    </div>
-  );
-};
+// Badge ottenuti: mostrati come sezione a parte nel bottom nav (BadgeSection.tsx).
+// RealBadge/BadgeModal restano importati qui solo per il click su un badge
+// dalla tab Attività.
 
 // ── Tab Sicurezza ─────────────────────────────────────────────────────────────
 const SicurezzaTab: React.FC<{ user: UserProfile }> = ({ user }) => {
@@ -1073,8 +1008,7 @@ export const ProfileSettingsPage: React.FC<Props> = ({ user, onBack, onLogout, o
       {/* Contenuto */}
       <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         {activeTab === 'account'    && <AccountTab user={user} onUserUpdate={onUserUpdate} />}
-        {activeTab === 'attivita'   && <AttivitaTab userId={user.id} onOpenEvent={(id) => { onBack(); onOpenEvent?.(id); }} />}
-        {activeTab === 'badge'      && <BadgeTab userId={user.id} />}
+        {activeTab === 'attivita'   && <AttivitaTab userId={user.id} profileCompletedAt={user.profile_completed_at} onOpenEvent={(id) => { onBack(); onOpenEvent?.(id); }} />}
         {activeTab === 'sicurezza'  && <SicurezzaTab user={user} />}
         {activeTab === 'visibilita' && <VisibilitaTab user={user} onLogout={onLogout} />}
       </div>

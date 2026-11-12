@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ChevronDown } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { StudenteModal } from './StudenteModal';
 
 interface Student {
   id: string;
@@ -24,12 +25,13 @@ function fmt(d: string | null) {
   return d ? new Date(d).toLocaleDateString('it-IT') : '—';
 }
 
-export const AdminStudenti: React.FC<{ onModifica?: (id: string) => void }> = ({ onModifica }) => {
+export const AdminStudenti: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState('');
-  const [filterCognome, setFilterCognome] = useState('');
+  const [filterScuola, setFilterScuola]   = useState('');
   const [filterAnno, setFilterAnno]       = useState('');
+  const [modalId, setModalId]             = useState<string | null>(null);
 
   useEffect(() => { fetchStudents(); }, []);
 
@@ -59,8 +61,8 @@ export const AdminStudenti: React.FC<{ onModifica?: (id: string) => void }> = ({
     setLoading(false);
   };
 
-  // Lista cognomi unici per il filtro
-  const cognomi = [...new Set(students.map(s => s.last_name).filter(Boolean))].sort();
+  // Lista istituti unici per il filtro
+  const scuole = [...new Set(students.map(s => s.school).filter(Boolean))].sort();
   // Lista anni di nascita unici
   const anni = [...new Set(
     students.map(s => s.dob ? new Date(s.dob).getFullYear().toString() : null).filter(Boolean)
@@ -69,7 +71,7 @@ export const AdminStudenti: React.FC<{ onModifica?: (id: string) => void }> = ({
   const filtered = students.filter(s => {
     const name = `${s.first_name ?? ''} ${s.last_name ?? ''}`.toLowerCase();
     if (search && !name.includes(search.toLowerCase())) return false;
-    if (filterCognome && s.last_name !== filterCognome) return false;
+    if (filterScuola && s.school !== filterScuola) return false;
     if (filterAnno && s.dob && new Date(s.dob).getFullYear().toString() !== filterAnno) return false;
     return true;
   });
@@ -104,11 +106,11 @@ export const AdminStudenti: React.FC<{ onModifica?: (id: string) => void }> = ({
         <div className="relative">
           <select
             className="appearance-none bg-white border border-gray-100 rounded-xl px-4 py-2.5 pr-8 text-sm text-gray-400 outline-none cursor-pointer"
-            value={filterCognome}
-            onChange={e => setFilterCognome(e.target.value)}
+            value={filterScuola}
+            onChange={e => setFilterScuola(e.target.value)}
           >
-            <option value="">Cognome...</option>
-            {cognomi.map(c => <option key={c} value={c}>{c}</option>)}
+            <option value="">Istituto...</option>
+            {scuole.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
         </div>
@@ -171,10 +173,10 @@ export const AdminStudenti: React.FC<{ onModifica?: (id: string) => void }> = ({
                   <td className="px-6 py-3 text-sm text-gray-500 whitespace-nowrap">{fmt(s.last_checkin)}</td>
                   <td className="px-6 py-3">
                     <button
-                      onClick={() => onModifica?.(s.id)}
+                      onClick={() => setModalId(s.id)}
                       className="text-sm font-semibold text-[#F0813C] hover:text-orange-600 transition-colors"
                     >
-                      Modifica
+                      Apri
                     </button>
                   </td>
                 </tr>
@@ -190,6 +192,20 @@ export const AdminStudenti: React.FC<{ onModifica?: (id: string) => void }> = ({
           {filtered.length} student{filtered.length === 1 ? 'e' : 'i'} trovat{filtered.length === 1 ? 'o' : 'i'}
           {students.length !== filtered.length && ` su ${students.length} totali`}
         </p>
+      )}
+
+      {modalId && (
+        <StudenteModal
+          studentId={modalId}
+          onClose={() => setModalId(null)}
+          onUpdate={(id, changes) =>
+            setStudents(prev => prev.map(s => s.id === id ? { ...s, ...changes } as Student : s))
+          }
+          onDelete={(id) => {
+            setStudents(prev => prev.filter(s => s.id !== id));
+            setModalId(null);
+          }}
+        />
       )}
     </div>
   );

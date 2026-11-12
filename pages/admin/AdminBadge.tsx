@@ -27,6 +27,8 @@ interface Certificato {
   visibilita: string;
   event_id: string | null;
   event_name?: string;
+  event_date?: string | null;
+  event_end?: string | null;
   campi_dinamici: string[];
   assegnati: number;
 }
@@ -73,7 +75,7 @@ export const AdminBadge: React.FC = () => {
     setDbError(false);
     const { data, error } = await supabase
       .from('certificati')
-      .select('id, titolo, descrizione, immagine_url, visibilita, event_id, campi_dinamici, events(name)')
+      .select('id, titolo, descrizione, immagine_url, visibilita, event_id, campi_dinamici, events(name, event_date, event_end)')
       .order('created_at', { ascending: false });
 
     if (error) { setDbError(true); setLoading(false); return; }
@@ -82,16 +84,39 @@ export const AdminBadge: React.FC = () => {
       ...c,
       campi_dinamici: c.campi_dinamici ?? [],
       event_name: c.events?.name ?? null,
+      event_date: c.events?.event_date ?? null,
+      event_end: c.events?.event_end ?? null,
       assegnati: 0,
     }));
 
+    const today = new Date().toISOString().split('T')[0];
+
+    // Conta gli assegnati manualmente + chi risulta idoneo in automatico
+    // (evento concluso + ingresso e uscita registrati)
     const counts = await Promise.all(
-      list.map((c: Certificato) =>
-        supabase.from('certificati_assegnazioni').select('id', { count: 'exact', head: true }).eq('certificato_id', c.id)
-      )
+      list.map(async (c: Certificato) => {
+        const { data: manuali } = await supabase
+          .from('certificati_assegnazioni').select('user_id').eq('certificato_id', c.id);
+        const ids = new Set((manuali ?? []).map((r: any) => r.user_id as string));
+
+        const concluso = !!c.event_id && (c.event_end || c.event_date || '') < today;
+        if (concluso) {
+          const { data: att } = await supabase
+            .from('attendances').select('user_id, type').eq('event_id', c.event_id!);
+          const tipiPerUtente = new Map<string, Set<string>>();
+          for (const a of (att ?? []) as { user_id: string; type: string }[]) {
+            if (!tipiPerUtente.has(a.user_id)) tipiPerUtente.set(a.user_id, new Set());
+            tipiPerUtente.get(a.user_id)!.add(a.type);
+          }
+          for (const [uid, tipi] of tipiPerUtente) {
+            if (tipi.has('ingresso') && tipi.has('uscita')) ids.add(uid);
+          }
+        }
+        return ids.size;
+      })
     );
 
-    setCertificati(list.map((c: Certificato, i: number) => ({ ...c, assegnati: counts[i].count ?? 0 })));
+    setCertificati(list.map((c: Certificato, i: number) => ({ ...c, assegnati: counts[i] })));
     setLoading(false);
   };
 
@@ -327,7 +352,7 @@ export const AdminBadge: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-600">{c.assegnati} studenti</span>
+                      <span className="text-sm text-gray-600 whitespace-nowrap">{c.assegnati} studenti</span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
@@ -378,7 +403,7 @@ export const AdminBadge: React.FC = () => {
                   <th className="text-left px-6 py-3">Nome del Badge</th>
                   <th className="text-left px-6 py-3">Descrizione</th>
                   <th className="text-left px-6 py-3">Visibilità</th>
-                  <th className="text-left px-6 py-3">Assegnato a</th>
+                  <th className="text-left px-6 py-3 whitespace-nowrap">Assegnato a</th>
                   <th className="text-right px-6 py-3">Azioni</th>
                 </tr>
               </thead>
@@ -416,7 +441,7 @@ export const AdminBadge: React.FC = () => {
                     </td>
 
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-600">{b.assegnati} studenti</span>
+                      <span className="text-sm text-gray-600 whitespace-nowrap">{b.assegnati} studenti</span>
                     </td>
 
                     <td className="px-6 py-4">

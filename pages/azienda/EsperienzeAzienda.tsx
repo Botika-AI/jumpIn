@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   CalendarDays, MapPin, Users, Search, SlidersHorizontal,
-  CheckCircle2, X,
+  CheckCircle2, X, Globe,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { FilterDropdown } from './ProfileCard';
@@ -59,6 +59,11 @@ function fmtDateRange(start: string, end: string | null): string {
   return `${s.toLocaleDateString('it-IT', opts)} – ${e.toLocaleDateString('it-IT', { ...opts, year: 'numeric' })}`;
 }
 
+function extractCity(location: string | null): string | null {
+  if (!location) return null;
+  return location.split(',')[0].trim();
+}
+
 // ── Esperienza Card ───────────────────────────────────────────────────────
 
 interface EsperienzaCardProps {
@@ -86,10 +91,13 @@ const EsperienzaCard: React.FC<EsperienzaCardProps> = ({ esperienza: ev, onDetai
       )}
       <div className="flex items-center gap-1.5 text-xs text-gray-400 font-medium flex-wrap">
         <span className="flex items-center gap-1 whitespace-nowrap"><CalendarDays size={12} />{fmtDateRange(ev.event_date, ev.event_end)}</span>
-        {ev.location && (
+        {(extractCity(ev.location) || ev.modalita) && (
           <>
             <span className="text-gray-300">•</span>
-            <span className="flex items-center gap-1 whitespace-nowrap"><MapPin size={12} />{ev.location}</span>
+            <span className="flex items-center gap-1 whitespace-nowrap">
+              {extractCity(ev.location) ? <MapPin size={12} /> : <Globe size={12} />}
+              {[extractCity(ev.location), ev.modalita].filter(Boolean).join(' · ')}
+            </span>
           </>
         )}
         {ev.max_partecipanti != null && (
@@ -313,10 +321,13 @@ const EsperienzaDetailModal: React.FC<DetailProps> = ({ esperienza: ev, onBack, 
             <h1 className="text-xl font-bold font-montserrat text-gray-900 mb-2 leading-snug">{ev.name}</h1>
             <div className="flex items-center gap-1.5 text-xs text-gray-400 font-medium flex-wrap">
               <span className="flex items-center gap-1 whitespace-nowrap"><CalendarDays size={12} />{fmtDateRange(ev.event_date, ev.event_end)}</span>
-              {ev.location && (
+              {(extractCity(ev.location) || ev.modalita) && (
                 <>
                   <span className="text-gray-300">•</span>
-                  <span className="flex items-center gap-1 whitespace-nowrap"><MapPin size={12} />{ev.location}</span>
+                  <span className="flex items-center gap-1 whitespace-nowrap">
+                    {extractCity(ev.location) ? <MapPin size={12} /> : <Globe size={12} />}
+                    {[extractCity(ev.location), ev.modalita].filter(Boolean).join(' · ')}
+                  </span>
                 </>
               )}
               {ev.max_partecipanti != null && (

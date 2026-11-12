@@ -295,7 +295,7 @@ const QrModal: React.FC<{
 const EventiList: React.FC<{
   onCrea: () => void;
   onModifica: (id: string) => void;
-  onIscrizioni: (id: string, name: string) => void;
+  onIscrizioni: (id: string, name: string, eventDate: string, eventEnd: string | null) => void;
 }> = ({ onCrea, onModifica, onIscrizioni }) => {
   const [eventi, setEventi]           = useState<Evento[]>([]);
   const [loading, setLoading]         = useState(true);
@@ -414,7 +414,7 @@ const EventiList: React.FC<{
                   })()}
                 </td>
                 <td className="px-6 py-3">
-                  <button onClick={() => onIscrizioni(ev.id, ev.name)}
+                  <button onClick={() => onIscrizioni(ev.id, ev.name, ev.event_date, ev.event_end)}
                     className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-orange-500 transition-colors group">
                     <Users size={13} className="text-gray-400 group-hover:text-orange-400 shrink-0" />
                     {ev.iscrizioni_count ?? 0} candidature
@@ -582,13 +582,19 @@ const NotificaFormButton: React.FC<{ eventId: string; eventName: string }> = ({ 
 
 // ─── Schermata 2: Form crea/modifica ─────────────────────────────────────────
 
-const EventoForm: React.FC<{
+export const EventoForm: React.FC<{
   editId: string | null;
   onBack: () => void;
   onSaved: () => void;
   onDelete?: () => void;
 }> = ({ editId, onBack, onSaved, onDelete }) => {
   const isEdit = editId !== null;
+  // persistedId diventa non-null non appena l'evento esiste davvero nel DB
+  // (fin da subito se stiamo modificando, oppure dopo il primo salvataggio
+  // in creazione) — usato per sbloccare la sezione Materiali senza dover
+  // uscire e rientrare in modifica.
+  const [persistedId, setPersistedId]   = useState<string | null>(editId);
+  const persisted = persistedId !== null;
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [loadingData, setLoadingData]   = useState(isEdit);
   const [saving, setSaving]             = useState(false);
@@ -709,14 +715,20 @@ const EventoForm: React.FC<{
     };
 
     let dbErr;
-    if (isEdit) {
-      ({ error: dbErr } = await supabase.from('events').update(payload).eq('id', editId!));
+    if (persisted) {
+      ({ error: dbErr } = await supabase.from('events').update(payload).eq('id', persistedId!));
     } else {
       ({ error: dbErr } = await supabase.from('events').insert({ id: form.id.trim(), ...payload }));
     }
 
     setSaving(false);
     if (dbErr) { console.error('DB error:', dbErr); setError('Errore: ' + dbErr.message); return; }
+
+    if (!persisted) {
+      // Prima creazione: resta sulla pagina per sbloccare subito la sezione Materiali
+      setPersistedId(form.id.trim());
+      return;
+    }
 
     onSaved();
   };
@@ -734,7 +746,7 @@ const EventoForm: React.FC<{
       </button>
       <div>
         <h1 className="text-2xl font-bold font-montserrat text-[#1F2430]">
-          {isEdit ? 'Modifica evento' : 'Crea nuovo evento'}
+          {persisted ? 'Modifica evento' : 'Crea nuovo evento'}
         </h1>
         <p className="text-sm text-gray-500 mt-1">Compila i dettagli dell'evento che vuoi organizzare</p>
       </div>
@@ -776,8 +788,8 @@ const EventoForm: React.FC<{
               value={form.name} onChange={e => handleNameChange(e.target.value)} />
           </div>
 
-          {/* ID slug — solo in creazione */}
-          {!isEdit && (
+          {/* ID slug — solo prima del primo salvataggio */}
+          {!persisted && (
             <div>
               <label className={labelClass}>ID evento (auto-generato dal titolo)</label>
               <input
@@ -854,15 +866,25 @@ const EventoForm: React.FC<{
             </div>
           </div>
           <div>
-            <label className={labelClass}>Luogo</label>
-            <input className={inputClass} placeholder="es. Via Roma 1, Rimini"
-              value={form.location} onChange={e => setField('location', e.target.value)} />
-          </div>
-          <div>
             <label className={labelClass}>Modalità</label>
-            <input className={inputClass} placeholder="es. In presenza, Online, Ibrido"
-              value={form.modalita} onChange={e => setField('modalita', e.target.value)} />
+            <select className={inputClass} value={form.modalita}
+              onChange={e => {
+                const modalita = e.target.value;
+                setForm(prev => ({ ...prev, modalita, location: modalita === 'Online' ? '' : prev.location }));
+              }}>
+              <option value="">Seleziona...</option>
+              <option value="In presenza">In presenza</option>
+              <option value="Online">Online</option>
+              <option value="Ibrido">Ibrido</option>
+            </select>
           </div>
+          {form.modalita !== 'Online' && (
+            <div>
+              <label className={labelClass}>Luogo</label>
+              <input className={inputClass} placeholder="es. Via Roma 1, Rimini"
+                value={form.location} onChange={e => setField('location', e.target.value)} />
+            </div>
+          )}
         </div>
 
         {/* Impostazioni iscrizioni */}
@@ -980,8 +1002,8 @@ const EventoForm: React.FC<{
             value={form.requisiti} onChange={e => setField('requisiti', e.target.value)} />
         </div>
 
-        {/* Materiali (solo in modifica) */}
-        {isEdit && <MaterialiManager eventId={editId!} />}
+        {/* Materiali — disponibile non appena l'evento esiste nel DB */}
+        {persisted && <MaterialiManager eventId={persistedId!} />}
 
         {/* Visibilità */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-3">
@@ -1036,7 +1058,7 @@ const EventoForm: React.FC<{
             className="px-6 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
             Annulla
           </button>
-          {isEdit ? (
+          {persisted ? (
             <button type="button" onClick={() => handleSave('pubblicato')} disabled={saving}
               className="flex-1 py-3 rounded-xl bg-[#F0813C] text-white text-sm font-bold hover:bg-orange-500 transition-colors disabled:opacity-70 shadow-md shadow-orange-200">
               {saving ? 'Salvataggio...' : 'Aggiorna'}
@@ -1055,8 +1077,8 @@ const EventoForm: React.FC<{
           )}
         </div>
 
-        {/* Elimina evento — solo in modifica */}
-        {isEdit && (
+        {/* Elimina evento — disponibile non appena l'evento esiste nel DB */}
+        {persisted && (
           <div className="pt-2 border-t border-gray-100">
             <button type="button" onClick={() => setConfirmDelete(true)}
               className="text-sm font-semibold text-red-400 hover:text-red-600 transition-colors">
@@ -1068,7 +1090,7 @@ const EventoForm: React.FC<{
 
       {showNotificaModal && (
         <NotificaModal
-          evento={{ id: editId ?? form.id, name: form.name || 'Nuovo evento' }}
+          evento={{ id: persistedId ?? form.id, name: form.name || 'Nuovo evento' }}
           onClose={() => setShowNotificaModal(false)}
         />
       )}
@@ -1082,9 +1104,9 @@ const EventoForm: React.FC<{
             </p>
             <div className="flex gap-3">
               <button onClick={async () => {
-                await supabase.from('iscrizioni_eventi').delete().eq('event_id', editId);
-                await supabase.from('materiali_eventi').delete().eq('event_id', editId);
-                await supabase.from('events').delete().eq('id', editId);
+                await supabase.from('iscrizioni_eventi').delete().eq('event_id', persistedId);
+                await supabase.from('materiali_eventi').delete().eq('event_id', persistedId);
+                await supabase.from('events').delete().eq('id', persistedId);
                 onDelete?.();
                 onBack();
               }} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 transition-colors">
@@ -1107,16 +1129,35 @@ const EventoForm: React.FC<{
 const IscrizioniView: React.FC<{
   eventId: string;
   nomeEvento: string;
+  eventDate: string;
+  eventEnd: string | null;
   onBack: () => void;
-}> = ({ eventId, nomeEvento, onBack }) => {
-  const today = new Date().toISOString().split('T')[0];
+}> = ({ eventId, nomeEvento, eventDate, eventEnd, onBack }) => {
+  // Data locale (non UTC): .toISOString() sposterebbe la data di un giorno
+  // nei fusi orari avanti su UTC (es. l'Italia in ora legale)
+  const toLocalISODate = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const today = toLocalISODate(new Date());
+
+  // Solo i giorni in cui l'evento si tiene realmente (event_date → event_end)
+  const eventDays = (() => {
+    const days: string[] = [];
+    const cursor = new Date(eventDate + 'T00:00:00');
+    const end = new Date((eventEnd || eventDate) + 'T00:00:00');
+    while (cursor <= end) {
+      days.push(toLocalISODate(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return days.sort().reverse();
+  })();
 
   const [tab, setTab]                 = useState<'candidature' | 'attivita'>('candidature');
   const [iscrizioni, setIscrizioni]   = useState<Iscrizione[]>([]);
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState('');
-  const [filterDate, setFilterDate]   = useState(today);
+  const [filterDate, setFilterDate]   = useState(eventDays.includes(today) ? today : eventDays[0]);
 
   useEffect(() => {
     Promise.all([
@@ -1179,10 +1220,7 @@ const IscrizioniView: React.FC<{
   });
 
   // ── Attività derived state ──────────────────────────────────────────────────
-  const availableDates = [...new Set([
-    today,
-    ...attendances.map(a => new Date(a.scanned_at).toISOString().split('T')[0]),
-  ])].sort().reverse();
+  const availableDates = eventDays;
 
   const attivitaRows = iscrizioni
     .filter(c => c.stato === 'accettata')
@@ -1482,19 +1520,27 @@ const IscrizioniView: React.FC<{
 export const AdminEventi: React.FC = () => {
   const [view, setView]                     = useState<'list' | 'form' | 'iscrizioni'>('list');
   const [editId, setEditId]                 = useState<string | null>(null);
-  const [iscrizioniInfo, setIscrizioniInfo] = useState<{ id: string; name: string } | null>(null);
+  const [iscrizioniInfo, setIscrizioniInfo] = useState<{ id: string; name: string; eventDate: string; eventEnd: string | null } | null>(null);
 
   if (view === 'form') {
     return <EventoForm editId={editId} onBack={() => setView('list')} onSaved={() => setView('list')} onDelete={() => setView('list')} />;
   }
   if (view === 'iscrizioni' && iscrizioniInfo) {
-    return <IscrizioniView eventId={iscrizioniInfo.id} nomeEvento={iscrizioniInfo.name} onBack={() => setView('list')} />;
+    return (
+      <IscrizioniView
+        eventId={iscrizioniInfo.id}
+        nomeEvento={iscrizioniInfo.name}
+        eventDate={iscrizioniInfo.eventDate}
+        eventEnd={iscrizioniInfo.eventEnd}
+        onBack={() => setView('list')}
+      />
+    );
   }
   return (
     <EventiList
       onCrea={() => { setEditId(null); setView('form'); }}
       onModifica={id => { setEditId(id); setView('form'); }}
-      onIscrizioni={(id, name) => { setIscrizioniInfo({ id, name }); setView('iscrizioni'); }}
+      onIscrizioni={(id, name, eventDate, eventEnd) => { setIscrizioniInfo({ id, name, eventDate, eventEnd }); setView('iscrizioni'); }}
     />
   );
 };

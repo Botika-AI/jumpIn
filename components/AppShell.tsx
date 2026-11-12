@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Compass, Calendar, Building2, Briefcase, ChevronLeft, Bell, User, CalendarDays, Star, Users2, X } from 'lucide-react';
+import { Home, Compass, Calendar, Briefcase, ChevronLeft, Bell, User, CalendarDays, Star, Users2, X, Award } from 'lucide-react';
 import { UserProfile } from '../types';
 import { HomeDashboard } from './HomeDashboard';
 import { EsperienzePage } from './EsperienzePage';
 import { AziendePage } from './AziendePage';
-import { JobPage } from './JobPage';
+import { JobPage, JobPost } from './JobPage';
 import { ProfileSettingsPage } from './ProfileSettingsPage';
 import { IMieiPage } from './IMieiPage';
+import { BadgeSection } from './BadgeSection';
 import { supabase } from '../lib/supabase';
 
 interface Notifica {
@@ -18,13 +19,15 @@ interface Notifica {
   created_at: string;
 }
 
-export type AppSection = 'home' | 'esperienze' | 'eventi' | 'aziende' | 'job';
+// 'aziende' resta un valore valido (raggiungibile cliccando nome/logo azienda
+// da una job position) ma non ha più una tab diretta nel bottom nav.
+export type AppSection = 'home' | 'esperienze' | 'eventi' | 'aziende' | 'job' | 'badge';
 
 const NAV_TABS = [
   { key: 'home'       as AppSection, label: 'Dashboard',  Icon: Home      },
   { key: 'esperienze' as AppSection, label: 'Esperienze', Icon: Compass   },
   { key: 'eventi'     as AppSection, label: 'Miei eventi', Icon: Calendar  },
-  { key: 'aziende'    as AppSection, label: 'Aziende',    Icon: Building2 },
+  { key: 'badge'      as AppSection, label: 'Badge',      Icon: Award     },
   { key: 'job'        as AppSection, label: 'Job',        Icon: Briefcase },
 ];
 
@@ -51,6 +54,7 @@ function NotificaIcon({ tipo }: { tipo: string }) {
   if (tipo === 'evento')      return <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0"><CalendarDays size={17} className="text-orange-500" /></div>;
   if (tipo === 'badge')       return <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center shrink-0"><Star size={17} className="text-yellow-500" /></div>;
   if (tipo === 'connessione') return <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center shrink-0"><Users2 size={17} className="text-purple-500" /></div>;
+  if (tipo === 'profilo')     return <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center shrink-0"><User size={17} className="text-teal-500" /></div>;
   return <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0"><Bell size={17} className="text-blue-500" /></div>;
 }
 
@@ -78,16 +82,25 @@ export const AppShell: React.FC<Props> = ({ user, onLogout, onUserUpdate }) => {
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
 
-  useEffect(() => {
-    const saved = localStorage.getItem(storageKey);
-    if (saved) setLetteIds(new Set(JSON.parse(saved)));
-
-    supabase.from('notifiche').select('*').order('created_at', { ascending: false }).limit(50)
+  const fetchNotifiche = () => {
+    let query = supabase.from('notifiche').select('*');
+    if (user.created_at) query = query.gte('created_at', user.created_at);
+    query.order('created_at', { ascending: false }).limit(50)
       .then(({ data }) => {
         const deleted = new Set<string>(JSON.parse(localStorage.getItem(storageDeletedKey) ?? '[]'));
         setNotifiche(((data ?? []) as Notifica[]).filter(n => !deleted.has(n.id)));
       });
+  };
+
+  useEffect(() => {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) setLetteIds(new Set(JSON.parse(saved)));
+    fetchNotifiche();
   }, []);
+
+  useEffect(() => {
+    if (showNotifiche) fetchNotifiche();
+  }, [showNotifiche]);
 
   const markLetta = (id: string) => {
     setLetteIds(prev => {
@@ -137,13 +150,20 @@ export const AppShell: React.FC<Props> = ({ user, onLogout, onUserUpdate }) => {
   };
 
   const [pendingCompanyId, setPendingCompanyId] = useState<string | undefined>(undefined);
+  const [pendingJob, setPendingJob]             = useState<JobPost | undefined>(undefined);
   const [pendingEventId, setPendingEventId]       = useState<string | undefined>(undefined);
   const [profileInitialTab, setProfileInitialTab] = useState<'account' | 'attivita'>('account');
   const returnToProfileRef = React.useRef(false);
 
-  const handleOpenCompany = (companyId: string) => {
+  const handleOpenCompany = (companyId: string, job?: JobPost) => {
     setPendingCompanyId(companyId);
+    setPendingJob(job);
     setActiveSection('aziende');
+  };
+
+  const handleBackFromCompany = () => {
+    setPendingCompanyId(undefined);
+    setActiveSection('job');
   };
 
   const handleOpenEvent = (eventId: string) => {
@@ -191,8 +211,9 @@ export const AppShell: React.FC<Props> = ({ user, onLogout, onUserUpdate }) => {
         {activeSection === 'home'       && <HomeDashboard user={user} onNavigate={navigate} onOpenEvent={handleOpenEvent} />}
         {activeSection === 'esperienze' && <EsperienzePage onDetailChange={setIsInDetail} initialEventId={pendingEventId} onBackFromInitial={handleBackFromEvent} />}
         {activeSection === 'eventi'     && <IMieiPage user={user} onNavigate={navigate} onDetailChange={setIsInDetail} />}
-        {activeSection === 'aziende'    && <AziendePage onDetailChange={setIsInDetail} onOpenJobsForCompany={handleOpenJobsForCompany} initialCompanyId={pendingCompanyId} />}
-        {activeSection === 'job'        && <JobPage onDetailChange={setIsInDetail} initialCompanyFilter={jobCompanyFilter} onOpenCompany={handleOpenCompany} />}
+        {activeSection === 'aziende'    && <AziendePage onDetailChange={setIsInDetail} onOpenJobsForCompany={handleOpenJobsForCompany} initialCompanyId={pendingCompanyId} onBackFromInitial={handleBackFromCompany} />}
+        {activeSection === 'badge'      && <BadgeSection userId={user.id} />}
+        {activeSection === 'job'        && <JobPage onDetailChange={setIsInDetail} initialCompanyFilter={jobCompanyFilter} onOpenCompany={handleOpenCompany} initialJob={pendingJob} onConsumedInitialJob={() => setPendingJob(undefined)} />}
       </div>
 
       {/* Bottom tab bar */}

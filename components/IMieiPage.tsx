@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   CalendarDays, MapPin, Users, ChevronLeft, CheckCircle2,
   QrCode, MessageSquare, BookOpen, X, Compass, LogIn, LogOut, Search,
-  ScrollText, Download,
+  ScrollText, Download, Globe,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
@@ -17,6 +17,7 @@ interface EventoIscritto {
   event_date: string;
   event_end: string | null;
   location: string | null;
+  modalita: string | null;
   cover_url: string | null;
   tipo: string | null;
   max_partecipanti: number | null;
@@ -72,6 +73,11 @@ function fmtDateRange(start: string, end: string | null) {
   if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear())
     return `${s.getDate()}-${e.getDate()} ${mon} ${yr}`;
   return `${s.getDate()} ${s.toLocaleDateString('it-IT', { month: 'short' })} – ${e.getDate()} ${mon} ${yr}`;
+}
+
+function extractCity(location: string | null): string | null {
+  if (!location) return null;
+  return location.split(',')[0].trim();
 }
 
 function eventoStatus(ev: EventoIscritto): 'futuro' | 'in_corso' | 'concluso' {
@@ -140,7 +146,12 @@ const EventCard: React.FC<{
       {/* Meta */}
       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-400 font-medium mb-4">
         <span className="flex items-center gap-1"><CalendarDays size={11} />{fmtDateRange(ev.event_date, ev.event_end)}</span>
-        {ev.location && <span className="flex items-center gap-1"><MapPin size={11} />{ev.location}</span>}
+        {(extractCity(ev.location) || ev.modalita) && (
+          <span className="flex items-center gap-1">
+            {extractCity(ev.location) ? <MapPin size={11} /> : <Globe size={11} />}
+            {[extractCity(ev.location), ev.modalita].filter(Boolean).join(' · ')}
+          </span>
+        )}
       </div>
 
       {/* Bottoni */}
@@ -266,15 +277,21 @@ const DetailView: React.FC<{
       .then(({ data }) => setProfilo(data ?? null));
   }, [ev.id, userId]);
 
-  // Controlla se il certificato è stato assegnato all'utente dall'admin
+  // Certificato sbloccato automaticamente se l'evento è concluso ed è stato
+  // registrato almeno un ingresso e un'uscita, oppure se assegnato manualmente dall'admin
   useEffect(() => {
     if (!certificato) { setHaPartecipato(null); return; }
-    supabase.from('certificati_assegnazioni')
-      .select('id', { count: 'exact', head: true })
-      .eq('certificato_id', certificato.id)
-      .eq('user_id', userId)
-      .then(({ count }) => setHaPartecipato((count ?? 0) > 0));
-  }, [certificato?.id, userId]);
+    Promise.all([
+      supabase.from('attendances').select('type').eq('event_id', ev.id).eq('user_id', userId),
+      supabase.from('certificati_assegnazioni').select('id', { count: 'exact', head: true })
+        .eq('certificato_id', certificato.id).eq('user_id', userId),
+    ]).then(([attRes, assegRes]) => {
+      const tipi = new Set((attRes.data ?? []).map((a: any) => a.type));
+      const haFattoIngressoEUscita = tipi.has('ingresso') && tipi.has('uscita');
+      const assegnatoManualmente = (assegRes.count ?? 0) > 0;
+      setHaPartecipato(isConcluso && (haFattoIngressoEUscita || assegnatoManualmente));
+    });
+  }, [certificato?.id, ev.id, userId, isConcluso]);
 
   const handleDownloadCertificato = async () => {
     if (!certificato) return;
@@ -341,12 +358,14 @@ const DetailView: React.FC<{
               <CalendarDays size={11} className="text-[#94A3B8] shrink-0" />
               {fmtDateRange(ev.event_date, ev.event_end)}
             </span>
-            {ev.location && (
+            {(extractCity(ev.location) || ev.modalita) && (
               <>
                 <span className="text-[#CBD5E1]">•</span>
                 <span className="flex items-center gap-1 whitespace-nowrap">
-                  <MapPin size={11} className="text-[#94A3B8] shrink-0" />
-                  {ev.location}
+                  {extractCity(ev.location)
+                    ? <MapPin size={11} className="text-[#94A3B8] shrink-0" />
+                    : <Globe size={11} className="text-[#94A3B8] shrink-0" />}
+                  {[extractCity(ev.location), ev.modalita].filter(Boolean).join(' · ')}
                 </span>
               </>
             )}
@@ -420,7 +439,7 @@ const DetailView: React.FC<{
 
           {tab === 'materiali' && (
             <div className="space-y-3">
-              {/* Certificato — visibile solo se assegnato dall'admin */}
+              {/* Certificato — sbloccato con evento concluso + ingresso e uscita registrati (o assegnazione manuale) */}
               {certificato && haPartecipato === true && (
                 <button
                   onClick={handleDownloadCertificato}
@@ -504,19 +523,33 @@ const DetailView: React.FC<{
 
 const FeedbackForm: React.FC<{
   ev: FullEvento;
+  userId: string;
   onBack: () => void;
   onSuccess: () => void;
-}> = ({ ev, onBack, onSuccess }) => {
+}> = ({ ev, userId, onBack, onSuccess }) => {
   const [rating, setRating]             = useState<number | null>(null);
   const [positivo, setPositivo]         = useState('');
   const [miglioramento, setMiglioramento] = useState('');
   const [submitting, setSubmitting]     = useState(false);
+  const [error, setError]               = useState<string | null>(null);
 
   const handleSubmit = async () => {
     if (!rating) return;
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 600));
+    setError(null);
+    const { error: insertErr } = await supabase.from('feedback_eventi').upsert({
+      event_id:      ev.id,
+      user_id:       userId,
+      rating,
+      positivo:      positivo.trim() || null,
+      miglioramento: miglioramento.trim() || null,
+    }, { onConflict: 'event_id,user_id' });
     setSubmitting(false);
+    if (insertErr) {
+      console.error('feedback_eventi insert error:', insertErr);
+      setError('Errore nell\'invio del feedback. Riprova.');
+      return;
+    }
     onSuccess();
   };
 
@@ -571,6 +604,7 @@ const FeedbackForm: React.FC<{
       </div>
 
       <div className="px-4 pb-6 pt-3 border-t border-gray-100">
+        {error && <p className="text-xs text-red-500 font-semibold mb-2 text-center">{error}</p>}
         <button
           onClick={handleSubmit}
           disabled={!rating || submitting}
@@ -640,7 +674,7 @@ export const IMieiPage: React.FC<Props> = ({ user, onNavigate, onDetailChange })
 
       const { data: evData } = await supabase
         .from('events')
-        .select('id, name, event_date, event_end, location, cover_url, tipo, max_partecipanti')
+        .select('id, name, event_date, event_end, location, modalita, cover_url, tipo, max_partecipanti')
         .in('id', eventIds);
 
       const statoMap: Record<string, string> = {};
@@ -712,6 +746,7 @@ export const IMieiPage: React.FC<Props> = ({ user, onNavigate, onDetailChange })
   if (view === 'feedback' && selectedEv) return (
     <FeedbackForm
       ev={selectedEv}
+      userId={user.id}
       onBack={backToDetail}
       onSuccess={() => setView('success')}
     />
