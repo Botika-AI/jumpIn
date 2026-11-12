@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { CoverImage } from '../../components/CoverImage';
 import {
   ArrowLeft, Calendar, Users, Upload, Plus, Search,
   ChevronDown, Download, Check, X, Bell, Link, Trash2, FileText, QrCode,
@@ -684,13 +685,26 @@ export const EventoForm: React.FC<{
     if (!form.event_date)  { setError('La data di inizio è obbligatoria.'); return; }
     setSaving(true); setError(null);
 
-    let cover_url: string | null = coverPreview ?? null;
+    // Senza nuovo file: mantieni l'URL esistente (mai un'anteprima base64 "data:")
+    let cover_url: string | null = coverPreview && !coverPreview.startsWith('data:') ? coverPreview : null;
 
     if (coverFile) {
-      const resized = await resizeImage(coverFile, 1200, 480);
+      let resized: File;
+      try {
+        resized = await resizeImage(coverFile, 1280, 720);
+      } catch {
+        setSaving(false);
+        setError(`Errore caricamento copertina: formato immagine non supportato (${coverFile.type || coverFile.name})`);
+        return;
+      }
       const p = `eventi/cover_${Date.now()}.webp`;
       const { error } = await supabase.storage.from('logos').upload(p, resized, { upsert: true, contentType: 'image/webp' });
-      if (!error) cover_url = supabase.storage.from('logos').getPublicUrl(p).data.publicUrl;
+      if (error) {
+        setSaving(false);
+        setError('Errore caricamento copertina: ' + error.message);
+        return;
+      }
+      cover_url = supabase.storage.from('logos').getPublicUrl(p).data.publicUrl;
     }
 
     const payload = {
@@ -760,14 +774,14 @@ export const EventoForm: React.FC<{
           {/* Immagine copertina */}
           <div>
             <p className="text-sm font-medium text-gray-700 mb-1">Immagine copertina</p>
-            <p className="text-xs text-gray-400 mb-2">Appare come hero banner aprendo l'evento — formato 16:9 o simile (max 5MB)</p>
-            <label className="relative w-full aspect-[5/2] rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-orange-300 transition-colors overflow-hidden">
+            <p className="text-xs text-gray-400 mb-2">Appare come hero banner aprendo l'evento — formato 16:9 (max 5MB)</p>
+            <label className="relative w-full aspect-video rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-orange-300 transition-colors overflow-hidden">
               {coverPreview
-                ? <img src={coverPreview} alt="copertina" className="w-full h-full object-cover" />
+                ? <CoverImage src={coverPreview} alt="copertina" />
                 : <>
                     <Upload size={22} className="text-gray-300 mb-1" />
                     <span className="text-xs text-gray-300">Carica copertina</span>
-                    <span className="text-[10px] text-gray-200 mt-0.5">1200 × 480 px consigliato</span>
+                    <span className="text-[10px] text-gray-200 mt-0.5">1280 × 720 px consigliato</span>
                   </>
               }
               <input type="file" accept="image/*" className="hidden" onChange={handleCover} />

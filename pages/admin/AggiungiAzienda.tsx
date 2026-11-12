@@ -82,23 +82,34 @@ export const AggiungiAzienda: React.FC<Props> = ({ onBack, onCreated }) => {
     let cover_url: string | null = null;
 
     const uploadImage = async (file: File, prefix: string, maxW: number, maxH: number) => {
-      const resized = await resizeImage(file, maxW, maxH);
+      let resized: File;
+      try {
+        resized = await resizeImage(file, maxW, maxH);
+      } catch {
+        throw new Error(`formato immagine non supportato (${file.type || file.name})`);
+      }
       const path = `aziende/${prefix}_${Date.now()}.webp`;
       const { error: uploadErr } = await supabase.storage
         .from('logos')
         .upload(path, resized, { upsert: true, contentType: 'image/webp' });
-      if (uploadErr) return null;
+      if (uploadErr) throw new Error(uploadErr.message);
       const { data: urlData } = supabase.storage.from('logos').getPublicUrl(path);
       return urlData.publicUrl;
     };
 
     if (logoFile || coverFile) {
-      const [logoResult, coverResult] = await Promise.all([
-        logoFile  ? uploadImage(logoFile,  'logo',  400, 400)   : Promise.resolve(null),
-        coverFile ? uploadImage(coverFile, 'cover', 1200, 480) : Promise.resolve(null),
-      ]);
-      logo_url = logoResult;
-      cover_url = coverResult;
+      try {
+        const [logoResult, coverResult] = await Promise.all([
+          logoFile  ? uploadImage(logoFile,  'logo',  400, 400)   : Promise.resolve(null),
+          coverFile ? uploadImage(coverFile, 'cover', 1200, 480) : Promise.resolve(null),
+        ]);
+        logo_url = logoResult;
+        cover_url = coverResult;
+      } catch (err) {
+        setSaving(false);
+        setError('Errore caricamento immagine: ' + (err as Error).message);
+        return;
+      }
     }
 
     const { error: insertErr } = await supabase.from('aziende').insert({

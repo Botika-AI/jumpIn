@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { CoverImage } from './CoverImage';
 import { Search, CalendarDays, MapPin, Users, ChevronLeft, CheckCircle2, X, BookOpen, SlidersHorizontal, ScrollText, Download, Globe } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { generateCertificatePDF } from '../lib/certificateGenerator';
@@ -257,9 +258,9 @@ const EventoDetail: React.FC<{
 
         {/* Foto banner slim con padding interno */}
         <div className="p-3">
-          <div className="rounded-2xl overflow-hidden" style={{ height: 150 }}>
+          <div className="rounded-2xl overflow-hidden aspect-video">
             {ev.cover_url
-              ? <img src={ev.cover_url} alt={ev.name} className="w-full h-full object-cover" />
+              ? <CoverImage src={ev.cover_url} alt={ev.name} />
               : <div className={`bg-gradient-to-br ${gradient} w-full h-full`} />
             }
           </div>

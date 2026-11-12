@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { CoverImage } from './CoverImage';
 import {
   CalendarDays, MapPin, Users, ChevronLeft, CheckCircle2,
   QrCode, MessageSquare, BookOpen, X, Compass, LogIn, LogOut, Search,
@@ -327,9 +328,9 @@ const DetailView: React.FC<{
       <div className="mx-4 bg-white rounded-3xl border border-gray-100 shadow-sm">
         {/* Foto incorniciata */}
         <div className="p-3">
-          <div className="rounded-2xl overflow-hidden" style={{ height: 150 }}>
+          <div className="rounded-2xl overflow-hidden aspect-video">
             {ev.cover_url
-              ? <img src={ev.cover_url} alt={ev.name} className="w-full h-full object-cover" />
+              ? <CoverImage src={ev.cover_url} alt={ev.name} />
               : <div className={`bg-gradient-to-br ${gradient} w-full h-full`} />
             }
           </div>

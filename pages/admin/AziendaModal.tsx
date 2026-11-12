@@ -195,8 +195,16 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
     if (!editName.trim())  { setAccountError("Il nome azienda è obbligatorio."); return; }
     setSavingAccount(true);
     setAccountError(null);
-    const newLogoUrl  = logoFile  ? await uploadImage(logoFile,  'logo',  400,  400) : logoPreviewRef.current;
-    const newCoverUrl = coverFile ? await uploadImage(coverFile, 'cover', 1200, 480) : coverPreviewRef.current;
+    let newLogoUrl: string | null;
+    let newCoverUrl: string | null;
+    try {
+      newLogoUrl  = logoFile  ? await uploadImage(logoFile,  'logo',  400,  400) : logoPreviewRef.current;
+      newCoverUrl = coverFile ? await uploadImage(coverFile, 'cover', 1200, 480) : coverPreviewRef.current;
+    } catch (err) {
+      setSavingAccount(false);
+      setAccountError('Errore caricamento immagine: ' + (err as Error).message);
+      return;
+    }
     const { error } = await supabase
       .from('aziende')
       .update({
@@ -236,11 +244,16 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
   const cancelEditDati = () => { setEditDati(false); setDatiError(null); };
   const setDati = (field: keyof typeof datiForm, value: string) =>
     setDatiForm(prev => ({ ...prev, [field]: value }));
-  const uploadImage = async (file: File, prefix: string, maxW: number, maxH: number): Promise<string | null> => {
-    const resized = await resizeImage(file, maxW, maxH);
+  const uploadImage = async (file: File, prefix: string, maxW: number, maxH: number): Promise<string> => {
+    let resized: File;
+    try {
+      resized = await resizeImage(file, maxW, maxH);
+    } catch {
+      throw new Error(`formato immagine non supportato (${file.type || file.name})`);
+    }
     const path = `aziende/${prefix}_${Date.now()}.webp`;
     const { error } = await supabase.storage.from('logos').upload(path, resized, { upsert: true, contentType: 'image/webp' });
-    if (error) return null;
+    if (error) throw new Error(error.message);
     return supabase.storage.from('logos').getPublicUrl(path).data.publicUrl;
   };
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { CoverImage } from '../../components/CoverImage';
 import {
   CalendarDays, MapPin, Users, Search, SlidersHorizontal,
   CheckCircle2, X, Globe,
@@ -76,9 +77,9 @@ const EsperienzaCard: React.FC<EsperienzaCardProps> = ({ esperienza: ev, onDetai
   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col">
     {/* Foto incorniciata */}
     <div className="p-3">
-      <div className="rounded-xl overflow-hidden h-40">
+      <div className="rounded-xl overflow-hidden aspect-video">
         {ev.cover_url
-          ? <img src={ev.cover_url} alt={ev.name} className="w-full h-full object-cover" />
+          ? <CoverImage src={ev.cover_url} alt={ev.name} />
           : <div className={`w-full h-full bg-gradient-to-br ${gradientFor(ev.id)}`} />}
       </div>
     </div>
@@ -311,9 +312,9 @@ const EsperienzaDetailModal: React.FC<DetailProps> = ({ esperienza: ev, onBack, 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
           {/* Foto incorniciata */}
           <div className="p-3">
-            <div className="rounded-xl overflow-hidden h-56">
+            <div className="rounded-xl overflow-hidden aspect-video">
               {ev.cover_url
-                ? <img src={ev.cover_url} alt={ev.name} className="w-full h-full object-cover" />
+                ? <CoverImage src={ev.cover_url} alt={ev.name} />
                 : <div className={`w-full h-full bg-gradient-to-br ${gradientFor(ev.id)}`} />}
             </div>
           </div>
