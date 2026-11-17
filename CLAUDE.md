@@ -1,222 +1,98 @@
-# JumpIn — Stato dell'Applicazione
+# CLAUDE.md
 
-## Panoramica
+Guida operativa per Claude Code.
 
-App di check-in QR per eventi JumpIn (Rimini). Gli studenti si registrano, accedono alla dashboard e scansionano un QR code fisico (ingresso o uscita) all'evento. Ogni scansione viene validata e salvata su Supabase interamente lato client.
+## Cos'è JumpIn
 
----
+Piattaforma di orientamento per studenti delle superiori di Rimini e provincia, gestita da Fattor Comune. Gli studenti scoprono esperienze, si iscrivono (con approvazione admin), fanno check-in con QR, ricevono badge e attestati PDF, vedono offerte lavoro di aziende partner, ricevono notifiche.
+SPA Vite + React 19 + TypeScript. Supabase (Auth, Postgres, Storage) chiamato direttamente dal browser — nessun backend. Deploy su Vercel.
+
+## Flusso principale
+
+1. Lo studente si registra alla piattaforma e da quel momento vede le esperienze a cui può partecipare.
+2. Si iscrive all'esperienza che gli interessa; l'admin conferma l'iscrizione (lo studente riceve una notifica).
+3. Durante l'evento la partecipazione è verificata con i QR code di ingresso e di uscita, generati dall'admin per quello specifico evento.
+4. Lo studente che ha scansionato almeno una volta sia il QR di ingresso sia quello di uscita può ricevere l'attestato di partecipazione e i badge. Attestati e badge compaiono sul suo profilo e sono visibili all'admin.
+5. In parallelo, nella sezione Job lo studente vede le offerte di lavoro, si candida e da ogni offerta apre la pagina dell'azienda che l'ha pubblicata.
+
+## Ruoli
+
+- **Studente**: account personale; esperienze, iscrizioni, check-in QR, attestati, badge, offerte di lavoro, profilo.
+- **Admin** (`profiles.is_admin = true`): crea e pubblica le esperienze, conferma o rifiuta le iscrizioni e genera i QR di ogni evento; monitora presenze e feedback.
+  Crea i badge e gli attestati e li assegna agli studenti (a mano o con la regola automatica "almeno N eventi"); gestisce studenti, aziende partner e offerte di lavoro.
+  Decide cosa compare nella home degli studenti (sezioni ed esperienze in evidenza) e può inviare notifiche a tutti.
+- **Azienda**: pubblica offerte tramite l'admin e ha una pagina pubblica; il portale aziende `/azienda` è fermo.
 
 ## Infrastruttura
 
-| Servizio | Dettaglio |
-|---|---|
-| **GitHub** | `Botika-AI/jumpIn` — branch `main` (repo privato) |
-| **Vercel** | Progetto `jumpindeploy` (`prj_X2yqSlPehWFEbzz1ct2xs45lIgHT`) |
-| **Supabase** | Progetto `Jump'in` — ref `rneifgkgpabasmzfhkfg` — region `eu-west-3` |
-| **URL produzione** | `https://jumpindeploy.vercel.app` |
+- **GitHub**: `Botika-AI/jumpIn`, branch `main`. Ogni push su `main` va in produzione automaticamente.
+- **Vercel**: progetto `jumpindeploy` — https://jumpindeploy.vercel.app
+- **Supabase**: due progetti separati.
+  - **Development**: usato in locale via `.env.local`
+  - **Production**: usato da Vercel
+  - Variabili: `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`, iniettate da `vite.config.ts` come `__SUPABASE_URL__` / `__SUPABASE_KEY__`.
 
----
+## Comandi
 
-## Stack Tecnico
-
-- **Frontend**: Vite + React 19, TypeScript, Tailwind CSS (CDN)
-- **Auth + DB**: Supabase (`@supabase/supabase-js`) — email/password
-- **QR Scanner**: `html5-qrcode` (client-side, camera)
-- **QR Generator**: `qrcode` (admin dashboard, genera PNG client-side)
-- **Routing**: `react-router-dom` v7 — `/` utente, `/admin` admin
-- **Deployment**: Vercel (SPA rewrites via `vercel.json`)
-
----
-
-## Variabili d'Ambiente (Vercel + `.env.local`)
-
-| Chiave | Descrizione |
-|---|---|
-| `VITE_SUPABASE_URL` | URL progetto Supabase |
-| `VITE_SUPABASE_ANON_KEY` | Anon/publishable key Supabase |
-
-> Queste sono le **uniche** variabili necessarie. Tutto il resto (auth, RLS, admin) è gestito da Supabase.
-
----
-
-## Schema Database (Supabase — schema `public`)
-
-### `profiles`
-| Colonna | Tipo | Note |
-|---|---|---|
-| `id` | `uuid` PK | FK → `auth.users.id` |
-| `first_name` | `text` | nullable |
-| `last_name` | `text` | nullable |
-| `email` | `text` | |
-| `school` | `text` | nullable |
-| `dob` | `text` | data di nascita, nullable |
-| `last_checkin` | `timestamptz` | timestamp ultima scansione |
-| `is_admin` | `boolean` | default `false` — impostare manualmente via SQL |
-
-Auto-popolata dal trigger `on_auth_user_created` al signup (legge `raw_user_meta_data`).
-
-**Impostare un admin:**
-```sql
-UPDATE public.profiles SET is_admin = true WHERE email = 'your@email.com';
+```bash
+npm install       # node_modules non è nel repo
+npm run dev       # porta 3000 (Vite)
+npm run build     # esegui sempre prima di un push
 ```
 
-### `events`
-| Colonna | Tipo | Note |
-|---|---|---|
-| `id` | `text` PK | es. `jumpin_2026_05` |
-| `name` | `text` | es. `JumpIn - Maggio 2026` |
-| `event_date` | `date` | data di inizio |
-| `event_end` | `date` | data di fine (nullable — se null = solo `event_date`) |
-| `location` | `text` | nullable |
-| `created_at` | `timestamptz` | |
+Non esistono test, lint o typecheck configurati. Prima di ogni push verifica almeno che `npm run build` passi.
 
-### `attendances`
-| Colonna | Tipo | Note |
-|---|---|---|
-| `id` | `uuid` PK | auto-generato |
-| `user_id` | `uuid` | FK → `profiles.id` |
-| `event_id` | `text` | FK → `events.id` |
-| `type` | `text` | `'ingresso'` oppure `'uscita'` |
-| `scanned_at` | `timestamptz` | default `now()` |
+## Navigazione e aree
 
-> Le scansioni si **accodano** (INSERT). Ogni scan = nuova riga. Nessun limite per utente.
+La navigazione interna usa `useState`, non URL (tranne `/azienda`).
 
-### View `profiles_con_eventi`
-Vista per export CSV dei profili con gli eventi a cui hanno partecipato:
-```sql
-SELECT p.*, string_agg(DISTINCT e.id || ' – ' || e.name, ' | ') AS eventi_partecipati
-FROM profiles p
-INNER JOIN attendances a ON a.user_id = p.id
-INNER JOIN events e ON e.id = a.event_id
-GROUP BY p.id, ...
-```
-Solo profili con almeno una scansione. Esportabile da Supabase SQL Editor → Download CSV.
+- **App.tsx**: macchina a stati — `loading | login | register | onboarding | dashboard | reset | set-password`. Al login scrive `access_logs` e richiede accettazione normativa privacy. Subito dopo la registrazione passa per `onboarding` (interessi e obiettivi).
+- Se `profiles.is_admin = true` → **area admin** (`pages/AdminShell.tsx`).
+- Altrimenti → **area studente** (`components/AppShell.tsx`).
+- Non esiste una rotta `/admin`: l'area si sceglie solo in base a `is_admin`. Un admin non vede l'area studente.
+- **Portale aziende**: `/azienda` → `pages/AziendaApp.tsx`. Sviluppo **FERMO** — non modificare senza richiesta esplicita.
 
----
+## Termini chiave
 
-## RLS e Sicurezza
+- **Esperienza** (studente) = **Evento** (admin) = tabella `events`. "Concluso" è calcolato dalle date, non è uno stato nel DB.
+- **Iscrizione** = riga in `iscrizioni_eventi` (stati: `in_attesa | accettata | rifiutata`). In admin si chiama "candidatura".
+- **Evento completato** (ai fini di attestato e progressi) = studente con sia `ingresso` sia `uscita` in `attendances`. Il badge automatico invece conta qualsiasi presenza.
+- **Nominare admin**: `UPDATE public.profiles SET is_admin = true WHERE email = '...';`
 
-- **`auth_is_admin()`** — funzione SECURITY DEFINER che legge `profiles.is_admin` senza recursione RLS
-- **profiles**: ogni utente vede solo il proprio profilo; admin vede tutto
-- **attendances**: ogni utente vede solo le proprie; admin vede tutto
-- **events**: tutti gli autenticati possono leggere; solo admin può inserire/modificare
+## Check-in QR
 
----
+- **Formato**: `JUMPIN|{event_id}|ingresso` oppure `JUMPIN|{event_id}|uscita`.
+- **Generazione**: Admin → Eventi → clic sul titolo dell'evento → QR di ingresso e uscita, generati lato client (libreria `qrcode`) e scaricabili in PNG. Un nuovo evento non richiede modifiche a codice o variabili d'ambiente.
+- **Scansione**: Studente → Miei eventi → evento con iscrizione confermata e non concluso → scanner (`components/QRScanner.tsx`, `html5-qrcode`).
+- **Validazione** (`processQrScan` in `components/IMieiPage.tsx`): formato corretto, evento esistente, data odierna compresa tra `event_date` ed `event_end`. Poi INSERT in `attendances` e UPDATE di `profiles.last_checkin`.
+- Ogni scansione aggiunge una riga, senza limiti. Il QR non verifica che lo studente sia iscritto: vedi [docs/problemi-noti.md](docs/problemi-noti.md).
 
-## Flusso Registrazione
+## Database
 
-1. Form → `supabase.auth.signUp({ email, password, options: { data: { first_name, last_name, school, dob } } })`
-2. Trigger `on_auth_user_created` crea riga in `profiles` leggendo `raw_user_meta_data`
-3. App fa `profiles.upsert(...)` come backup/aggiornamento
-4. Se email già registrata → messaggio "Hai già un account, effettua il login"
+Prima di toccare il database leggi [docs/database.md](docs/database.md).
+Il browser parla direttamente con Supabase con la chiave pubblica: **la sicurezza dipende interamente dalle policy RLS**. Non proporre mai modifiche che le aggirino o le allarghino (es. policy `USING (true)`, funzioni `SECURITY DEFINER` senza controlli); i controlli fatti solo nell'interfaccia non proteggono nulla.
+Ogni modifica di schema va eseguita **a mano** nel SQL Editor su **entrambi** i progetti (Development e Production) e salvata come script in `supabase/`.
 
----
+## Struttura e codice morto
 
-## Flusso Check-in
+Prima di navigare nei file leggi [docs/architettura.md](docs/architettura.md): il repo contiene molto codice morto (residui Next.js, vecchie versioni), non prenderlo come esempio.
 
-1. Utente loggato → apre scanner → scansiona QR fisico affisso all'evento
-2. Client parsa il formato: `JUMPIN|{event_id}|{tipo}`
-3. Client verifica su Supabase che l'evento esista
-4. Controlla che la data odierna sia nel range `[event_date, event_end]`
-   - Se evento non trovato → "QR code non valido"
-   - Se fuori range → "Evento scaduto" / "Evento non ancora iniziato"
-5. INSERT in `attendances` + UPDATE `profiles.last_checkin`
+- Nuove pagine studente → `components/`
+- Nuove pagine admin → `pages/admin/`
+- Quando aggiungi, sposti o elimini file, aggiorna `docs/architettura.md` nello stesso commit.
 
----
+## Stile
 
-## Formato QR Code
+- Interfaccia in italiano.
+- Tailwind da CDN in `index.html` — nessun build Tailwind. Il `tailwind.config.js` nella root è codice morto.
+- Font: Inter (testo), Montserrat (titoli, `.font-montserrat`).
+- Colori: studente `orange-500`; admin titoli `#1F2430`, bottoni `#F0813C`, sfondo `#F5F6F8`.
+- Componenti: `export const X: React.FC`; chiamate Supabase direttamente nei componenti; icone `lucide-react`.
+- Immagini: usa `resizeImage` da `lib/imageUtils.ts` (output webp). Copertine evento 16:9 con `components/CoverImage.tsx`. Mostra sempre gli errori di upload all'utente.
 
-```
-JUMPIN|{event_id}|{tipo}
-```
-Esempi:
-- `JUMPIN|jumpin_2026_05|ingresso`
-- `JUMPIN|jumpin_2026_05|uscita`
+## Regole operative
 
-I QR vengono generati dall'admin in `/admin` (client-side, libreria `qrcode`) e scaricati come PNG.
-
----
-
-## Dashboard Admin (`/admin`)
-
-### Accesso
-- Colonna `profiles.is_admin = true` (impostata manualmente via SQL)
-- Gli utenti admin vedono il bottone ⚙️ nella Dashboard → link a `/admin`
-- Navigazione diretta: `jumpindeploy.vercel.app/admin`
-- Non loggato → "Login richiesto"; loggato ma non admin → "Accesso negato"
-
-### Funzionalità
-- **Crea evento**: ID, Data Inizio, Data Fine (opzionale), Nome, Location
-- **QR codes**: generati client-side per ogni evento (ingresso + uscita), scaricabili come PNG
-- **Export CSV**: per ogni evento, scarica `presenze_{event_id}.csv` con tutti i dati degli utenti
-
-### Schema CSV Export
-```
-Nome,Cognome,Email,Scuola,DataNascita,Tipo,DataOra
-Mario,Rossi,mario@example.com,Liceo Einstein,2006-01-01,ingresso,08/05/2026 21:30:00
-```
-
-### Nuovo evento — procedura
-1. Vai su `/admin`
-2. Compila il form (ID univoco, data inizio, data fine opzionale, nome, location)
-3. Clicca "Crea Evento" → i QR vengono generati automaticamente
-
-> Non serve aggiornare env var su Vercel per ogni nuovo evento.
-
----
-
-## Struttura File Chiave
-
-```
-App.tsx                     # Router: /admin → AdminPage, * → AuthApp (login/register/dashboard)
-pages/
-  AdminPage.tsx             # Dashboard admin: crea eventi, QR, CSV
-components/
-  Dashboard.tsx             # Profilo utente + scanner QR + check-in
-  QRScanner.tsx             # Overlay camera html5-qrcode
-  GlassCard.tsx             # Card glassmorphism riusabile
-lib/
-  supabase.ts               # Client Supabase (usa __SUPABASE_URL__ / __SUPABASE_KEY__ da Vite)
-constants.ts                # Lista scuole Rimini (RIMINI_SCHOOLS)
-types.ts                    # UserProfile, JumpInEvent, Attendance, AuthState
-index.tsx                   # Entry point React
-index.html                  # Font, Tailwind CDN, importmap ESM
-vite.config.ts              # Legge VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY → define
-vercel.json                 # SPA rewrites: tutte le rotte → index.html
-.gitignore                  # Esclude: node_modules, dist, .env.local, .claude/settings.local.json
-supabase/
-  admin_setup.sql           # Migration di riferimento (già applicata via MCP)
-```
-
----
-
-## Migrazioni Supabase Applicate
-
-| Nome | Descrizione |
-|---|---|
-| `admin_setup` | Colonna `is_admin`, funzione `auth_is_admin()`, RLS su events/attendances/profiles |
-| `make_profile_columns_nullable` | `first_name`, `last_name`, `school`, `dob` → nullable |
-| `fix_handle_new_user_idempotent` | Trigger `ON CONFLICT DO UPDATE` — idempotente al re-signup |
-| `add_event_end_to_events` | Colonna `event_end date` nullable su `events` |
-| `create_view_profiles_con_eventi` | View per CSV profili + eventi partecipati |
-
----
-
-## MCP Server Configurati (globali — `~/.claude.json`)
-
-| Server | Pacchetto | Scope |
-|---|---|---|
-| `supabase` | `@supabase/mcp-server-supabase` | user |
-| `github` | `@modelcontextprotocol/server-github` | user |
-| `vercel` | `vercel-mcp` | user |
-
----
-
-## Note Operative
-
-- **Nuovo evento**: solo tramite `/admin` — nessuna modifica a env var o codice necessaria
-- **Nuovo admin**: `UPDATE public.profiles SET is_admin = true WHERE email = 'your@email.com'`
-- **Export presenze con eventi**: `SELECT * FROM profiles_con_eventi` su Supabase SQL Editor
-- **Le scansioni si accodano**: ogni scan = nuova riga in `attendances`
-- **QR scaduti**: la scansione è bloccata client-side se la data corrente è fuori dal range dell'evento
-- **QR non validi**: format check + verifica esistenza evento su DB prima di ogni insert
+- Non far crescere i file già enormi (`AdminEventi.tsx`, `ProfileSettingsPage.tsx`, `IMieiPage.tsx`): estrai componenti.
+- Prima di duplicare logica (calcolo "evento completato", sblocco attestato, formattazione date) cerca se esiste già. Vedi [docs/problemi-noti.md](docs/problemi-noti.md).
+- Non usare Playwright MCP per caricare file a mano (blocca il selettore file). Usalo liberamente per navigare e testare.
+- Quando cambi lo schema del database, aggiorna `docs/database.md` nello stesso commit.
