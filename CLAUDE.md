@@ -7,7 +7,7 @@ Guida operativa per Claude Code.
 Piattaforma di orientamento per studenti delle superiori di Rimini e provincia, gestita da Fattor Comune. Gli studenti scoprono esperienze, si iscrivono (con approvazione admin), fanno check-in con QR, ricevono badge e attestati PDF, vedono offerte lavoro di aziende partner, ricevono notifiche.
 SPA Vite + React 19 + TypeScript. Supabase (Auth, Postgres, Storage) chiamato direttamente dal browser — nessun backend. Deploy su Vercel.
 
-## Flusso principale
+## Flusso principale (studente)
 
 1. Lo studente si registra alla piattaforma e da quel momento vede le esperienze a cui può partecipare.
 2. Si iscrive all'esperienza che gli interessa; l'admin conferma l'iscrizione (lo studente riceve una notifica).
