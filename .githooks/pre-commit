@@ -1,0 +1,4 @@
+#!/bin/bash
+# Hook pre-commit del progetto. Attivarlo una volta per clone con:
+#   git config core.hooksPath .githooks
+exec bash "$(git rev-parse --show-toplevel)/.githooks/check-docs.sh" commit

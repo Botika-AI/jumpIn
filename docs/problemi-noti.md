@@ -1,6 +1,9 @@
 # docs/problemi-noti.md
 
-Quando risolvi un problema, toglilo da questo elenco.
+Elenco dei problemi **noti e ricorrenti**: difetti strutturali, incoerenze e limiti di sicurezza che restano nel codice e condizionano il lavoro futuro.
+- Non aggiungere bug puntuali: quelli si correggono.
+- Aggiungi una voce solo con la conferma dell'utente.
+- Quando risolvi un problema, toglilo da questo elenco.
 
 ---
 

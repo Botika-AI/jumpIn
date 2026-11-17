@@ -35,6 +35,7 @@ SPA Vite + React 19 + TypeScript. Supabase (Auth, Postgres, Storage) chiamato di
 ## Comandi
 
 ```bash
+git config core.hooksPath .githooks   # una volta per clone: attiva il controllo docs al commit
 npm install       # node_modules non è nel repo
 npm run dev       # porta 3000 (Vite)
 npm run build     # esegui sempre prima di un push
@@ -96,3 +97,4 @@ Prima di navigare nei file leggi [docs/architettura.md](docs/architettura.md): i
 - Prima di duplicare logica (calcolo "evento completato", sblocco attestato, formattazione date) cerca se esiste già. Vedi [docs/problemi-noti.md](docs/problemi-noti.md).
 - Non usare Playwright MCP per caricare file a mano (blocca il selettore file). Usalo liberamente per navigare e testare.
 - Quando cambi lo schema del database, aggiorna `docs/database.md` nello stesso commit.
+- `docs/problemi-noti.md` contiene solo problemi **noti e ricorrenti** (difetti strutturali, incoerenze, limiti di sicurezza che restano nel codice e condizionano il lavoro futuro). Un bug puntuale si corregge, non si elenca. Proponi una nuova voce solo per un problema di questo tipo che non viene risolto subito, e chiedi conferma all'utente prima di aggiungerla. Quando un problema viene risolto, togli la voce.

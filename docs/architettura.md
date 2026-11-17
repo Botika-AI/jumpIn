@@ -155,6 +155,11 @@ supabase/
 
 public/
   logo.png
+
+.githooks/
+  check-docs.sh                  # Controlla che docs/ sia aggiornato quando cambiano struttura o SQL
+  pre-commit                     # Hook git che usa check-docs.sh (attivo con: git config core.hooksPath .githooks)
+                                 # check-docs.sh è usato anche dallo Stop hook di Claude Code in .claude/settings.json
 ```
 
 ---
