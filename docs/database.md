@@ -27,9 +27,10 @@ ORDER BY table_name, column_name;
 
 ---
 
-## Modifiche in preparazione (non ancora applicate)
+## Modifiche recenti e in corso
 
-Gli script `supabase/sicurezza_fase1*.sql` (correzioni di sicurezza su profili, iscrizioni, portale aziende, bucket `badge-icon`, password aziende) sono pronti ma **non ancora eseguiti** né su Development né su Production. Stato e ordine di esecuzione in [piano-modifiche-db.md](piano-modifiche-db.md). Questo file descrive lo schema **attuale**: va aggiornato solo dopo l'applicazione.
+- **Fase 1 sicurezza** (`supabase/sicurezza_fase1*.sql`) applicata su Development e Production il 18/11/2026: vedi "Sicurezza RLS" sotto.
+- **Fase 2** (regole del glossario) in preparazione: stato in [piano-modifiche-db.md](piano-modifiche-db.md).
 
 ---
 
@@ -46,7 +47,7 @@ La cartella `supabase/migrations/` contiene **solo 3 migration** e **non rappres
 |---|---|
 | `id` | uuid PK, FK → `auth.users.id` |
 | `email`, `first_name`, `last_name`, `school`, `dob` | dati base |
-| `is_admin` | boolean, default false — imposta a mano via SQL |
+| `is_admin` | boolean, default false — si imposta **solo** dal SQL Editor: il trigger `profiles_proteggi_is_admin` blocca ogni modifica fatta dall'app |
 | `last_checkin` | timestamp ultima scansione QR |
 | `bio`, `citta` | profilo esteso |
 | `interests` | array interessi (compilato in onboarding) |
@@ -98,7 +99,7 @@ Attestato sbloccato se l'evento è concluso **E** (studente ha ingresso+uscita *
 `stato` mai gestito dal codice (vedi problemi-noti.md).
 
 ### `aziende`
-`stato`: `attivo | disattivo`. `piano`: `free | premium`. `mostra_partner`: boolean. `password_temp`: password in chiaro per il portale aziende.
+`stato`: `attivo | disattivo`. `piano`: `free | premium`. `mostra_partner`: boolean. `password_temp`: **svuotata il 18/11/2026 e da non usare** (era in chiaro e leggibile dagli studenti).
 
 ### `notifiche`
 `user_id NULL` = broadcast a tutti. Tipi: `evento | sistema | badge | profilo | connessione`.
@@ -112,8 +113,8 @@ Eventi scelti dall'admin da mostrare in evidenza.
 ### `access_logs`
 Scritto ad ogni login.
 
-### Portale aziende
-`saved_profiles`, `company_interests`, `company_contacts`, `company_searches` (inutilizzata), `sponsorizzazioni_eventi`.
+### Portale aziende (disattivato)
+`saved_profiles`, `company_interests`, `company_contacts`, `company_searches` (inutilizzata), `sponsorizzazioni_eventi`: accesso **solo admin**. Eccezione: lo studente legge le proprie righe di `company_interests`.
 
 ---
 
@@ -121,12 +122,12 @@ Scritto ad ogni login.
 
 | RPC | Chiamata da |
 |---|---|
-| `notify_profile_completed` | `ProfileSettingsPage` |
-| `delete_user` | `ProfileSettingsPage` (eliminazione account studente) |
+| `notify_profile_completed` | `ProfileSettingsPage` — solo per sé stessi (`p_user_id = auth.uid()`) |
+| `delete_user` | `ProfileSettingsPage` (eliminazione account studente) — **non esiste nel DB**: il pulsante va in errore |
 | `admin_delete_student` | `StudenteModal` |
-| `count_badge_eligible_students` | `AssegnazioneBadge` |
-| `assign_badge_by_event_threshold` | `AssegnazioneBadge` |
-| `verify_azienda_login` | `AziendaApp` (portale aziende) |
+| `count_badge_eligible_students` | `AssegnazioneBadge` — **non esiste nel DB** (script mai applicato) |
+| `assign_badge_by_event_threshold` | `AssegnazioneBadge` — **non esiste nel DB** (script mai applicato) |
+| `verify_azienda_login` | `AziendaApp` (portale aziende) — le funzioni del portale non sono più eseguibili da `anon`/`authenticated` |
 | `update_azienda_referente` | portale aziende |
 | `get_company_dashboard_stats` | portale aziende |
 | `get_suggested_profiles` | portale aziende |
@@ -148,6 +149,7 @@ Bucket `logos`:
 Bucket `badge-icon`:
 - `badges/` — icone badge
 - `certificati/` — template attestati
+- Lettura pubblica; caricamento, modifica e cancellazione solo admin
 
 > I bucket e le relative policy sono usati dal codice ma **assenti dagli script** in `supabase/`.
 
@@ -157,5 +159,7 @@ Bucket `badge-icon`:
 
 - `auth_is_admin()` — funzione `SECURITY DEFINER` che legge `profiles.is_admin` senza ricorsione RLS. Protegge tutte le scritture admin.
 - Studenti accedono solo alle proprie righe (`profiles`, `attendances`, `iscrizioni_eventi`).
+- `profiles`: gli utenti possono modificare **solo** le colonne `first_name, last_name, school, dob, bio, citta, interests, goals, profile_completed_at, last_checkin` (permessi per colonna). Una nuova colonna modificabile dall'app va aggiunta con `GRANT UPDATE (colonna) ON public.profiles TO authenticated`.
+- `iscrizioni_eventi` (studente): legge le proprie, le crea solo `in_attesa`, le annulla solo se non `rifiutata`; nessuna modifica.
 - Vista `profiles_con_eventi`: `security_invoker = true`.
-- Policy `anon FOR ALL USING (true)` sulle tabelle del portale aziende — da sistemare (vedi problemi-noti.md).
+- **Nuove funzioni**: Supabase concede in automatico l'esecuzione ad `anon` e `authenticated`. Ogni nuova funzione `SECURITY DEFINER` deve controllare chi la chiama e, se non serve all'app, va chiusa con `REVOKE EXECUTE ON FUNCTION ... FROM PUBLIC, anon, authenticated`.

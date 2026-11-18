@@ -65,14 +65,6 @@ Il canale realtime su `iscrizioni_eventi` aperto in `EsperienzePage` non viene c
 
 ---
 
-## Sicurezza da sistemare
-
-- Policy `anon FOR ALL USING (true)` sulle tabelle del portale aziende: chiunque può leggere e scrivere senza autenticazione.
-- **Password aziende in chiaro** in `aziende.password_temp`.
-- La policy `profiles_update_own` non limita le colonne modificabili: verificare che uno studente non possa impostare `is_admin = true` su se stesso.
-
----
-
 ## File troppo grandi (al 17/11/2026)
 
 | File | Righe |
