@@ -3,7 +3,7 @@
 Piano di lavoro **temporaneo** per le modifiche al database decise il 18/11/2026 (branch `refactor/review-architettura`).
 Quando tutte le voci sono applicate su Development e Production, questo file va eliminato e i contenuti stabili riportati in [database.md](database.md).
 
-> ⚠️ Contiene la descrizione di vulnerabilità ancora aperte: **non fare push** di questo file finché la Fase 1 non è applicata in Production.
+> Fase 1 (sicurezza) applicata in Production il 18/11/2026: le vulnerabilità descritte qui sono chiuse.
 
 ## Stato
 
@@ -11,7 +11,7 @@ Quando tutte le voci sono applicate su Development e Production, questo file va 
 - **Development**: `sicurezza_fase1_storage.sql` (D) **applicato il 18/11/2026**; 4/4 prove superate. Admin: creazione badge con icona e assegnazione ok.
 - **Development**: `sicurezza_fase1_password_aziende.sql` (E) **applicato il 18/11/2026**; password rimaste: 0.
 - **Fase 1 completa su Development.**
-- **Production**: impronte verificate identiche al backup prima di procedere; `sicurezza_fase1.sql` (A, B, C) **applicato il 18/11/2026**; verifica SQL ok; 7/7 prove da anonimo superate. `sicurezza_fase1_storage.sql` (D) **applicato**; caricamento da anonimo rifiutato. Confronto impronte esteso (con permessi) Dev/Prod: 11/11 identiche. Prove con studente temporaneo: 15/15 superate. Studente temporaneo eliminato da admin (funziona). `sicurezza_fase1_password_aziende.sql` (E) **applicato**: password rimaste 0. Da fare: controllo app da admin.
+- **Production**: impronte verificate identiche al backup prima di procedere; `sicurezza_fase1.sql` (A, B, C) **applicato il 18/11/2026**; verifica SQL ok; 7/7 prove da anonimo superate. `sicurezza_fase1_storage.sql` (D) **applicato**; caricamento da anonimo rifiutato. Confronto impronte esteso (con permessi) Dev/Prod: 11/11 identiche. Prove con studente temporaneo: 15/15 superate. Studente temporaneo eliminato da admin (funziona). `sicurezza_fase1_password_aziende.sql` (E) **applicato**: password rimaste 0. Controllo app da admin ok. **Fase 1 conclusa il 18/11/2026.**
 
 Letture fatte prima di iniziare:
 - Development e Production verificati identici (policy, funzioni, trigger, vincoli, colonne, viste, bucket, RLS)
