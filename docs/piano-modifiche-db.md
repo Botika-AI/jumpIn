@@ -7,7 +7,13 @@ Quando tutte le voci sono applicate su Development e Production, questo file va 
 
 ## Stato
 
-**Nessuna modifica applicata.** Finora solo query di sola lettura:
+- **Development**: `sicurezza_fase1.sql` (A, B, C) **applicato il 18/11/2026**; verifica SQL ok; 15/15 prove di attacco e uso normale superate; app provata a mano (studente) ok.
+- **Development**: `sicurezza_fase1_storage.sql` (D) **applicato il 18/11/2026**; 4/4 prove superate. Admin: creazione badge con icona e assegnazione ok.
+- **Development**: `sicurezza_fase1_password_aziende.sql` (E) **applicato il 18/11/2026**; password rimaste: 0.
+- **Fase 1 completa su Development.**
+- **Production**: nessuna modifica applicata.
+
+Letture fatte prima di iniziare:
 - Development e Production verificati identici (policy, funzioni, trigger, vincoli, colonne, viste, bucket, RLS)
 - impatto delle nuove regole misurato in Production
 - backup delle definizioni attuali salvato (CSV fuori dal repo, in Download)
@@ -28,10 +34,22 @@ Quando tutte le voci sono applicate su Development e Production, questo file va 
 |---|---|---|
 | A | Uno studente può impostare `is_admin = true` sul proprio profilo (`profiles_update_own` non limita le colonne) | Impedire la modifica di `is_admin` a chi non è admin |
 | B | Uno studente può accettarsi da solo l'iscrizione (policy `ALL` su `iscrizioni_eventi`) | Separare le policy: lo studente legge, crea (solo `in_attesa`) e annulla; non modifica |
-| C | Funzioni `SECURITY DEFINER` del portale aziende eseguibili da anonimi: espongono i dati di tutti gli studenti (`get_all_talent_profiles`, …) e permettono messaggi falsi (`contact_student`); tabelle del portale con policy `USING (true)` | Revocare l'esecuzione (anche da `PUBLIC`) e togliere le policy aperte. Il portale `/azienda` smette di funzionare (non usato) — **in attesa di conferma utente** |
+| C | Funzioni `SECURITY DEFINER` del portale aziende eseguibili da anonimi: espongono i dati di tutti gli studenti (`get_all_talent_profiles`, …) e permettono messaggi falsi (`contact_student`); tabelle del portale con policy `USING (true)` | Revocare l'esecuzione (anche da `PUBLIC`) e sostituire le policy aperte con policy solo admin. **Deciso (Q27):** il portale `/azienda` smette di funzionare (non usato) |
 | D | Bucket `badge-icon`: chiunque può caricare/cancellare file | Scrittura solo admin |
-| E | Gli studenti leggono `aziende.password_temp` delle aziende partner | Escludere la colonna dalla lettura degli studenti |
+| E | Gli studenti leggono `aziende.password_temp` delle aziende partner | **Deciso (Q29):** svuotare tutte le `password_temp` (operazione irreversibile, password perse) e togliere il campo password dall'admin |
 | — | Verifica: nessun admin non autorizzato in Production | Query di sola lettura su `profiles.is_admin` |
+
+Note di progetto emerse dall'analisi del codice:
+- A: lo studente modifica solo `first_name, last_name, bio, citta, interests, goals, profile_completed_at, last_checkin`; l'admin (StudenteModal) anche `school, dob`.
+- C: lo studente legge `company_interests` (solo le proprie righe) in `AziendePage`: va mantenuta una policy di lettura delle proprie righe. Le funzioni trigger (`handle_new_user`, `notify_badge_assigned`) non si possono chiamare via API: non vanno toccate. `auth_is_admin` deve restare eseguibile da tutti (la usano le policy).
+- D: l'admin carica con `upsert: true` → servono INSERT e UPDATE (oltre a SELECT) per l'admin.
+- E: l'admin legge `aziende` con `select('*')` in `AziendaModal`: togliere la colonna con i permessi romperebbe la pagina.
+- Supabase concede in automatico l'esecuzione delle **nuove** funzioni ad `anon` e `authenticated`: da documentare in database.md come regola per il futuro.
+
+## Bug trovati durante l'analisi (da correggere)
+
+- **Eliminazione account studente rotta**: `ProfileSettingsPage` chiama la RPC `delete_user`, che **non esiste** nel DB → il pulsante va in errore.
+- **Modifica profilo studente da admin non salvata**: `StudenteModal` aggiorna `profiles`, ma non esiste una policy UPDATE per l'admin → l'aggiornamento tocca 0 righe senza errore; l'interfaccia mostra i dati cambiati, il DB no.
 
 ## Fase 2 — Regole decise nel glossario
 
@@ -50,6 +68,8 @@ Quando tutte le voci sono applicate su Development e Production, questo file va 
 | 10 | Conteggio posti tramite funzione che restituisce solo il numero, al posto della policy che mostra a tutti gli accettati | Q28 |
 
 ## Modifiche solo all'interfaccia (codice)
+
+- Togliere il campo password delle aziende da `AggiungiAzienda` e `AziendaModal` (Q29)
 
 - Rinominare la sezione admin "Candidature" in "Iscrizioni" (Q2)
 - Togliere "Link a form esterna" dall'admin e dal pulsante "Partecipa" dello studente; togliere il riquadro "quiz/survey" (Q13)

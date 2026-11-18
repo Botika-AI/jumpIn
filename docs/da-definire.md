@@ -29,3 +29,7 @@ Un QR che cambia ogni pochi minuti, mostrato su uno schermo all'evento, per impe
 ## Sezione pubblica
 
 Oggi l'app è solo per studenti registrati: senza login non si vede nulla. Idea: una sezione pubblica, simile a quella studenti, con eventi dedicati. Il vecchio campo "visibilità" degli eventi (solo studenti / pubblico / sfocato) è stato tolto perché non aveva alcun effetto.
+
+## Portale aziende
+
+Il portale `/azienda` è stato disattivato (novembre 2026): le sue funzioni e tabelle esponevano i dati degli studenti a chiunque. Le password delle aziende (`aziende.password_temp`, salvate in chiaro) sono state svuotate e non sono recuperabili. Per riattivarlo serve un login vero (Supabase Auth per le aziende) e policy dedicate alle aziende autenticate.

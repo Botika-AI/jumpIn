@@ -27,6 +27,12 @@ ORDER BY table_name, column_name;
 
 ---
 
+## Modifiche in preparazione (non ancora applicate)
+
+Gli script `supabase/sicurezza_fase1*.sql` (correzioni di sicurezza su profili, iscrizioni, portale aziende, bucket `badge-icon`, password aziende) sono pronti ma **non ancora eseguiti** né su Development né su Production. Stato e ordine di esecuzione in [piano-modifiche-db.md](piano-modifiche-db.md). Questo file descrive lo schema **attuale**: va aggiornato solo dopo l'applicazione.
+
+---
+
 ## Attenzione a supabase/migrations/
 
 La cartella `supabase/migrations/` contiene **solo 3 migration** e **non rappresenta lo schema reale**. I file `schema.sql` e `schema_complete.sql` sono vecchie istantanee. La fonte di verità è il DB in produzione + i ~25 script in `supabase/*.sql`.
