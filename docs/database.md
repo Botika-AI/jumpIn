@@ -82,7 +82,7 @@ Ogni scansione = nuova riga. `type`: `ingresso | uscita`. Nessun vincolo di unic
 Un trigger genera una notifica quando viene assegnato un badge.
 
 ### `certificati` + `certificati_assegnazioni`
-Attestato sbloccato se: evento concluso **E** studente ha ingresso+uscita, oppure assegnazione manuale da admin.
+Attestato sbloccato se l'evento è concluso **E** (studente ha ingresso+uscita **oppure** assegnazione manuale da admin). Anche l'assegnazione manuale vale solo a evento concluso.
 > Questi oggetti sono usati dal codice ma **assenti dagli script** in `supabase/`.
 
 ### `job_positions`
