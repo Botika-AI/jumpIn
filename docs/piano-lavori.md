@@ -22,7 +22,7 @@ Le skill `grill-with-docs`, `improve-codebase-architecture` e `thermo-nuclear-co
 ## Stato al 19/11/2026
 
 - **Branch** `refactor/review-architettura`: pushato su GitHub (non su `main`). `main` e il sito in produzione non contengono ancora nessuna modifica di codice.
-- **Database**: Fase 1 (sicurezza) applicata su Development **e** Production. Fase 2: voci 0 e 1 applicate (19/11), voci 2–3 rinviate (badge solo manuali), voce 4 applicata (19/11), prossima la voce 5.
+- **Database**: Fase 1 (sicurezza) applicata su Development **e** Production. Fase 2: voci 0 e 1 applicate (19/11), voci 2–3 rinviate (badge solo manuali), voci 4, 5 e 6 applicate (19/11), prossima la voce 10 (conteggio posti senza nomi).
 - **Codice dell'app**: non ancora modificato.
 
 ---
@@ -145,8 +145,8 @@ Azioni consigliate all'utente, fuori dal codice:
 | 2 | Badge automatico: conta solo le Partecipazioni completate | Q5 | ⏸ **RINVIATA** (decisione del 19/11/2026): per ora i badge si assegnano **solo a mano**. Script pronto e **non applicato**: `fase2_voce2_badge_automatico.sql` (+ ripristino, prova `scripts/sicurezza/prova-fase2-voce2.sql`). Vedi da-definire.md, "Badge automatico" |
 | 3 | Le stesse funzioni usano l'ora italiana | Q7 | ⏸ Rinviata con la voce 2 (già inclusa nello stesso script) |
 | 4 | Un'iscrizione si accetta o si crea solo se ci sono posti liberi; nessun limite se `max_partecipanti` è vuoto | Q9, Q16 | ✅ **Applicata su Dev e Prod il 19/11/2026** (`fase2_voce4_posti.sql`, trigger `iscrizioni_controlla_posti`; prova `scripts/sicurezza/prova-fase2-voce4.sql` 11/11). Sicura anche con due admin contemporanei |
-| 5 | Nessuna nuova Iscrizione dopo la scadenza (`scadenza_candidature`, tipo `date`) | Q10 | Ora italiana |
-| 6 | Lo studente annulla solo un'iscrizione in attesa o accettata, **prima dell'inizio** dell'evento | Q15 | La Fase 1 ha già escluso le `rifiutata`; manca il vincolo di data |
+| 5 | Nessuna nuova Iscrizione dopo la scadenza (`scadenza_candidature`, tipo `date`) | Q10 | Ora italiana. Decisioni del 19/11: ci si iscrive fino al giorno **prima** della scadenza (scadenza 30/11 → ultimo giorno 29/11); **senza scadenza** fino al giorno prima dell'inizio dell'evento. ✅ **Applicata su Dev e Prod il 19/11/2026** (`fase2_voce5_6_iscrizioni_date.sql`, prova `prova-fase2-voce5-6.mjs` 12/12) |
+| 6 | Lo studente annulla solo un'iscrizione in attesa o accettata, **prima dell'inizio** dell'evento | Q15 | ✅ **Applicata su Dev e Prod il 19/11/2026** insieme alla voce 5 (si annulla fino al giorno prima di `event_date`) |
 | 7 | Materiali visibili solo con Iscrizione accettata | Q19 | Policy di lettura di `materiali_eventi` (oggi `USING (true)` per gli autenticati) |
 | 8 | File dei materiali in uno spazio privato con link temporanei | Q19 | In Production non ci sono file in `logos/materiali/`: nessuno spostamento |
 | 9 | Studenti vedono solo eventi pubblicati | Q22 | Togliere `OR stato IS NULL` da `events_select_authenticated`; 0 eventi senza stato in Production |
@@ -162,7 +162,7 @@ Dati di Production rilevanti (18/11/2026): 4 eventi, 0 iscrizioni, 54 scansioni,
 
 ## Modifiche all'interfaccia (codice) — da fare
 
-- **Posti esauriti e chiusura delle iscrizioni, anche graficamente** (richiesta dell'utente del 19/11/2026): da progettare insieme. Dopo la voce 4 il DB rifiuta iscrizioni e accettazioni oltre i posti, ma l'app non controlla l'errore: in `AdminEventi` e `AdminCandidature` l'iscrizione risulta "accettata" e parte la notifica allo studente; in `EsperienzePage`/`HomeDashboard` l'iscrizione rifiutata non mostra nulla. `AdminEventi` non controlla nemmeno i posti prima di accettare (singola e "accetta tutti")
+- **Posti esauriti e chiusura delle iscrizioni, anche graficamente** (richiesta dell'utente del 19/11/2026): da progettare insieme. Dopo la voce 4 il DB rifiuta iscrizioni e accettazioni oltre i posti, ma l'app non controlla l'errore: in `AdminEventi` e `AdminCandidature` l'iscrizione risulta "accettata" e parte la notifica allo studente; in `EsperienzePage`/`HomeDashboard` l'iscrizione rifiutata non mostra nulla. `AdminEventi` non controlla nemmeno i posti prima di accettare (singola e "accetta tutti"). **Scadenza delle iscrizioni**: lo studente oggi non la vede mai (`scadenza_candidature` si imposta solo in `AdminEventi`); dopo la voce 5 va mostrato "Iscrizioni aperte fino al …" / "Iscrizioni chiuse" e gestito l'errore del DB. **Annullamento**: dopo la voce 6 il DB rifiuta l'annullamento dal giorno di inizio, ma `EsperienzePage.handleCancel` non controlla l'errore e toglie comunque l'iscrizione dalla schermata (ricompare ricaricando): il pulsante "Annulla" va nascosto dall'inizio dell'evento
 - Nascondere l'assegnazione **automatica** dei badge in `AssegnazioneBadge` (badge solo manuali, decisione del 19/11/2026): oggi il pannello chiama due funzioni che non esistono nel DB e non mostra errori
 - Rinominare la sezione admin "Candidature" in "Iscrizioni" (Q2)
 - Togliere "Link a form esterna" dall'admin **e** il comportamento del pulsante "Partecipa" dello studente; togliere il riquadro "quiz/survey" (Q13)

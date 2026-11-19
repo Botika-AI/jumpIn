@@ -35,6 +35,7 @@ ORDER BY table_name, column_name;
   - Voce 1 (`supabase/fase2_voce1_scansione_valida*.sql`, Development e Production): la policy `attendances_insert_own` accetta una Scansione solo con Iscrizione accettata, nei giorni dell'evento (ora italiana) e con `scanned_at = now()`. Applicata e verificata su Development (8/8 prove) e Production il 19/11/2026.
   - Voci 2 e 3 (`supabase/fase2_voce2_badge_automatico*.sql`, Development e Production): crea `badge_studenti_idonei` (regola interna, non eseguibile dall'app), `count_badge_eligible_students` e `assign_badge_by_event_threshold` (solo admin). Contano le Partecipazioni completate a Eventi pubblicati e conclusi in ora italiana, esclusi gli admin; sostituiscono `badge_auto_rules.sql`, mai applicato. ⏸ **Rinviate, non applicare**: per ora i badge sono solo manuali (vedi da-definire.md).
   - Voce 4 (`supabase/fase2_voce4_posti*.sql`, Development e Production): trigger `iscrizioni_controlla_posti` su `iscrizioni_eventi`. A posti esauriti rifiuta nuove Iscrizioni e nuove accettazioni (errore 23514 "Posti esauriti per questo evento"); `max_partecipanti` vuoto = nessun limite. Applicata e verificata su Development (11/11 prove) e Production il 19/11/2026.
+  - Voci 5 e 6 (`supabase/fase2_voce5_6_iscrizioni_date*.sql`, Development e Production): lo studente crea un'Iscrizione solo fino al giorno prima di `scadenza_candidature` (senza scadenza: fino al giorno prima di `event_date`) e la annulla solo prima di `event_date`; ora italiana. Applicate e verificate su Development (12/12 prove) e Production il 19/11/2026.
 
 ---
 
@@ -165,6 +166,6 @@ Bucket `badge-icon`:
 - `auth_is_admin()` — funzione `SECURITY DEFINER` che legge `profiles.is_admin` senza ricorsione RLS. Protegge tutte le scritture admin.
 - Studenti accedono solo alle proprie righe (`profiles`, `attendances`, `iscrizioni_eventi`).
 - `profiles`: gli utenti possono modificare **solo** le colonne `first_name, last_name, school, dob, bio, citta, interests, goals, profile_completed_at, last_checkin` (permessi per colonna). Una nuova colonna modificabile dall'app va aggiunta con `GRANT UPDATE (colonna) ON public.profiles TO authenticated`.
-- `iscrizioni_eventi` (studente): legge le proprie, le crea solo `in_attesa`, le annulla solo se non `rifiutata`; nessuna modifica.
+- `iscrizioni_eventi` (studente): legge le proprie; le crea solo `in_attesa` e fino al giorno prima della scadenza (senza scadenza: prima dell'inizio dell'evento); le annulla solo se in attesa o accettate e prima dell'inizio dell'evento; nessuna modifica. Trigger `iscrizioni_controlla_posti`: posti mai superati, per tutti.
 - Vista `profiles_con_eventi`: `security_invoker = true`.
 - **Nuove funzioni**: Supabase concede in automatico l'esecuzione ad `anon` e `authenticated`. Ogni nuova funzione `SECURITY DEFINER` deve controllare chi la chiama e, se non serve all'app, va chiusa con `REVOKE EXECUTE ON FUNCTION ... FROM PUBLIC, anon, authenticated`.
