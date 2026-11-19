@@ -32,6 +32,7 @@ ORDER BY table_name, column_name;
 - **Fase 1 sicurezza** (`supabase/sicurezza_fase1*.sql`) applicata su Development e Production il 18/11/2026: vedi "Sicurezza RLS" sotto.
 - **Fase 2** (regole del glossario) in preparazione: stato in [piano-lavori.md](piano-lavori.md).
   - Voce 0 (`supabase/fase2_voce0_iscrizioni_storiche*.sql`, **solo Production**, solo dati, nessuna modifica di schema): iscrizioni accettate per i 12 studenti di "Start-up Weekend" (15–17/05/2026), che avevano solo scansioni. Applicata e verificata in Production il 19/11/2026 (su Development si ferma da sola, come previsto).
+  - Voce 1 (`supabase/fase2_voce1_scansione_valida*.sql`, Development e Production): la policy `attendances_insert_own` accetta una Scansione solo con Iscrizione accettata, nei giorni dell'evento (ora italiana) e con `scanned_at = now()`. Applicata e verificata su Development (8/8 prove) e Production il 19/11/2026.
 
 ---
 
@@ -75,7 +76,8 @@ La cartella `supabase/migrations/` contiene **solo 3 migration** e **non rappres
 | — | Realtime attivo su questa tabella |
 
 ### `attendances`
-Ogni scansione = nuova riga. `type`: `ingresso | uscita`. Nessun vincolo di unicità.
+Ogni scansione = nuova riga. `type`: `ingresso | uscita`. Nessun vincolo di unicità (scansioni ripetute permesse).
+Inserimento (policy `attendances_insert_own`): solo per sé, con Iscrizione `accettata`, oggi (ora italiana) tra `event_date` ed `event_end`, e `scanned_at = now()` (l'app non invia `scanned_at`).
 
 ### `materiali_eventi`
 `tipo`: `link | file`

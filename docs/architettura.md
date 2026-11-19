@@ -159,6 +159,7 @@ public/
 scripts/sicurezza/
   prova-fase1.mjs                # Prove di sicurezza Fase 1 (attacchi + uso normale) — vedi docs/piano-lavori.md
   prova-fase1-storage.mjs        # Prove sul bucket badge-icon (solo Development)
+  prova-fase2-voce1.mjs          # Prove Fase 2 voce 1: scansione valida (solo Development)
 
 .githooks/
   check-docs.sh                  # Controlla che docs/ sia aggiornato quando cambiano struttura o SQL

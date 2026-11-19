@@ -68,7 +68,7 @@ La navigazione interna usa `useState`, non URL (tranne `/azienda`).
 - **Generazione**: Admin → Eventi → clic sul titolo dell'evento → QR di ingresso e uscita, generati lato client (libreria `qrcode`) e scaricabili in PNG. Un nuovo evento non richiede modifiche a codice o variabili d'ambiente.
 - **Scansione**: Studente → Miei eventi → evento con iscrizione confermata e non concluso → scanner (`components/QRScanner.tsx`, `html5-qrcode`).
 - **Validazione** (`processQrScan` in `components/IMieiPage.tsx`): formato corretto, evento esistente, data odierna compresa tra `event_date` ed `event_end`. Poi INSERT in `attendances` e UPDATE di `profiles.last_checkin`.
-- Ogni scansione aggiunge una riga, senza limiti. Il QR non verifica che lo studente sia iscritto: vedi [docs/problemi-noti.md](docs/problemi-noti.md).
+- **Regola nel database** (policy `attendances_insert_own`): la scansione è accettata solo con Iscrizione `accettata` e nei giorni dell'evento in ora italiana. Ogni scansione valida aggiunge una riga, senza limiti.
 
 ## Database
 

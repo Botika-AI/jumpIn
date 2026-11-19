@@ -27,7 +27,6 @@ Elenco dei problemi **noti e ricorrenti**: difetti strutturali, incoerenze e lim
 ## Regole applicate solo lato client (non validate dal DB)
 
 - **Posti massimi** degli eventi: il DB non ha vincoli; controllato solo in `AdminCandidature`.
-- **Validità del QR**: non verifica che lo studente sia iscritto e accettato; non blocca doppie scansioni dello stesso tipo.
 - **QR fotografato**: il QR contiene solo testo fisso (`JUMPIN|id|tipo`); una foto condivisa permette di scansionarlo da remoto nei giorni dell'evento. Nessuna regola del database può impedirlo (soluzione prevista: QR dinamico, vedi [da-definire.md](da-definire.md)).
 - **Visibilità degli eventi** (`visibilita`): non applicata a livello RLS.
 - **Scadenza iscrizioni** (`scadenza_candidature`): mai applicata.

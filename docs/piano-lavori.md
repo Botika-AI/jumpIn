@@ -22,7 +22,7 @@ Le skill `grill-with-docs`, `improve-codebase-architecture` e `thermo-nuclear-co
 ## Stato al 19/11/2026
 
 - **Branch** `refactor/review-architettura`: pushato su GitHub (non su `main`). `main` e il sito in produzione non contengono ancora nessuna modifica di codice.
-- **Database**: Fase 1 (sicurezza) applicata su Development **e** Production. Fase 2: voce 0 applicata (19/11), prossima la voce 1.
+- **Database**: Fase 1 (sicurezza) applicata su Development **e** Production. Fase 2: voci 0 e 1 applicate (19/11), prossima la voce 2.
 - **Codice dell'app**: non ancora modificato.
 
 ---
@@ -141,7 +141,7 @@ Azioni consigliate all'utente, fuori dal codice:
 | # | Regola | Origine | Note |
 |---|---|---|---|
 | 0 | Creare una tantum le iscrizioni accettate per i **12 studenti di "Start-up Weekend"** in Production (avevano solo scansioni: allora le iscrizioni non esistevano). Da fare **prima** della voce 1 | Q24 | ✅ **Applicata in Production il 19/11/2026** (`fase2_voce0_iscrizioni_storiche.sql`, verifica: 12 righe `accettata`). Decisioni del 19/11: "Jumper next level" era una prova (esclusa); esclusi Yuri Mondaini (personale) e gazzosidaniele@gmail.com (prova); inclusi anche i 2 studenti con sole uscite. Nessun attestato collegato all'evento (Q25); nessuna notifica generata |
-| 1 | Scansione accettata solo con Iscrizione accettata e nei giorni dell'evento (ora italiana) | Q4, Q17 | Policy `attendances_insert_own`. Scansioni ripetute permesse |
+| 1 | Scansione accettata solo con Iscrizione accettata e nei giorni dell'evento (ora italiana) | Q4, Q17 | ✅ **Applicata su Dev e Prod il 19/11/2026** (`fase2_voce1_scansione_valida.sql`, prove `scripts/sicurezza/prova-fase2-voce1.mjs` 8/8). Blocca anche `scanned_at` inventato. Scansioni ripetute permesse |
 | 2 | Badge automatico: conta solo le Partecipazioni completate | Q5 | `assign_badge_by_event_threshold` e `count_badge_eligible_students` **non esistono nel DB** (script `badge_auto_rules.sql` mai applicato): vanno **create**, chiuse ad `anon`, con controllo admin |
 | 3 | Le stesse funzioni usano l'ora italiana | Q7 | Il DB è in UTC: usare `Europe/Rome` esplicitamente |
 | 4 | Un'iscrizione si accetta o si crea solo se ci sono posti liberi; nessun limite se `max_partecipanti` è vuoto | Q9, Q16 | Controllo nel DB (trigger), sicuro anche con due admin contemporanei |
@@ -157,6 +157,7 @@ Dati di Production rilevanti (18/11/2026): 4 eventi, 0 iscrizioni, 54 scansioni,
 ## Bug trovati durante l'analisi — da correggere
 
 - **Modifica profilo studente da admin non salvata**: `StudenteModal` aggiorna `profiles`, ma non esiste una policy UPDATE per l'admin → 0 righe aggiornate senza errore. Serve una policy admin (le colonne `school`, `dob` sono già autorizzate per colonna).
+- **Scansione rifiutata mostrata come riuscita**: `processQrScan` (`components/IMieiPage.tsx`) non controlla l'errore dell'INSERT in `attendances`. Dopo la voce 1 il DB rifiuta le scansioni non valide, ma lo studente vede comunque "Check-in registrato!" (e `last_checkin` viene aggiornato). Va mostrato l'errore.
 - **Eliminazione account studente rotta**: `ProfileSettingsPage` chiama la RPC `delete_user`, che **non esiste** nel DB.
 
 ## Modifiche all'interfaccia (codice) — da fare
