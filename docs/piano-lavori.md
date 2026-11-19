@@ -156,9 +156,8 @@ Dati di Production rilevanti (18/11/2026): 4 eventi, 0 iscrizioni, 54 scansioni,
 
 ## Bug trovati durante l'analisi — da correggere
 
-- **Modifica profilo studente da admin non salvata**: `StudenteModal` aggiorna `profiles`, ma non esiste una policy UPDATE per l'admin → 0 righe aggiornate senza errore. Serve una policy admin (le colonne `school`, `dob` sono già autorizzate per colonna).
+- ✅ **Corretti il 19/11/2026 su Dev e Prod** (`bug_profilo_admin_elimina_account.sql`): modifica del profilo studente da admin (policy `profiles_update_admin`) ed eliminazione dell'account da parte dello studente (RPC `delete_user`).
 - **Scansione rifiutata mostrata come riuscita**: `processQrScan` (`components/IMieiPage.tsx`) non controlla l'errore dell'INSERT in `attendances`. Dopo la voce 1 il DB rifiuta le scansioni non valide, ma lo studente vede comunque "Check-in registrato!" (e `last_checkin` viene aggiornato). Va mostrato l'errore.
-- **Eliminazione account studente rotta**: `ProfileSettingsPage` chiama la RPC `delete_user`, che **non esiste** nel DB.
 
 ## Modifiche all'interfaccia (codice) — da fare
 

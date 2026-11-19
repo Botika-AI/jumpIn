@@ -161,6 +161,7 @@ scripts/sicurezza/
   prova-fase1-storage.mjs        # Prove sul bucket badge-icon (solo Development)
   prova-fase2-voce1.mjs          # Prove Fase 2 voce 1: scansione valida (solo Development)
   prova-fase2-voce2.sql          # Prove Fase 2 voci 2-3: badge automatico, da SQL Editor (solo Development, annulla tutto)
+  prova-bug-profilo-account.sql  # Prove: modifica profilo da admin + eliminazione account (solo Development, annulla tutto)
   prova-fase2-voce7-8-9.mjs      # Prove Fase 2 voci 7-9: materiali, spazio privato, bozze (solo Development)
   prova-fase2-voce5-6.mjs        # Prove Fase 2 voci 5-6: date delle iscrizioni (solo Development)
   prova-fase2-voce4.sql          # Prove Fase 2 voce 4: posti, da SQL Editor (solo Development, annulla tutto)

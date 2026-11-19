@@ -38,6 +38,7 @@ ORDER BY table_name, column_name;
   - Voci 5 e 6 (`supabase/fase2_voce5_6_iscrizioni_date*.sql`, Development e Production): lo studente crea un'Iscrizione solo fino al giorno prima di `scadenza_candidature` (senza scadenza: fino al giorno prima di `event_date`) e la annulla solo prima di `event_date`; ora italiana. Applicate e verificate su Development (12/12 prove) e Production il 19/11/2026.
   - Voce 10 in due tempi. 10a (`fase2_voce10a_conteggio_posti.sql`): funzione `posti_accettati()`, solo numeri per evento pubblicato, eseguibile solo da autenticati. Applicata su Development e Production il 19/11/2026 (verificato: anonimo rifiutato, studente legge solo i numeri). 10b (`fase2_voce10b_togli_lettura_accettate.sql`): toglie la policy "Tutti leggono iscrizioni accettate per conteggio posti"; **solo dopo** che il codice di `EsperienzePage`/`HomeDashboard` usa `posti_accettati()` ed è online.
   - Voci 7, 8, 9 (`supabase/fase2_voce7_8_9_materiali_bozze*.sql`): Materiali leggibili solo con Iscrizione accettata; nuovo spazio privato `materiali` (percorso `{event_id}/{file}`, lettura admin o accettati, scrittura solo admin; il codice va ancora aggiornato); studenti vedono solo eventi `pubblicato`. Applicate e verificate su Development (10/10 prove) e Production il 19/11/2026.
+- **Bug profilo e account** (`supabase/bug_profilo_admin_elimina_account*.sql`): policy `profiles_update_admin` (l'admin modifica i profili, colonne limitate come per tutti) e RPC `delete_user()` (lo studente elimina solo il proprio account; rifiutata ad admin e anonimi). Applicato e verificato su Development (9/9 prove) e Production il 19/11/2026.
 
 ---
 
@@ -131,7 +132,7 @@ Scritto ad ogni login.
 | RPC | Chiamata da |
 |---|---|
 | `notify_profile_completed` | `ProfileSettingsPage` — solo per sé stessi (`p_user_id = auth.uid()`) |
-| `delete_user` | `ProfileSettingsPage` (eliminazione account studente) — **non esiste nel DB**: il pulsante va in errore |
+| `delete_user` | `ProfileSettingsPage` (eliminazione account studente) — cancella solo l'account di chi chiama, a cascata; rifiutata ad admin e anonimi |
 | `admin_delete_student` | `StudenteModal` |
 | `count_badge_eligible_students` | `AssegnazioneBadge` — **non esiste nel DB**: badge automatico rinviato, script pronto `fase2_voce2_badge_automatico.sql` |
 | `assign_badge_by_event_threshold` | `AssegnazioneBadge` — **non esiste nel DB**: come sopra |
@@ -172,6 +173,7 @@ Bucket `badge-icon`:
 
 - `auth_is_admin()` — funzione `SECURITY DEFINER` che legge `profiles.is_admin` senza ricorsione RLS. Protegge tutte le scritture admin.
 - Studenti accedono solo alle proprie righe (`profiles`, `attendances`, `iscrizioni_eventi`).
+- `profiles`: l'admin legge e modifica tutti i profili (policy `profiles_update_admin`), con le stesse colonne autorizzate.
 - `profiles`: gli utenti possono modificare **solo** le colonne `first_name, last_name, school, dob, bio, citta, interests, goals, profile_completed_at, last_checkin` (permessi per colonna). Una nuova colonna modificabile dall'app va aggiunta con `GRANT UPDATE (colonna) ON public.profiles TO authenticated`.
 - `iscrizioni_eventi` (studente): legge le proprie; le crea solo `in_attesa` e fino al giorno prima della scadenza (senza scadenza: prima dell'inizio dell'evento); le annulla solo se in attesa o accettate e prima dell'inizio dell'evento; nessuna modifica. Trigger `iscrizioni_controlla_posti`: posti mai superati, per tutti.
 - Vista `profiles_con_eventi`: `security_invoker = true`.
