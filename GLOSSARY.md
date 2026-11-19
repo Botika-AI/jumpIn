@@ -45,7 +45,7 @@ Il documento che certifica la partecipazione di uno studente a uno specifico Eve
 _Avoid_: Certificato
 
 **Badge**:
-Un riconoscimento assegnato a uno studente dall'admin, a mano oppure in automatico al raggiungimento di un numero minimo di Partecipazioni completate.
+Un riconoscimento assegnato a mano dall'admin a uno studente. L'assegnazione automatica (a chi raggiunge un numero minimo di Partecipazioni completate) è rinviata: vedi [docs/da-definire.md](docs/da-definire.md).
 
 ## Lavoro
 

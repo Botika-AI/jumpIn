@@ -22,7 +22,7 @@ Le skill `grill-with-docs`, `improve-codebase-architecture` e `thermo-nuclear-co
 ## Stato al 19/11/2026
 
 - **Branch** `refactor/review-architettura`: pushato su GitHub (non su `main`). `main` e il sito in produzione non contengono ancora nessuna modifica di codice.
-- **Database**: Fase 1 (sicurezza) applicata su Development **e** Production. Fase 2: voci 0 e 1 applicate (19/11), prossima la voce 2.
+- **Database**: Fase 1 (sicurezza) applicata su Development **e** Production. Fase 2: voci 0 e 1 applicate (19/11), voci 2–3 rinviate (badge solo manuali), prossima la voce 4.
 - **Codice dell'app**: non ancora modificato.
 
 ---
@@ -142,8 +142,8 @@ Azioni consigliate all'utente, fuori dal codice:
 |---|---|---|---|
 | 0 | Creare una tantum le iscrizioni accettate per i **12 studenti di "Start-up Weekend"** in Production (avevano solo scansioni: allora le iscrizioni non esistevano). Da fare **prima** della voce 1 | Q24 | ✅ **Applicata in Production il 19/11/2026** (`fase2_voce0_iscrizioni_storiche.sql`, verifica: 12 righe `accettata`). Decisioni del 19/11: "Jumper next level" era una prova (esclusa); esclusi Yuri Mondaini (personale) e gazzosidaniele@gmail.com (prova); inclusi anche i 2 studenti con sole uscite. Nessun attestato collegato all'evento (Q25); nessuna notifica generata |
 | 1 | Scansione accettata solo con Iscrizione accettata e nei giorni dell'evento (ora italiana) | Q4, Q17 | ✅ **Applicata su Dev e Prod il 19/11/2026** (`fase2_voce1_scansione_valida.sql`, prove `scripts/sicurezza/prova-fase2-voce1.mjs` 8/8). Blocca anche `scanned_at` inventato. Scansioni ripetute permesse |
-| 2 | Badge automatico: conta solo le Partecipazioni completate | Q5 | `assign_badge_by_event_threshold` e `count_badge_eligible_students` **non esistono nel DB** (script `badge_auto_rules.sql` mai applicato): vanno **create**, chiuse ad `anon`, con controllo admin |
-| 3 | Le stesse funzioni usano l'ora italiana | Q7 | Il DB è in UTC: usare `Europe/Rome` esplicitamente |
+| 2 | Badge automatico: conta solo le Partecipazioni completate | Q5 | ⏸ **RINVIATA** (decisione del 19/11/2026): per ora i badge si assegnano **solo a mano**. Script pronto e **non applicato**: `fase2_voce2_badge_automatico.sql` (+ ripristino, prova `scripts/sicurezza/prova-fase2-voce2.sql`). Vedi da-definire.md, "Badge automatico" |
+| 3 | Le stesse funzioni usano l'ora italiana | Q7 | ⏸ Rinviata con la voce 2 (già inclusa nello stesso script) |
 | 4 | Un'iscrizione si accetta o si crea solo se ci sono posti liberi; nessun limite se `max_partecipanti` è vuoto | Q9, Q16 | Controllo nel DB (trigger), sicuro anche con due admin contemporanei |
 | 5 | Nessuna nuova Iscrizione dopo la scadenza (`scadenza_candidature`, tipo `date`) | Q10 | Ora italiana |
 | 6 | Lo studente annulla solo un'iscrizione in attesa o accettata, **prima dell'inizio** dell'evento | Q15 | La Fase 1 ha già escluso le `rifiutata`; manca il vincolo di data |
@@ -162,6 +162,7 @@ Dati di Production rilevanti (18/11/2026): 4 eventi, 0 iscrizioni, 54 scansioni,
 
 ## Modifiche all'interfaccia (codice) — da fare
 
+- Nascondere l'assegnazione **automatica** dei badge in `AssegnazioneBadge` (badge solo manuali, decisione del 19/11/2026): oggi il pannello chiama due funzioni che non esistono nel DB e non mostra errori
 - Rinominare la sezione admin "Candidature" in "Iscrizioni" (Q2)
 - Togliere "Link a form esterna" dall'admin **e** il comportamento del pulsante "Partecipa" dello studente; togliere il riquadro "quiz/survey" (Q13)
 - Togliere la scelta della "visibilità" degli eventi (Q23)

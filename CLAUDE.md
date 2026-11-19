@@ -21,7 +21,7 @@ SPA Vite + React 19 + TypeScript. Supabase (Auth, Postgres, Storage) chiamato di
 
 - **Studente**: account personale; esperienze, iscrizioni, check-in QR, attestati, badge, offerte di lavoro, profilo.
 - **Admin** (`profiles.is_admin = true`): crea e pubblica le esperienze, conferma o rifiuta le iscrizioni e genera i QR di ogni evento; monitora presenze e feedback.
-  Crea i badge e gli attestati e li assegna agli studenti (a mano o con la regola automatica "almeno N eventi"); gestisce studenti, aziende partner e offerte di lavoro.
+  Crea i badge e gli attestati e li assegna agli studenti a mano (l'assegnazione automatica è rinviata: vedi docs/da-definire.md); gestisce studenti, aziende partner e offerte di lavoro.
   Decide cosa compare nella home degli studenti (sezioni ed esperienze in evidenza) e può inviare notifiche a tutti.
 - **Azienda**: pubblica offerte tramite l'admin e ha una pagina pubblica; il portale aziende `/azienda` è fermo.
 
@@ -59,7 +59,7 @@ La navigazione interna usa `useState`, non URL (tranne `/azienda`).
 
 - **Esperienza** (studente) = **Evento** (admin) = tabella `events`. "Concluso" è calcolato dalle date, non è uno stato nel DB.
 - **Iscrizione** = riga in `iscrizioni_eventi` (stati: `in_attesa | accettata | rifiutata`). In admin si chiama "candidatura".
-- **Evento completato** (ai fini di attestato e progressi) = studente con sia `ingresso` sia `uscita` in `attendances`. Il badge automatico invece conta qualsiasi presenza.
+- **Evento completato** (ai fini di attestato e progressi) = studente con sia `ingresso` sia `uscita` in `attendances`.
 - **Nominare admin**: `UPDATE public.profiles SET is_admin = true WHERE email = '...';`
 
 ## Check-in QR

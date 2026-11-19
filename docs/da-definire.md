@@ -30,6 +30,10 @@ Un QR che cambia ogni pochi minuti, mostrato su uno schermo all'evento, per impe
 
 Oggi l'app è solo per studenti registrati: senza login non si vede nulla. Idea: una sezione pubblica, simile a quella studenti, con eventi dedicati. Il vecchio campo "visibilità" degli eventi (solo studenti / pubblico / sfocato) è stato tolto perché non aveva alcun effetto.
 
+## Badge automatico
+
+Per ora i badge si assegnano solo a mano (decisione del 19/11/2026). In futuro: assegnazione automatica a chi ha almeno N Partecipazioni completate. Regole già decise: contano solo gli Eventi pubblicati e conclusi (ora italiana), con Iscrizione accettata; gli admin sono esclusi. Script pronto e non applicato: `supabase/fase2_voce2_badge_automatico.sql`, con ripristino e prova (`scripts/sicurezza/prova-fase2-voce2.sql`). Per attivarlo: applicarlo su Development, eseguire la prova, poi Production, e rimostrare il pannello automatico in `AssegnazioneBadge`.
+
 ## Portale aziende
 
 Il portale `/azienda` è stato disattivato (novembre 2026): le sue funzioni e tabelle esponevano i dati degli studenti a chiunque. Le password delle aziende (`aziende.password_temp`, salvate in chiaro) sono state svuotate e non sono recuperabili. Per riattivarlo serve un login vero (Supabase Auth per le aziende) e policy dedicate alle aziende autenticate.

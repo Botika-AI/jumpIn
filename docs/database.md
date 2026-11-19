@@ -33,6 +33,7 @@ ORDER BY table_name, column_name;
 - **Fase 2** (regole del glossario) in preparazione: stato in [piano-lavori.md](piano-lavori.md).
   - Voce 0 (`supabase/fase2_voce0_iscrizioni_storiche*.sql`, **solo Production**, solo dati, nessuna modifica di schema): iscrizioni accettate per i 12 studenti di "Start-up Weekend" (15–17/05/2026), che avevano solo scansioni. Applicata e verificata in Production il 19/11/2026 (su Development si ferma da sola, come previsto).
   - Voce 1 (`supabase/fase2_voce1_scansione_valida*.sql`, Development e Production): la policy `attendances_insert_own` accetta una Scansione solo con Iscrizione accettata, nei giorni dell'evento (ora italiana) e con `scanned_at = now()`. Applicata e verificata su Development (8/8 prove) e Production il 19/11/2026.
+  - Voci 2 e 3 (`supabase/fase2_voce2_badge_automatico*.sql`, Development e Production): crea `badge_studenti_idonei` (regola interna, non eseguibile dall'app), `count_badge_eligible_students` e `assign_badge_by_event_threshold` (solo admin). Contano le Partecipazioni completate a Eventi pubblicati e conclusi in ora italiana, esclusi gli admin; sostituiscono `badge_auto_rules.sql`, mai applicato. ⏸ **Rinviate, non applicare**: per ora i badge sono solo manuali (vedi da-definire.md).
 
 ---
 
@@ -128,8 +129,8 @@ Scritto ad ogni login.
 | `notify_profile_completed` | `ProfileSettingsPage` — solo per sé stessi (`p_user_id = auth.uid()`) |
 | `delete_user` | `ProfileSettingsPage` (eliminazione account studente) — **non esiste nel DB**: il pulsante va in errore |
 | `admin_delete_student` | `StudenteModal` |
-| `count_badge_eligible_students` | `AssegnazioneBadge` — **non esiste nel DB** (script mai applicato) |
-| `assign_badge_by_event_threshold` | `AssegnazioneBadge` — **non esiste nel DB** (script mai applicato) |
+| `count_badge_eligible_students` | `AssegnazioneBadge` — **non esiste nel DB**: badge automatico rinviato, script pronto `fase2_voce2_badge_automatico.sql` |
+| `assign_badge_by_event_threshold` | `AssegnazioneBadge` — **non esiste nel DB**: come sopra |
 | `verify_azienda_login` | `AziendaApp` (portale aziende) — le funzioni del portale non sono più eseguibili da `anon`/`authenticated` |
 | `update_azienda_referente` | portale aziende |
 | `get_company_dashboard_stats` | portale aziende |
