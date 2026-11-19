@@ -432,7 +432,7 @@ export const AssegnazioneBadge: React.FC<Props> = ({ badge, onBack }) => {
       {/* Header */}
       <div className="mb-2">
         <h1 className="text-2xl font-bold font-montserrat text-gray-900">Assegnazione Badge</h1>
-        <p className="text-sm text-gray-500 mt-1">Assegna il badge agli studenti manualmente o per obiettivo</p>
+        <p className="text-sm text-gray-500 mt-1">{ASSEGNAZIONE_AUTOMATICA_ATTIVA ? 'Assegna il badge agli studenti manualmente o per obiettivo' : 'Assegna il badge agli studenti'}</p>
       </div>
 
       {/* Badge context */}

@@ -97,7 +97,7 @@ export async function aggiornaStatoIscrizioni(
     if (error) {
       const motivo = messaggioErroreIscrizione(error);
       const errore = salvati.length > 0
-        ? `${motivo} Accettate ${salvati.length} iscrizioni su ${ids.length}.`
+        ? `${motivo} ${salvati.length === 1 ? 'Accettata 1 iscrizione' : `Accettate ${salvati.length} iscrizioni`} su ${ids.length}.`
         : motivo;
       return { salvati, errore };
     }
