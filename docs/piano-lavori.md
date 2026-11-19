@@ -22,7 +22,7 @@ Le skill `grill-with-docs`, `improve-codebase-architecture` e `thermo-nuclear-co
 ## Stato al 19/11/2026
 
 - **Branch** `refactor/review-architettura`: pushato su GitHub (non su `main`). `main` e il sito in produzione non contengono ancora nessuna modifica di codice.
-- **Database**: Fase 1 (sicurezza) applicata su Development **e** Production. Fase 2: voci 0 e 1 applicate (19/11), voci 2–3 rinviate (badge solo manuali), voci 4, 5 e 6 applicate (19/11), prossima la voce 10 (conteggio posti senza nomi).
+- **Database**: Fase 1 (sicurezza) applicata su Development **e** Production. Fase 2: voci 0 e 1 applicate (19/11), voci 2–3 rinviate (badge solo manuali), voci 4, 5, 6 e 10a applicate (19/11); 10b al momento del merge; prossime le voci 7–8 (materiali) e 9.
 - **Codice dell'app**: non ancora modificato.
 
 ---
@@ -42,7 +42,7 @@ Le skill `grill-with-docs`, `improve-codebase-architecture` e `thermo-nuclear-co
 2. **Bug** trovati durante l'analisi (sotto).
 3. **Modifiche all'interfaccia** (codice) decise nel grilling (sotto).
 4. **Codice allineato alle regole**: la logica "Partecipazione completata" e lo sblocco attestato oggi sono duplicati in più file (vedi problemi-noti.md) e vanno allineati alle nuove regole (Iscrizione accettata obbligatoria, ora italiana).
-5. **Merge su `main`** = pubblicazione in produzione: solo dopo `npm run build` ok, prove su Development e script di Fase 2 applicati in Production nell'ordine giusto.
+5. **Merge su `main`** = pubblicazione in produzione: solo dopo `npm run build` ok, prove su Development e script di Fase 2 applicati in Production nell'ordine giusto. **Subito dopo il deploy**: applicare in Production `fase2_voce10b_togli_lettura_accettate.sql`.
 6. **Revisione dell'architettura**: `/improve-codebase-architecture` (ora con il glossario pronto), poi un candidato alla volta: grilling → refactoring sul branch → `/thermo-nuclear-code-quality-review` + `/code-review` sul diff.
 
 ---
@@ -150,7 +150,7 @@ Azioni consigliate all'utente, fuori dal codice:
 | 7 | Materiali visibili solo con Iscrizione accettata | Q19 | Policy di lettura di `materiali_eventi` (oggi `USING (true)` per gli autenticati) |
 | 8 | File dei materiali in uno spazio privato con link temporanei | Q19 | In Production non ci sono file in `logos/materiali/`: nessuno spostamento |
 | 9 | Studenti vedono solo eventi pubblicati | Q22 | Togliere `OR stato IS NULL` da `events_select_authenticated`; 0 eventi senza stato in Production |
-| 10 | Conteggio posti tramite funzione che restituisce solo il numero | Q28 | Sostituisce la policy "Tutti leggono iscrizioni accettate per conteggio posti", che mostra a tutti chi partecipa |
+| 10 | Conteggio posti tramite funzione che restituisce solo il numero | Q28 | In due tempi: **10a** `fase2_voce10a_conteggio_posti.sql` crea `posti_accettati()` ✅ **applicata su Dev e Prod il 19/11/2026**; il codice di `EsperienzePage` e `HomeDashboard` deve usarla al posto della lettura di `iscrizioni_eventi`; **10b** `fase2_voce10b_togli_lettura_accettate.sql` toglie la vecchia policy **solo dopo** che il nuovo codice è online (in Production: subito dopo il merge su `main`) |
 
 Dati di Production rilevanti (18/11/2026): 4 eventi, 0 iscrizioni, 54 scansioni, 13 partecipazioni completate (tutte senza iscrizione), 27 studenti. Development: 38 iscrizioni di prova.
 
