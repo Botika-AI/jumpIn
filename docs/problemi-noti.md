@@ -12,7 +12,7 @@ Elenco dei problemi **noti e ricorrenti**: difetti strutturali, incoerenze e lim
 - **"Evento completato"** (ingresso + uscita in `attendances`) è ricalcolato indipendentemente in: `HomeDashboard`, `ProfileSettingsPage`, `AdminBadge`, `EsperienzePage`, `IMieiPage`.
 - **Sblocco attestato** è ricalcolato sia in `EsperienzePage` sia in `IMieiPage`.
 - **Formattazione date** (es. `toLocaleDateString` con opzioni specifiche) è copiata in più file.
-- **Accetta/rifiuta iscrizioni**: in `AdminEventi` senza controllo posti; in `AdminCandidature` con controllo posti.
+- **Accetta/rifiuta iscrizioni**: in `AdminEventi` senza controllo posti; in `AdminCandidature` con controllo posti. Il DB blocca comunque le accettazioni oltre i posti (trigger `iscrizioni_controlla_posti`), ma nessuna delle due pagine mostra l'errore: l'iscrizione appare "accettata" e parte la notifica.
 - **`generatePassword`**: funzione duplicata in più punti.
 
 ---
@@ -26,7 +26,6 @@ Elenco dei problemi **noti e ricorrenti**: difetti strutturali, incoerenze e lim
 
 ## Regole applicate solo lato client (non validate dal DB)
 
-- **Posti massimi** degli eventi: il DB non ha vincoli; controllato solo in `AdminCandidature`.
 - **QR fotografato**: il QR contiene solo testo fisso (`JUMPIN|id|tipo`); una foto condivisa permette di scansionarlo da remoto nei giorni dell'evento. Nessuna regola del database può impedirlo (soluzione prevista: QR dinamico, vedi [da-definire.md](da-definire.md)).
 - **Visibilità degli eventi** (`visibilita`): non applicata a livello RLS.
 - **Scadenza iscrizioni** (`scadenza_candidature`): mai applicata.
