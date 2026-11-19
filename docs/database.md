@@ -37,6 +37,7 @@ ORDER BY table_name, column_name;
   - Voce 4 (`supabase/fase2_voce4_posti*.sql`, Development e Production): trigger `iscrizioni_controlla_posti` su `iscrizioni_eventi`. A posti esauriti rifiuta nuove Iscrizioni e nuove accettazioni (errore 23514 "Posti esauriti per questo evento"); `max_partecipanti` vuoto = nessun limite. Applicata e verificata su Development (11/11 prove) e Production il 19/11/2026.
   - Voci 5 e 6 (`supabase/fase2_voce5_6_iscrizioni_date*.sql`, Development e Production): lo studente crea un'Iscrizione solo fino al giorno prima di `scadenza_candidature` (senza scadenza: fino al giorno prima di `event_date`) e la annulla solo prima di `event_date`; ora italiana. Applicate e verificate su Development (12/12 prove) e Production il 19/11/2026.
   - Voce 10 in due tempi. 10a (`fase2_voce10a_conteggio_posti.sql`): funzione `posti_accettati()`, solo numeri per evento pubblicato, eseguibile solo da autenticati. Applicata su Development e Production il 19/11/2026 (verificato: anonimo rifiutato, studente legge solo i numeri). 10b (`fase2_voce10b_togli_lettura_accettate.sql`): toglie la policy "Tutti leggono iscrizioni accettate per conteggio posti"; **solo dopo** che il codice di `EsperienzePage`/`HomeDashboard` usa `posti_accettati()` ed è online.
+  - Voci 7, 8, 9 (`supabase/fase2_voce7_8_9_materiali_bozze*.sql`): Materiali leggibili solo con Iscrizione accettata; nuovo spazio privato `materiali` (percorso `{event_id}/{file}`, lettura admin o accettati, scrittura solo admin; il codice va ancora aggiornato); studenti vedono solo eventi `pubblicato`. Applicate e verificate su Development (10/10 prove) e Production il 19/11/2026.
 
 ---
 
@@ -84,7 +85,7 @@ Ogni scansione = nuova riga. `type`: `ingresso | uscita`. Nessun vincolo di unic
 Inserimento (policy `attendances_insert_own`): solo per sé, con Iscrizione `accettata`, oggi (ora italiana) tra `event_date` ed `event_end`, e `scanned_at = now()` (l'app non invia `scanned_at`).
 
 ### `materiali_eventi`
-`tipo`: `link | file`
+`tipo`: `link | file`. Studenti leggono solo i Materiali degli Eventi con Iscrizione accettata (policy `materiali_select_accettati`); admin tutto.
 
 ### `feedback_eventi`
 `rating`: 1–5
@@ -150,8 +151,13 @@ Scritto ad ogni login.
 
 Bucket `logos`:
 - `eventi/` — copertine eventi
-- `materiali/<eventId>/` — file allegati agli eventi
+- `materiali/<eventId>/` — file allegati agli eventi caricati finora dal codice con link pubblico permanente (0 file su Dev e Prod al 19/11/2026); da sostituire con il bucket `materiali`
 - `aziende/` — loghi aziende
+
+Bucket `materiali` (**privato**, creato il 19/11/2026):
+- `<eventId>/<file>` — file dei Materiali, da aprire con link temporanei (`createSignedUrl`)
+- Lettura: admin o studenti con Iscrizione accettata all'evento della cartella; caricamento, modifica e cancellazione solo admin
+- Il codice non lo usa ancora (vedi piano-lavori.md)
 
 Bucket `badge-icon`:
 - `badges/` — icone badge

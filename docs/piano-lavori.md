@@ -22,7 +22,7 @@ Le skill `grill-with-docs`, `improve-codebase-architecture` e `thermo-nuclear-co
 ## Stato al 19/11/2026
 
 - **Branch** `refactor/review-architettura`: pushato su GitHub (non su `main`). `main` e il sito in produzione non contengono ancora nessuna modifica di codice.
-- **Database**: Fase 1 (sicurezza) applicata su Development **e** Production. Fase 2: voci 0 e 1 applicate (19/11), voci 2–3 rinviate (badge solo manuali), voci 4, 5, 6 e 10a applicate (19/11); 10b al momento del merge; prossime le voci 7–8 (materiali) e 9.
+- **Database**: Fase 1 (sicurezza) applicata su Development **e** Production. Fase 2: voci 0 e 1 applicate (19/11), voci 2–3 rinviate (badge solo manuali), voci 4–9 e 10a applicate (19/11); 10b al momento del merge. **Fase 2 conclusa lato database** (salvo badge automatico rinviato).
 - **Codice dell'app**: non ancora modificato.
 
 ---
@@ -147,9 +147,9 @@ Azioni consigliate all'utente, fuori dal codice:
 | 4 | Un'iscrizione si accetta o si crea solo se ci sono posti liberi; nessun limite se `max_partecipanti` è vuoto | Q9, Q16 | ✅ **Applicata su Dev e Prod il 19/11/2026** (`fase2_voce4_posti.sql`, trigger `iscrizioni_controlla_posti`; prova `scripts/sicurezza/prova-fase2-voce4.sql` 11/11). Sicura anche con due admin contemporanei |
 | 5 | Nessuna nuova Iscrizione dopo la scadenza (`scadenza_candidature`, tipo `date`) | Q10 | Ora italiana. Decisioni del 19/11: ci si iscrive fino al giorno **prima** della scadenza (scadenza 30/11 → ultimo giorno 29/11); **senza scadenza** fino al giorno prima dell'inizio dell'evento. ✅ **Applicata su Dev e Prod il 19/11/2026** (`fase2_voce5_6_iscrizioni_date.sql`, prova `prova-fase2-voce5-6.mjs` 12/12) |
 | 6 | Lo studente annulla solo un'iscrizione in attesa o accettata, **prima dell'inizio** dell'evento | Q15 | ✅ **Applicata su Dev e Prod il 19/11/2026** insieme alla voce 5 (si annulla fino al giorno prima di `event_date`) |
-| 7 | Materiali visibili solo con Iscrizione accettata | Q19 | Policy di lettura di `materiali_eventi` (oggi `USING (true)` per gli autenticati) |
-| 8 | File dei materiali in uno spazio privato con link temporanei | Q19 | In Production non ci sono file in `logos/materiali/`: nessuno spostamento |
-| 9 | Studenti vedono solo eventi pubblicati | Q22 | Togliere `OR stato IS NULL` da `events_select_authenticated`; 0 eventi senza stato in Production |
+| 7 | Materiali visibili solo con Iscrizione accettata | Q19 | ✅ **Applicata su Dev e Prod il 19/11/2026** (`fase2_voce7_8_9_materiali_bozze.sql`, prova `prova-fase2-voce7-8-9.mjs` 10/10) |
+| 8 | File dei materiali in uno spazio privato con link temporanei | Q19 | ✅ **Spazio privato `materiali` creato su Dev e Prod il 19/11/2026** con le sue regole; manca il **codice** (vedi modifiche all'interfaccia) |
+| 9 | Studenti vedono solo eventi pubblicati | Q22 | ✅ **Applicata su Dev e Prod il 19/11/2026** |
 | 10 | Conteggio posti tramite funzione che restituisce solo il numero | Q28 | In due tempi: **10a** `fase2_voce10a_conteggio_posti.sql` crea `posti_accettati()` ✅ **applicata su Dev e Prod il 19/11/2026**; il codice di `EsperienzePage` e `HomeDashboard` deve usarla al posto della lettura di `iscrizioni_eventi`; **10b** `fase2_voce10b_togli_lettura_accettate.sql` toglie la vecchia policy **solo dopo** che il nuovo codice è online (in Production: subito dopo il merge su `main`) |
 
 Dati di Production rilevanti (18/11/2026): 4 eventi, 0 iscrizioni, 54 scansioni, 13 partecipazioni completate (tutte senza iscrizione), 27 studenti. Development: 38 iscrizioni di prova.
@@ -162,6 +162,8 @@ Dati di Production rilevanti (18/11/2026): 4 eventi, 0 iscrizioni, 54 scansioni,
 
 ## Modifiche all'interfaccia (codice) — da fare
 
+- **Materiali (voci 7–8)**: `AdminEventi` deve caricare i file nel bucket privato `materiali` (percorso `{event_id}/{file}`) e salvare il percorso, non il link pubblico di `logos`; `EsperienzePage`/`IMieiPage` aprono i file con link temporanei (`createSignedUrl`). La sezione Materiali va nascosta agli studenti non accettati (il DB ora restituisce una lista vuota). Provare il link temporaneo con un file vero
+- **Conteggio posti (voce 10)**: `EsperienzePage` e `HomeDashboard` usano `rpc('posti_accettati')` invece di leggere `iscrizioni_eventi`; poi 10b al merge
 - **Posti esauriti e chiusura delle iscrizioni, anche graficamente** (richiesta dell'utente del 19/11/2026): da progettare insieme. Dopo la voce 4 il DB rifiuta iscrizioni e accettazioni oltre i posti, ma l'app non controlla l'errore: in `AdminEventi` e `AdminCandidature` l'iscrizione risulta "accettata" e parte la notifica allo studente; in `EsperienzePage`/`HomeDashboard` l'iscrizione rifiutata non mostra nulla. `AdminEventi` non controlla nemmeno i posti prima di accettare (singola e "accetta tutti"). **Scadenza delle iscrizioni**: lo studente oggi non la vede mai (`scadenza_candidature` si imposta solo in `AdminEventi`); dopo la voce 5 va mostrato "Iscrizioni aperte fino al …" / "Iscrizioni chiuse" e gestito l'errore del DB. **Annullamento**: dopo la voce 6 il DB rifiuta l'annullamento dal giorno di inizio, ma `EsperienzePage.handleCancel` non controlla l'errore e toglie comunque l'iscrizione dalla schermata (ricompare ricaricando): il pulsante "Annulla" va nascosto dall'inizio dell'evento
 - Nascondere l'assegnazione **automatica** dei badge in `AssegnazioneBadge` (badge solo manuali, decisione del 19/11/2026): oggi il pannello chiama due funzioni che non esistono nel DB e non mostra errori
 - Rinominare la sezione admin "Candidature" in "Iscrizioni" (Q2)
