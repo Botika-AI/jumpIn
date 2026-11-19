@@ -37,6 +37,7 @@ Le skill `grill-with-docs`, `improve-codebase-architecture` e `thermo-nuclear-co
 
 ## Prossimi passi, in ordine
 
+0. **Dal 25/11/2026 circa** (dopo qualche giorno di uso normale dell'app in produzione con le correzioni di Fase 1): cancellare `supabase/sicurezza_fase1_ripristino.sql` e il blocco "RIPRISTINO" commentato in fondo a `supabase/sicurezza_fase1_storage.sql`. Eseguiti per errore riaprirebbero le vulnerabilità A–D; restano recuperabili dalla storia di git. Prima chiedere conferma all'utente.
 1. **Fase 2 — Regole del glossario** (database): voci 0–10 sotto. Si parte dalle voci 0 e 1, collegate.
 2. **Bug** trovati durante l'analisi (sotto).
 3. **Modifiche all'interfaccia** (codice) decise nel grilling (sotto).
