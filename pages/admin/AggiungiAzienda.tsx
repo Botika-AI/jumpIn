@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Upload, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Upload } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { resizeImage } from '../../lib/imageUtils';
 
@@ -29,11 +29,6 @@ const SETTORI = [
   'Finanza', 'Sanità', 'Manifattura', 'Commercio', 'Edilizia', 'Altro',
 ];
 
-function generatePassword() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
-  return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-}
-
 export const AggiungiAzienda: React.FC<Props> = ({ onBack, onCreated }) => {
   const [form, setForm] = useState<FormData>({
     name: '', partita_iva: '', settore: '', website: '', email: '',
@@ -44,7 +39,6 @@ export const AggiungiAzienda: React.FC<Props> = ({ onBack, onCreated }) => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [password, setPassword] = useState('');
   const [referente, setReferente] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,7 +113,6 @@ export const AggiungiAzienda: React.FC<Props> = ({ onBack, onCreated }) => {
       website:        form.website.trim() || null,
       email:          form.email.trim() || null,
       email_account:  form.email_account.trim() || null,
-      password_temp:  password.trim() || null,
       referente:      referente.trim() || null,
       telefono:       form.telefono.trim() || null,
       indirizzo:      form.indirizzo.trim() || null,
@@ -266,20 +259,6 @@ export const AggiungiAzienda: React.FC<Props> = ({ onBack, onCreated }) => {
             <input className={inputClass} type="email" placeholder="admin@azienda.it" value={form.email_account}
               onChange={e => set('email_account', e.target.value)} />
             <p className="text-[11px] text-gray-400 mt-1">Questa email verrà utilizzata per l'accesso alla piattaforma</p>
-          </div>
-
-          <div>
-            <label className={labelClass}>Password temporanea</label>
-            <div className="flex gap-2">
-              <input className={inputClass} type="text" placeholder="Genera una password sicura"
-                value={password} onChange={e => setPassword(e.target.value)} readOnly />
-              <button type="button"
-                onClick={() => setPassword(generatePassword())}
-                className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:border-orange-300 hover:text-orange-500 transition-colors shrink-0 bg-white">
-                <RefreshCw size={14} /> Genera
-              </button>
-            </div>
-            <p className="text-[11px] text-gray-400 mt-1">L'azienda dovrà cambiarla al primo accesso</p>
           </div>
         </div>
 

@@ -20,7 +20,6 @@ interface Evento {
   modalita: string | null;
   cosa_impari: string[];
   requisiti: string | null;
-  form_esterno: string | null;
   max_partecipanti: number | null;
 }
 
@@ -485,19 +484,11 @@ const EventoDetail: React.FC<{
                 className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-500 active:bg-gray-50 transition-all">
                 Indietro
               </button>
-              {ev.form_esterno ? (
-                <a href={ev.form_esterno} target="_blank" rel="noopener noreferrer"
-                  className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-white text-center active:opacity-80 transition-opacity"
-                  style={{ background: '#FF7A00', boxShadow: '0 4px 14px rgba(255,122,0,0.35)' }}>
-                  Partecipa
-                </a>
-              ) : (
-                <button onClick={onEnroll}
-                  className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-white active:opacity-80 transition-opacity"
-                  style={{ background: '#FF7A00', boxShadow: '0 4px 14px rgba(255,122,0,0.35)' }}>
-                  Partecipa
-                </button>
-              )}
+              <button onClick={onEnroll}
+                className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-white active:opacity-80 transition-opacity"
+                style={{ background: '#FF7A00', boxShadow: '0 4px 14px rgba(255,122,0,0.35)' }}>
+                Partecipa
+              </button>
             </>
           )}
         </div>

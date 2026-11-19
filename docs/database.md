@@ -67,8 +67,8 @@ La cartella `supabase/migrations/` contiene **solo 3 migration** e **non rappres
 |---|---|
 | `id` | text PK slug — es. `jumpin_2026_05` |
 | `stato` | `bozza` oppure `pubblicato` (NULL = pubblicato) |
-| `visibilita` | `solo_studenti | pubblico | studenti_sfocato` |
-| `form_esterno` | URL — se presente, "Partecipa" apre il link esterno |
+| `visibilita` | **Non più usata** dall'app (scelta tolta il 19/11/2026, Q23); colonna rimasta nel DB |
+| `form_esterno` | **Non più usata** dall'app (tolta il 19/11/2026, Q13): "Partecipa" crea sempre l'Iscrizione; colonna rimasta nel DB |
 | `max_partecipanti` | nullable; i posti contano solo iscrizioni `accettate` |
 | `scadenza_candidature` | nullable |
 | `azienda_id` | FK → `aziende.id`, nullable |

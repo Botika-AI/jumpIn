@@ -165,11 +165,11 @@ Dati di Production rilevanti (18/11/2026): 4 eventi, 0 iscrizioni, 54 scansioni,
 - ✅ **Conteggio posti (voce 10)** (19/11): `EsperienzePage` e `HomeDashboard` usano `posti_accettati()`; resta la 10b al merge
 - **Posti esauriti e chiusura delle iscrizioni, anche graficamente** (richiesta dell'utente del 19/11/2026): da progettare insieme. Dopo la voce 4 il DB rifiuta iscrizioni e accettazioni oltre i posti, ma l'app non controlla l'errore: in `AdminEventi` e `AdminCandidature` l'iscrizione risulta "accettata" e parte la notifica allo studente; in `EsperienzePage`/`HomeDashboard` l'iscrizione rifiutata non mostra nulla. `AdminEventi` non controlla nemmeno i posti prima di accettare (singola e "accetta tutti"). **Scadenza delle iscrizioni**: lo studente oggi non la vede mai (`scadenza_candidature` si imposta solo in `AdminEventi`); dopo la voce 5 va mostrato "Iscrizioni aperte fino al …" / "Iscrizioni chiuse" e gestito l'errore del DB. **Annullamento**: dopo la voce 6 il DB rifiuta l'annullamento dal giorno di inizio, ma `EsperienzePage.handleCancel` non controlla l'errore e toglie comunque l'iscrizione dalla schermata (ricompare ricaricando): il pulsante "Annulla" va nascosto dall'inizio dell'evento. **Pulsante "Inquadra QR"** (`IMieiPage`): oggi compare per ogni Iscrizione accettata a evento non concluso, anche giorni prima dell'inizio; va mostrato solo nei giorni dell'evento (il DB rifiuta comunque, con messaggio)
 - ✅ Assegnazione **automatica** dei badge nascosta (19/11, costante `ASSEGNAZIONE_AUTOMATICA_ATTIVA` in `AssegnazioneBadge`)
-- Rinominare la sezione admin "Candidature" in "Iscrizioni" (Q2)
-- Togliere "Link a form esterna" dall'admin **e** il comportamento del pulsante "Partecipa" dello studente; togliere il riquadro "quiz/survey" (Q13)
-- Togliere la scelta della "visibilità" degli eventi (Q23)
-- Rimozione di uno studente accettato → stato `rifiutata` con messaggio dedicato (Q14)
-- Togliere il campo password delle aziende da `AggiungiAzienda` e `AziendaModal` (Q29)
+- ✅ (19/11) Sezione admin "Candidature" → "Iscrizioni e candidature"; per gli eventi "iscrizioni", per le offerte di lavoro resta "candidature" (Q2)
+- ✅ (19/11) Tolti "Link a form esterna" e riquadro quiz/survey dagli eventi; "Partecipa" crea sempre l'Iscrizione (Q13). Il form esterno delle offerte di lavoro resta
+- ✅ (19/11) Tolta la scelta della "visibilità" degli eventi (Q23)
+- ✅ (19/11) Pulsante "Rimuovi" sulle iscrizioni accettate → `rifiutata` con notifica "Iscrizione annullata" (Q14). Un'iscrizione rifiutata non si può riaccettare dall'interfaccia (solo via SQL)
+- ✅ (19/11) Tolto il campo password delle aziende da `AggiungiAzienda` e `AziendaModal` (Q29)
 
 ## Decisioni del grilling (riferimento rapido)
 

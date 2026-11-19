@@ -47,23 +47,24 @@ export async function annullaIscrizione(eventId: string, userId: string): Promis
   return null;
 }
 
-/** Notifica allo studente l'esito della sua Iscrizione (accettata o rifiutata). */
+/**
+ * Notifica allo studente l'esito della sua Iscrizione.
+ * `rimosso`: lo studente era già accettato e l'admin lo ha rimosso (stato → rifiutata, Q14).
+ */
 export async function notificaEsitoIscrizione(
   userId: string,
   stato: StatoIscrizione,
   nomeEvento: string,
   eventId: string,
+  rimosso = false,
 ): Promise<void> {
   if (stato === 'in_attesa') return;
-  const accettata = stato === 'accettata';
+  const [titolo, corpo] =
+    rimosso                 ? ['Iscrizione annullata', `La tua partecipazione a "${nomeEvento}" è stata annullata dall'organizzazione.`]
+    : stato === 'accettata' ? ['Iscrizione accettata', `La tua iscrizione a "${nomeEvento}" è stata accettata. Ci vediamo lì!`]
+    :                         ['Iscrizione rifiutata', `La tua iscrizione a "${nomeEvento}" non è stata accettata questa volta.`];
   const { error } = await supabase.from('notifiche').insert({
-    user_id:        userId,
-    tipo:           'evento',
-    titolo:         accettata ? 'Iscrizione accettata' : 'Iscrizione rifiutata',
-    corpo:          accettata
-      ? `La tua iscrizione a "${nomeEvento}" è stata accettata. Ci vediamo lì!`
-      : `La tua iscrizione a "${nomeEvento}" non è stata accettata questa volta.`,
-    riferimento_id: eventId,
+    user_id: userId, tipo: 'evento', titolo, corpo, riferimento_id: eventId,
   });
   if (error) console.error('Notifica error:', error);
 }

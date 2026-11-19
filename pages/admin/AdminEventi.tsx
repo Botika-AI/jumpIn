@@ -27,8 +27,6 @@ interface Evento {
   scadenza_candidature: string | null;
   max_partecipanti: number | null;
   tags: string[];
-  visibilita: string;
-  form_esterno: string | null;
   stato: string | null;
   breve_descrizione: string | null;
   cosa_impari: string[];
@@ -67,12 +65,6 @@ interface Azienda { id: string; name: string; }
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TAGS_OPTIONS = ['AI', 'Design', 'STEM', 'Robotics', 'Innovation', 'Coding', 'Business'];
-
-const VISIBILITA_OPTIONS = [
-  { key: 'solo_studenti',    label: 'Solo studenti',                       desc: "Visibile solo agli studenti registrati su Jump'in" },
-  { key: 'pubblico',         label: 'Pubblico',                            desc: 'Visibile a tutti'                                  },
-  { key: 'studenti_sfocato', label: 'Studenti + Sfocato per non iscritti', desc: 'Visibile a tutti ma con dettagli sfocati per chi non è registrato' },
-];
 
 const ISCRIZIONE_STYLE: Record<IscrizioneStato, string> = {
   in_attesa: 'bg-orange-50 text-orange-500',
@@ -360,7 +352,7 @@ const EventiList: React.FC<{
         <table className="w-full min-w-[720px]">
           <thead>
             <tr className="border-b border-gray-100">
-              {['Titolo', 'Tipo', 'Data', 'Stato', 'Candidature', 'Azioni'].map(h => (
+              {['Titolo', 'Tipo', 'Data', 'Stato', 'Iscrizioni', 'Azioni'].map(h => (
                 <th key={h} className="text-left px-6 py-4 text-sm font-bold text-[#1F2430] whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -412,7 +404,7 @@ const EventiList: React.FC<{
                   <button onClick={() => onIscrizioni(ev.id, ev.name, ev.event_date, ev.event_end)}
                     className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-orange-500 transition-colors group">
                     <Users size={13} className="text-gray-400 group-hover:text-orange-400 shrink-0" />
-                    {ev.iscrizioni_count ?? 0} candidature
+                    {ev.iscrizioni_count ?? 0} iscrizioni
                   </button>
                 </td>
                 <td className="px-6 py-3">
@@ -594,7 +586,6 @@ export const EventoForm: React.FC<{
   const [saving, setSaving]             = useState(false);
   const [error, setError]               = useState<string | null>(null);
   const [aziende, setAziende]           = useState<Azienda[]>([]);
-  const [avanzateOpen, setAvanzateOpen]     = useState(false);
   const [slugEdited, setSlugEdited]         = useState(false);
   const [customTagInput, setCustomTagInput] = useState('');
   const [showNotificaModal, setShowNotificaModal] = useState(false);
@@ -604,8 +595,8 @@ export const EventoForm: React.FC<{
     id: '', name: '', tipo: '', azienda_id: '', breve_descrizione: '', descrizione: '',
     event_date: '', event_end: '', location: '', modalita: '',
     scadenza_candidature: '', max_partecipanti: '',
-    tags: [] as string[], visibilita: 'solo_studenti',
-    form_esterno: '', cosa_impari: [] as string[], requisiti: '',
+    tags: [] as string[],
+    cosa_impari: [] as string[], requisiti: '',
   });
   const [coverFile, setCoverFile]       = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
@@ -627,8 +618,7 @@ export const EventoForm: React.FC<{
           location: e.location ?? '', modalita: e.modalita ?? '',
           scadenza_candidature: e.scadenza_candidature ?? '',
           max_partecipanti: e.max_partecipanti?.toString() ?? '',
-          tags: e.tags ?? [], visibilita: e.visibilita ?? 'solo_studenti',
-          form_esterno: e.form_esterno ?? '',
+          tags: e.tags ?? [],
           cosa_impari: e.cosa_impari ?? [], requisiti: e.requisiti ?? '',
         });
         setCoverPreview(e.cover_url);
@@ -714,8 +704,6 @@ export const EventoForm: React.FC<{
       scadenza_candidature: form.scadenza_candidature || null,
       max_partecipanti:     form.max_partecipanti ? parseInt(form.max_partecipanti) : null,
       tags:                 form.tags,
-      visibilita:           form.visibilita,
-      form_esterno:         form.form_esterno.trim() || null,
       cosa_impari:          form.cosa_impari,
       requisiti:            form.requisiti.trim() || null,
       stato,
@@ -1012,50 +1000,6 @@ export const EventoForm: React.FC<{
         {/* Materiali — disponibile non appena l'evento esiste nel DB */}
         {persisted && <MaterialiManager eventId={persistedId!} />}
 
-        {/* Visibilità */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-3">
-          <h2 className="font-bold font-montserrat text-[#1F2430] text-base">Visibilità</h2>
-          <p className="text-xs text-gray-500 -mt-1">Chi può vedere questo evento? <span className="text-orange-400">*</span></p>
-          <div className="space-y-2">
-            {VISIBILITA_OPTIONS.map(v => (
-              <label key={v.key} className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
-                form.visibilita === v.key ? 'border-orange-300 bg-orange-50' : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}>
-                <input type="radio" name="visibilita" value={v.key}
-                  checked={form.visibilita === v.key}
-                  onChange={() => setField('visibilita', v.key)}
-                  className="mt-0.5 accent-orange-500" />
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">{v.label}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{v.desc}</p>
-                </div>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* Opzioni avanzate */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <button type="button" onClick={() => setAvanzateOpen(p => !p)}
-            className="w-full flex items-center justify-between px-6 py-4">
-            <span className="text-sm font-bold text-orange-500">Opzioni avanzate</span>
-            <ChevronDown size={16} className={`text-orange-400 transition-transform ${avanzateOpen ? 'rotate-180' : ''}`} />
-          </button>
-          {avanzateOpen && (
-            <div className="px-6 pb-6 space-y-4 border-t border-gray-50">
-              <div className="pt-4">
-                <label className={labelClass}>Link a form esterna (opzionale)</label>
-                <input className={inputClass} placeholder="https://forms.google.com/..."
-                  value={form.form_esterno} onChange={e => setField('form_esterno', e.target.value)} />
-              </div>
-              <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
-                <p className="text-sm font-semibold text-gray-700">Aggiungi quiz/survey post-evento</p>
-                <p className="text-xs text-gray-400 mt-1">Potrai configurarlo dopo la creazione dell'evento</p>
-              </div>
-            </div>
-          )}
-        </div>
-
         {error && (
           <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-100 text-sm text-red-600">{error}</div>
         )}
@@ -1196,13 +1140,20 @@ const IscrizioniView: React.FC<{
     const { salvati, errore: msgErrore } = await aggiornaStatoIscrizioni(targets.map(c => c.id), stato);
     setIscrizioni(prev => prev.map(c => salvati.includes(c.id) ? { ...c, stato } : c));
     await Promise.all(targets.filter(c => salvati.includes(c.id))
-      .map(c => notificaEsitoIscrizione(c.user_id, stato, nomeEvento, eventId)));
+      .map(c => notificaEsitoIscrizione(c.user_id, stato, nomeEvento, eventId, c.stato === 'accettata' && stato === 'rifiutata')));
     if (msgErrore) setErrore(msgErrore);
   };
 
   const updateStato = async (id: string, stato: IscrizioneStato) => {
     const iscrizione = iscrizioni.find(c => c.id === id);
     if (iscrizione) await applicaStato([iscrizione], stato);
+  };
+
+  // Q14: lo studente rimosso ha l'Iscrizione rifiutata e riceve un messaggio dedicato.
+  const rimuovi = async (c: Iscrizione) => {
+    const nome = [c.profiles?.first_name, c.profiles?.last_name].filter(Boolean).join(' ') || 'questo studente';
+    if (!window.confirm(`Rimuovere ${nome} da "${nomeEvento}"? Lo studente riceverà una notifica e il posto si libererà.`)) return;
+    await applicaStato([c], 'rifiutata');
   };
 
   const bulkUpdate = (stato: IscrizioneStato) =>
@@ -1247,7 +1198,7 @@ const IscrizioniView: React.FC<{
 
   const exportCSV = () => {
     const rows = [
-      ['Nome', 'Cognome', 'Email', 'Scuola', 'Data candidatura', 'Stato'],
+      ['Nome', 'Cognome', 'Email', 'Scuola', 'Data iscrizione', 'Stato'],
       ...iscrizioni.map(c => [
         c.profiles?.first_name ?? '', c.profiles?.last_name ?? '',
         c.profiles?.email ?? '', c.profiles?.school ?? '',
@@ -1257,7 +1208,7 @@ const IscrizioniView: React.FC<{
     const csv = rows.map(r => r.join(',')).join('\n');
     const a = document.createElement('a');
     a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-    a.download = `candidature_${nomeEvento.replace(/\s+/g, '_')}.csv`;
+    a.download = `iscrizioni_${nomeEvento.replace(/\s+/g, '_')}.csv`;
     a.click();
   };
 
@@ -1299,13 +1250,13 @@ const IscrizioniView: React.FC<{
           <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-2">
             <ArrowLeft size={16} /> Torna agli eventi
           </button>
-          <h1 className="text-2xl font-bold font-montserrat text-[#1F2430]">Candidature e Attività: {nomeEvento}</h1>
-          <p className="text-sm text-gray-500 mt-1">Gestisci le candidature e le attività di check-in/out dei partecipanti ricevute per questo evento</p>
+          <h1 className="text-2xl font-bold font-montserrat text-[#1F2430]">Iscrizioni e Attività: {nomeEvento}</h1>
+          <p className="text-sm text-gray-500 mt-1">Gestisci le iscrizioni e le attività di check-in/out dei partecipanti ricevute per questo evento</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button onClick={exportCSV}
             className="flex items-center gap-2 border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-colors">
-            <Download size={15} /> Esporta candidature
+            <Download size={15} /> Esporta iscrizioni
           </button>
           <button onClick={exportAttivitaCSV}
             className="flex items-center gap-2 border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-colors">
@@ -1317,7 +1268,7 @@ const IscrizioniView: React.FC<{
       {inAttesa > 0 && (
         <div className="flex items-center justify-between bg-orange-50 border border-orange-100 rounded-2xl px-5 py-3.5">
           <p className="text-sm font-semibold text-orange-700">
-            Hai {inAttesa} candidature in attesa di revisione
+            Hai {inAttesa} iscrizion{inAttesa === 1 ? 'e' : 'i'} in attesa di revisione
           </p>
           <div className="flex items-center gap-4">
             <button onClick={() => bulkUpdate('accettata')} className="text-sm font-bold text-green-600 hover:text-green-700 transition-colors">Accetta tutte</button>
@@ -1328,7 +1279,7 @@ const IscrizioniView: React.FC<{
 
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Totale candidature', val: iscrizioni.length, color: 'text-gray-900'  },
+          { label: 'Totale iscrizioni', val: iscrizioni.length, color: 'text-gray-900'  },
           { label: 'In attesa',         val: inAttesa,          color: 'text-orange-500' },
           { label: 'Accettate',         val: accettate,         color: 'text-[#34A853]'  },
           { label: 'Rifiutate',         val: rifiutate,         color: 'text-[#E05252]'  },
@@ -1344,7 +1295,7 @@ const IscrizioniView: React.FC<{
       <div className="border-b border-gray-200">
         <div className="flex">
           {([
-            { key: 'candidature' as const, label: 'Tutte le Candidature' },
+            { key: 'candidature' as const, label: 'Tutte le Iscrizioni' },
             { key: 'attivita'    as const, label: 'Attività (QR Check-in/Out)' },
           ]).map(t => (
             <button key={t.key} onClick={() => { setTab(t.key); setSearch(''); }}
@@ -1385,7 +1336,7 @@ const IscrizioniView: React.FC<{
               </thead>
               <tbody>
                 {filteredCandidature.length === 0 ? (
-                  <tr><td colSpan={5} className="py-12 text-center text-sm text-gray-400">Nessuna candidatura trovata.</td></tr>
+                  <tr><td colSpan={5} className="py-12 text-center text-sm text-gray-400">Nessuna iscrizione trovata.</td></tr>
                 ) : filteredCandidature.map((c, i) => (
                   <tr key={c.id} className={i < filteredCandidature.length - 1 ? 'border-b border-gray-50' : ''} style={{ height: 58 }}>
                     <td className="px-6 py-3 text-sm font-medium text-[#1F2430]">
@@ -1413,6 +1364,12 @@ const IscrizioniView: React.FC<{
                               <X size={14} className="text-red-500" />
                             </button>
                           </>
+                        )}
+                        {c.stato === 'accettata' && (
+                          <button onClick={() => rimuovi(c)} title="Rimuovi dall'evento"
+                            className="text-sm font-semibold text-red-500 hover:text-red-600 transition-colors">
+                            Rimuovi
+                          </button>
                         )}
                         <button className="text-sm font-semibold text-[#F0813C] hover:text-orange-600 transition-colors">
                           Vedi profilo

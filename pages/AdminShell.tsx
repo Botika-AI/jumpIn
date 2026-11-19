@@ -24,7 +24,7 @@ const ADMIN_NAV: { key: AdminSection; label: string; Icon: React.ElementType }[]
   { key: 'eventi',      label: 'Eventi',             Icon: Calendar         },
   { key: 'jobpost',     label: 'Job Post',           Icon: Briefcase        },
   { key: 'badge',       label: 'Badge e Attestati',  Icon: Award            },
-  { key: 'candidature', label: 'Candidature',        Icon: FileText         },
+  { key: 'candidature', label: 'Iscrizioni e candidature', Icon: FileText    },
   { key: 'homepage',    label: 'Gestione Homepage',  Icon: Settings         },
 ];
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, RefreshCw, Upload } from 'lucide-react';
+import { X, Upload } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { resizeImage } from '../../lib/imageUtils';
 
@@ -11,7 +11,6 @@ interface AziendaFull {
   website: string | null;
   email: string | null;
   email_account: string | null;
-  password_temp: string | null;
   referente: string | null;
   telefono: string | null;
   indirizzo: string | null;
@@ -77,11 +76,6 @@ const Field: React.FC<{ label: string; value: string | null }> = ({ label, value
 
 const inputClass = "w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder-gray-300 outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100 transition-all bg-white";
 
-function generatePassword() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
-  return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-}
-
 interface Props {
   aziendaId: string;
   onClose: () => void;
@@ -96,7 +90,6 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
   // ── Stato modifica account ──
   const [editAccount, setEditAccount]         = useState(false);
   const [editEmail, setEditEmail]             = useState('');
-  const [editPassword, setEditPassword]       = useState('');
   const [editReferente, setEditReferente]     = useState('');
   const [editName, setEditName]               = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -173,7 +166,6 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
   const startEditAccount = () => {
     if (!azienda) return;
     setEditEmail(azienda.email_account ?? '');
-    setEditPassword(azienda.password_temp ?? '');
     setEditReferente(azienda.referente ?? '');
     setEditName(azienda.name);
     setEditDescription(azienda.description ?? '');
@@ -209,7 +201,6 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
       .from('aziende')
       .update({
         email_account: editEmail.trim(),
-        password_temp: editPassword.trim() || null,
         referente:     editReferente.trim() || null,
         name:          editName.trim(),
         description:   editDescription.trim() || null,
@@ -219,7 +210,7 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
       .eq('id', azienda.id);
     setSavingAccount(false);
     if (error) { setAccountError('Errore nel salvataggio: ' + error.message); return; }
-    setAzienda((prev: AziendaFull | null) => prev ? { ...prev, email_account: editEmail.trim(), password_temp: editPassword.trim() || null, referente: editReferente.trim() || null, name: editName.trim(), description: editDescription.trim() || null, logo_url: newLogoUrl, cover_url: newCoverUrl } : prev);
+    setAzienda((prev: AziendaFull | null) => prev ? { ...prev, email_account: editEmail.trim(), referente: editReferente.trim() || null, name: editName.trim(), description: editDescription.trim() || null, logo_url: newLogoUrl, cover_url: newCoverUrl } : prev);
     setEditAccount(false);
     onUpdate?.(azienda.id, { email_account: editEmail.trim(), name: editName.trim() });
   };
@@ -413,16 +404,6 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
                           <p className="text-xs font-semibold text-gray-500 mb-1">Email account</p>
                           <input type="email" className={inputClass} value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="admin@azienda.it" />
                         </div>
-                        <div>
-                          <p className="text-xs font-semibold text-gray-500 mb-1">Password</p>
-                          <div className="flex gap-2">
-                            <input type="text" className={inputClass} value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="Inserisci o genera una password" />
-                            <button type="button" onClick={() => setEditPassword(generatePassword())}
-                              className="flex items-center gap-1.5 px-3 py-2.5 border border-gray-200 rounded-xl text-xs font-semibold text-gray-600 hover:border-orange-300 hover:text-orange-500 transition-colors shrink-0 bg-white">
-                              <RefreshCw size={13} /> Genera
-                            </button>
-                          </div>
-                        </div>
                       </div>
 
                       {accountError && <p className="text-xs text-red-500 px-1">{accountError}</p>}
@@ -469,7 +450,6 @@ export const AziendaModal: React.FC<Props> = ({ aziendaId, onClose, onUpdate }) 
                       </div>
                       <Field label="Referente"               value={azienda.referente} />
                       <Field label="Email account principale" value={azienda.email_account} />
-                      <Field label="Password"                 value={azienda.password_temp ? '••••••••••••' : null} />
                       <div className="pb-4">
                         <button onClick={startEditAccount}
                           className="text-sm font-semibold text-[#F0813C] hover:text-orange-600 transition-colors">

@@ -173,7 +173,7 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
     const { salvati, errore: msgErrore } = await aggiornaStatoIscrizioni(targets.map(c => c.id), stato);
     setCandidature(prev => prev.map(c => salvati.includes(c.id) ? { ...c, stato } : c));
     await Promise.all(targets.filter(c => salvati.includes(c.id))
-      .map(c => notificaEsitoIscrizione(c.user_id, stato, nomeEntita, entityId)));
+      .map(c => notificaEsitoIscrizione(c.user_id, stato, nomeEntita, entityId, c.stato === 'accettata' && stato === 'rifiutata')));
     if (msgErrore) setErrore(msgErrore);
   };
 
@@ -181,6 +181,13 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
     if (stato === 'accettata' && isFull) return;
     const cand = candidature.find(c => c.id === id);
     if (cand) await applicaStato([cand], stato);
+  };
+
+  // Q14: lo studente rimosso ha l'Iscrizione rifiutata e riceve un messaggio dedicato.
+  const rimuovi = async (c: Candidatura) => {
+    const nome = [c.profiles?.first_name, c.profiles?.last_name].filter(Boolean).join(' ') || 'questo studente';
+    if (!window.confirm(`Rimuovere ${nome} da "${nomeEntita}"? Lo studente riceverà una notifica e il posto si libererà.`)) return;
+    await applicaStato([c], 'rifiutata');
   };
 
   const bulkUpdate = async (stato: StatoCandidatura) => {
@@ -194,7 +201,7 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
   };
 
   const exportCSV = () => {
-    const header = ['Nome', 'Cognome', 'Email', 'Scuola', 'Data candidatura', 'Stato'];
+    const header = ['Nome', 'Cognome', 'Email', 'Scuola', 'Data iscrizione', 'Stato'];
     const rows   = candidature.map(c => [
       c.profiles?.first_name ?? '', c.profiles?.last_name ?? '',
       c.profiles?.email ?? '', c.profiles?.school ?? '',
@@ -204,7 +211,7 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href = url; a.download = `candidature_${entityId}.csv`; a.click();
+    a.href = url; a.download = `iscrizioni_${entityId}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -220,10 +227,10 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
         <div>
           <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-3 transition-colors">
             <ArrowLeft size={14} />
-            Torna alle candidature
+            Torna alle iscrizioni
           </button>
           <h1 className="text-2xl font-bold font-montserrat text-[#1F2430]">{titolo}</h1>
-          <p className="text-sm text-gray-500 mt-1">Gestisci le candidature ricevute</p>
+          <p className="text-sm text-gray-500 mt-1">Gestisci le iscrizioni ricevute</p>
         </div>
         <button onClick={exportCSV} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 bg-white hover:bg-gray-50 transition-colors shrink-0 self-start">
           <Download size={14} />
@@ -240,7 +247,7 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
       {!loading && isFull && (
         <div className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3">
           <p className="text-sm font-semibold text-gray-600">
-            Numero massimo di partecipanti raggiunto ({maxPartecipanti}). Non è più possibile accettare nuove candidature.
+            Numero massimo di partecipanti raggiunto ({maxPartecipanti}). Non è più possibile accettare nuove iscrizioni.
           </p>
         </div>
       )}
@@ -248,7 +255,7 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
       {!loading && inAttesa > 0 && (
         <div className="flex items-center justify-between gap-4 bg-orange-50 border border-orange-100 rounded-2xl px-5 py-3 flex-wrap">
           <p className="text-sm font-semibold text-orange-700">
-            Hai <span className="font-bold">{inAttesa}</span> candidatur{inAttesa === 1 ? 'a' : 'e'} in attesa di revisione
+            Hai <span className="font-bold">{inAttesa}</span> iscrizion{inAttesa === 1 ? 'e' : 'i'} in attesa di revisione
             {remaining !== null && !isFull && remaining < inAttesa && ` · ${remaining} post${remaining === 1 ? 'o' : 'i'} disponibil${remaining === 1 ? 'e' : 'i'}`}
           </p>
           <div className="flex items-center gap-2">
@@ -263,7 +270,7 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Totale candidature', value: candidature.length, color: 'text-[#1F2430]' },
+          { label: 'Totale iscrizioni', value: candidature.length, color: 'text-[#1F2430]' },
           { label: 'In attesa',          value: inAttesa,            color: 'text-orange-500' },
           { label: 'Accettate',          value: accettate,           color: 'text-green-500'  },
           { label: 'Rifiutate',          value: rifiutate,           color: 'text-red-500'    },
@@ -286,7 +293,7 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
         <table className="w-full min-w-[700px]">
           <thead>
             <tr className="border-b border-gray-100">
-              {['Studente', 'Scuola', 'Data candidatura', 'Stato', 'Azioni'].map(h => (
+              {['Studente', 'Scuola', 'Data iscrizione', 'Stato', 'Azioni'].map(h => (
                 <th key={h} className="text-left px-6 py-4 text-sm font-bold text-[#1F2430] whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -298,7 +305,7 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
               </td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={5} className="py-16 text-center text-sm text-gray-400">
-                {candidature.length === 0 ? 'Nessuna candidatura ricevuta' : 'Nessun risultato'}
+                {candidature.length === 0 ? 'Nessuna iscrizione ricevuta' : 'Nessun risultato'}
               </td></tr>
             ) : filtered.map((c, i) => (
               <tr key={c.id} className={i < filtered.length - 1 ? 'border-b border-gray-50' : ''} style={{ height: 58 }}>
@@ -323,6 +330,12 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
                         </button>
                       </>
                     )}
+                    {c.stato === 'accettata' && (
+                      <button onClick={() => rimuovi(c)} title="Rimuovi dall'evento"
+                        className="text-sm font-semibold text-red-500 hover:text-red-600 transition-colors whitespace-nowrap">
+                        Rimuovi
+                      </button>
+                    )}
                     <button className="text-sm font-semibold text-[#F0813C] hover:text-orange-600 transition-colors whitespace-nowrap">
                       Vedi profilo
                     </button>
@@ -335,7 +348,7 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
         {!loading && candidature.length > 0 && (
           <div className="px-6 py-3 border-t border-gray-50">
             <p className="text-xs text-gray-400">
-              {filtered.length} candidatur{filtered.length === 1 ? 'a' : 'e'} trovat{filtered.length === 1 ? 'a' : 'e'}
+              {filtered.length} iscrizion{filtered.length === 1 ? 'e' : 'i'} trovat{filtered.length === 1 ? 'a' : 'e'}
               {candidature.length !== filtered.length && ` su ${candidature.length} totali`}
             </p>
           </div>
@@ -489,7 +502,7 @@ const EventiList: React.FC<{ onDetail: (ev: EventoRow) => void }> = ({ onDetail 
         <table className="w-full min-w-[700px]">
           <thead>
             <tr className="border-b border-gray-100">
-              {['Titolo', 'Tipo', 'Data', 'Stato', 'Candidature'].map(h => (
+              {['Titolo', 'Tipo', 'Data', 'Stato', 'Iscrizioni'].map(h => (
                 <th key={h} className="text-left px-6 py-4 text-sm font-bold text-[#1F2430] whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -521,7 +534,7 @@ const EventiList: React.FC<{ onDetail: (ev: EventoRow) => void }> = ({ onDetail 
                   <button onClick={() => onDetail(ev)}
                     className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-orange-500 transition-colors group">
                     <Users size={13} className="text-gray-400 group-hover:text-orange-400 shrink-0" />
-                    {ev.iscrizioni_count} candidature
+                    {ev.iscrizioni_count} iscrizioni
                   </button>
                 </td>
               </tr>
@@ -665,7 +678,7 @@ export const AdminCandidature: React.FC = () => {
     return (
       <EventoDetailView
         entityId={selectedEvento.id}
-        titolo={`Candidature: ${selectedEvento.name}`}
+        titolo={`Iscrizioni: ${selectedEvento.name}`}
         nomeEntita={selectedEvento.name}
         maxPartecipanti={selectedEvento.max_partecipanti}
         onBack={backToList}
@@ -681,8 +694,8 @@ export const AdminCandidature: React.FC = () => {
     <div className="max-w-5xl space-y-6">
 
       <div>
-        <h1 className="text-2xl font-bold font-montserrat text-[#1F2430]">Panoramica delle candidature</h1>
-        <p className="text-sm text-gray-500 mt-1">Vista centralizzata di tutte le candidature della piattaforma</p>
+        <h1 className="text-2xl font-bold font-montserrat text-[#1F2430]">Iscrizioni e candidature</h1>
+        <p className="text-sm text-gray-500 mt-1">Iscrizioni agli eventi e candidature alle offerte di lavoro</p>
       </div>
 
       {/* Tab pills */}
@@ -707,7 +720,7 @@ export const AdminCandidature: React.FC = () => {
           }`}
         >
           <Briefcase size={15} />
-          Annunci di lavoro
+          Offerte di lavoro
         </button>
       </div>
 
