@@ -21,8 +21,8 @@ Le skill `grill-with-docs`, `improve-codebase-architecture` e `thermo-nuclear-co
 
 ## Stato al 19/11/2026
 
-- **Branch** `refactor/review-architettura`: solo locale, **mai pushato**. `main` e il sito in produzione non contengono ancora nessuna modifica di codice.
-- **Database**: Fase 1 (sicurezza) applicata su Development **e** Production. Fase 2 non iniziata.
+- **Branch** `refactor/review-architettura`: pushato su GitHub (non su `main`). `main` e il sito in produzione non contengono ancora nessuna modifica di codice.
+- **Database**: Fase 1 (sicurezza) applicata su Development **e** Production. Fase 2: voce 0 applicata (19/11), prossima la voce 1.
 - **Codice dell'app**: non ancora modificato.
 
 ---
@@ -140,7 +140,7 @@ Azioni consigliate all'utente, fuori dal codice:
 
 | # | Regola | Origine | Note |
 |---|---|---|---|
-| 0 | Creare una tantum le iscrizioni accettate per i **13 studenti dell'evento storico** in Production (avevano solo scansioni: allora le iscrizioni non esistevano). Da fare **prima** della voce 1 | Q24 | Nessun attestato collegato a quell'evento (Q25). Le notifiche le manda l'app, non il DB: l'inserimento non ne genera |
+| 0 | Creare una tantum le iscrizioni accettate per i **12 studenti di "Start-up Weekend"** in Production (avevano solo scansioni: allora le iscrizioni non esistevano). Da fare **prima** della voce 1 | Q24 | ✅ **Applicata in Production il 19/11/2026** (`fase2_voce0_iscrizioni_storiche.sql`, verifica: 12 righe `accettata`). Decisioni del 19/11: "Jumper next level" era una prova (esclusa); esclusi Yuri Mondaini (personale) e gazzosidaniele@gmail.com (prova); inclusi anche i 2 studenti con sole uscite. Nessun attestato collegato all'evento (Q25); nessuna notifica generata |
 | 1 | Scansione accettata solo con Iscrizione accettata e nei giorni dell'evento (ora italiana) | Q4, Q17 | Policy `attendances_insert_own`. Scansioni ripetute permesse |
 | 2 | Badge automatico: conta solo le Partecipazioni completate | Q5 | `assign_badge_by_event_threshold` e `count_badge_eligible_students` **non esistono nel DB** (script `badge_auto_rules.sql` mai applicato): vanno **create**, chiuse ad `anon`, con controllo admin |
 | 3 | Le stesse funzioni usano l'ora italiana | Q7 | Il DB è in UTC: usare `Europe/Rome` esplicitamente |

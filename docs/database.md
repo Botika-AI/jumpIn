@@ -31,6 +31,7 @@ ORDER BY table_name, column_name;
 
 - **Fase 1 sicurezza** (`supabase/sicurezza_fase1*.sql`) applicata su Development e Production il 18/11/2026: vedi "Sicurezza RLS" sotto.
 - **Fase 2** (regole del glossario) in preparazione: stato in [piano-lavori.md](piano-lavori.md).
+  - Voce 0 (`supabase/fase2_voce0_iscrizioni_storiche*.sql`, **solo Production**, solo dati, nessuna modifica di schema): iscrizioni accettate per i 12 studenti di "Start-up Weekend" (15–17/05/2026), che avevano solo scansioni. Applicata e verificata in Production il 19/11/2026 (su Development si ferma da sola, come previsto).
 
 ---
 
