@@ -156,6 +156,10 @@ supabase/
 public/
   logo.png
 
+scripts/sicurezza/
+  prova-fase1.mjs                # Prove di sicurezza Fase 1 (attacchi + uso normale) — vedi docs/piano-lavori.md
+  prova-fase1-storage.mjs        # Prove sul bucket badge-icon (solo Development)
+
 .githooks/
   check-docs.sh                  # Controlla che docs/ sia aggiornato quando cambiano struttura o SQL
   pre-commit                     # Hook git che usa check-docs.sh (attivo con: git config core.hooksPath .githooks)

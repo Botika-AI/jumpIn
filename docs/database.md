@@ -30,7 +30,7 @@ ORDER BY table_name, column_name;
 ## Modifiche recenti e in corso
 
 - **Fase 1 sicurezza** (`supabase/sicurezza_fase1*.sql`) applicata su Development e Production il 18/11/2026: vedi "Sicurezza RLS" sotto.
-- **Fase 2** (regole del glossario) in preparazione: stato in [piano-modifiche-db.md](piano-modifiche-db.md).
+- **Fase 2** (regole del glossario) in preparazione: stato in [piano-lavori.md](piano-lavori.md).
 
 ---
 

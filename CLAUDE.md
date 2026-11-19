@@ -2,6 +2,8 @@
 
 Guida operativa per Claude Code.
 
+> **Lavori in corso (dal 18/11/2026)**: revisione completa sul branch `refactor/review-architettura`. Prima di tutto leggi [docs/piano-lavori.md](docs/piano-lavori.md). Termini del dominio: [GLOSSARY.md](GLOSSARY.md).
+
 ## Cos'è JumpIn
 
 Piattaforma di orientamento per studenti delle superiori di Rimini e provincia, gestita da Fattor Comune. Gli studenti scoprono esperienze, si iscrivono (con approvazione admin), fanno check-in con QR, ricevono badge e attestati PDF, vedono offerte lavoro di aziende partner, ricevono notifiche.

@@ -1,0 +1,173 @@
+# docs/piano-lavori.md
+
+Piano di lavoro **temporaneo** della revisione completa di JumpIn, iniziata il 18/11/2026 sul branch `refactor/review-architettura`.
+È il punto di partenza per ogni nuova sessione: leggilo prima di tutto, insieme a [CLAUDE.md](../CLAUDE.md) e [GLOSSARY.md](../GLOSSARY.md).
+Quando tutto è concluso, il file va eliminato e i contenuti stabili riportati in [database.md](database.md) e [architettura.md](architettura.md).
+
+---
+
+## Obiettivo
+
+Migliorare l'applicazione con una revisione completa del codice, usando le skill installate in `~/.claude/skills/`:
+
+| Skill | Ruolo nel progetto |
+|---|---|
+| `/grill-with-docs` (grilling + domain-modeling) | ✅ Fatto: ha prodotto [GLOSSARY.md](../GLOSSARY.md) e le regole di dominio |
+| `/improve-codebase-architecture` | Da fare: report HTML dei candidati al refactoring, poi grilling sul candidato scelto |
+| `/thermo-nuclear-code-quality-review` | Da fare: review severa del diff di ogni refactoring |
+| `/code-review`, `/security-review` | Da fare: bug e sicurezza del diff prima del merge |
+
+Le skill `grill-with-docs`, `improve-codebase-architecture` e `thermo-nuclear-code-quality-review` si avviano **solo** se l'utente scrive il comando.
+
+## Stato al 19/11/2026
+
+- **Branch** `refactor/review-architettura`: solo locale, **mai pushato**. `main` e il sito in produzione non contengono ancora nessuna modifica di codice.
+- **Database**: Fase 1 (sicurezza) applicata su Development **e** Production. Fase 2 non iniziata.
+- **Codice dell'app**: non ancora modificato.
+
+---
+
+## Fatto
+
+1. **Glossario e regole di dominio** (sessione di grilling, decisioni Q1–Q30): [GLOSSARY.md](../GLOSSARY.md), [da-definire.md](da-definire.md) (questioni aperte), [problemi-noti.md](problemi-noti.md) aggiornato.
+2. **Verifiche del database** (solo lettura): Development e Production erano identici; impatto delle nuove regole misurato; backup delle definizioni salvato dall'utente in un CSV nella cartella Download (fuori dal repo).
+3. **Fase 1 — Sicurezza**, applicata e verificata su Development e Production il 18/11/2026 (dettagli sotto).
+
+---
+
+## Prossimi passi, in ordine
+
+1. **Fase 2 — Regole del glossario** (database): voci 0–10 sotto. Si parte dalle voci 0 e 1, collegate.
+2. **Bug** trovati durante l'analisi (sotto).
+3. **Modifiche all'interfaccia** (codice) decise nel grilling (sotto).
+4. **Codice allineato alle regole**: la logica "Partecipazione completata" e lo sblocco attestato oggi sono duplicati in più file (vedi problemi-noti.md) e vanno allineati alle nuove regole (Iscrizione accettata obbligatoria, ora italiana).
+5. **Merge su `main`** = pubblicazione in produzione: solo dopo `npm run build` ok, prove su Development e script di Fase 2 applicati in Production nell'ordine giusto.
+6. **Revisione dell'architettura**: `/improve-codebase-architecture` (ora con il glossario pronto), poi un candidato alla volta: grilling → refactoring sul branch → `/thermo-nuclear-code-quality-review` + `/code-review` sul diff.
+
+---
+
+## Come applicare le skill (procedimento della revisione)
+
+Le skill sono in `~/.claude/skills/`. Tre si avviano **solo scrivendo il comando** (hanno `disable-model-invocation: true`); le altre tre sono "di base" e vengono richiamate da quelle.
+
+**Skill di base** (non si usano da sole):
+- `codebase-design` — vocabolario per progettare moduli "profondi": **modulo**, **interfaccia**, **profondità** (tanta logica dietro un'interfaccia piccola), **seam** (punto in cui cambiare comportamento senza toccare chi chiama), **adapter**, **leverage**, **locality**. Principi: *deletion test* (se cancello il modulo la complessità sparisce o si sparge in N file?), "l'interfaccia è la superficie di test", "un adapter = seam ipotetico, due = seam reale".
+- `domain-modeling` — tiene aggiornati `GLOSSARY.md` (solo termini di dominio, niente dettagli tecnici) e `docs/adr/` (decisioni difficili da annullare, sorprendenti e frutto di un vero compromesso: solo se tutte e tre).
+- `grilling` — domande a turni, numerate, ciascuna con risposta consigliata; i fatti li cerca Claude nel codice, le decisioni sono dell'utente; si agisce solo quando l'utente conferma che la comprensione è condivisa.
+
+**Procedimento, un giro per ogni candidato:**
+
+| Passo | Comando | Cosa succede | Stato |
+|---|---|---|---|
+| 0 | — | Lavorare sempre su un branch (push su `main` = produzione) | ✅ `refactor/review-architettura` |
+| 1 | `/grill-with-docs` | Intervista sul dominio → `GLOSSARY.md`, regole, questioni aperte | ✅ Fatto (Q1–Q30) |
+| 2 | `/improve-codebase-architecture` | Parte dalla storia dei commit (zone che cambiano spesso), esplora il codice con un sub-agente, scrive un **report HTML** in una cartella temporanea (non nel repo) con i **candidati**: file, problema, soluzione, benefici, diagramma prima/dopo, forza (*Strong / Worth exploring / Speculative*) e una raccomandazione finale. Poi chiede quale esplorare | Da fare |
+| 3 | (automatico nel passo 2) | **Grilling** sul candidato scelto: forma del nuovo modulo, cosa sta dietro il seam, quali test. Nuovi termini → `GLOSSARY.md`; candidato rifiutato per un motivo importante → ADR, così le review future non lo ripropongono | Da fare |
+| 4 | — | Implementazione sul branch, `npm run build`, aggiornamento di `docs/architettura.md` | Da fare |
+| 5 | `/thermo-nuclear-code-quality-review` | Review severa **del diff** (non dell'intero repo: su un branch senza modifiche non ha nulla da guardare, oppure le si indicano i file): file oltre 1000 righe, `if` sparsi, astrazioni inutili, logica duplicata, "code judo" | Da fare |
+| 6 | `/code-review`, `/security-review` | Bug e sicurezza del diff (`/security-review` obbligatoria se si toccano chiamate Supabase o policy) | Da fare |
+| 7 | — | Si torna al passo 3 con il candidato successivo | — |
+
+Candidati probabili (da confermare col report): `AdminEventi.tsx` (~1560 righe), `ProfileSettingsPage.tsx` (~1017), logica "Partecipazione completata" / sblocco attestato duplicata in 5 file, chiamate Supabase sparse nei componenti.
+
+Decisioni che arriveranno nel grilling dell'architettura:
+- **Supabase nei componenti**: CLAUDE.md dice "chiamate Supabase direttamente nei componenti", le skill spingeranno verso moduli di accesso ai dati → decidere e registrare come ADR.
+- **Test**: il progetto non ne ha; valutare almeno i test della logica pura (Partecipazione completata, sblocco attestato, date in ora italiana).
+- Non mischiare con GSD (cartella `.planning/`, installato a giugno).
+
+---
+
+## Metodo per le modifiche al database (concordato con l'utente)
+
+Massima cautela: **mai sperimentare su Production**. Claude non ha accesso a Supabase: scrive le query, l'utente le esegue nel SQL Editor e incolla i risultati.
+
+1. Script **transazionale** (tutto o niente) + script di **ripristino**, salvati in `supabase/`.
+2. Applicazione su **Development** (ref `mdybkor…`; l'app in locale `npm run dev` usa Development).
+3. Prove con `scripts/sicurezza/` (attacco rifiutato + uso normale funzionante) e prova a mano dell'app.
+4. Prima di Production: **query delle impronte** su Production e confronto con Development (vedi sotto).
+5. Applicazione su **Production** (ref `rneifgkgpabasmzfhkfg`), senza eventi in corso, con il ripristino pronto.
+6. Prove su Production: da anonimo (chiave pubblica letta dal sito) e, se servono, con uno **studente temporaneo** creato sul sito ed eliminato subito dopo da admin.
+7. Aggiornare [database.md](database.md), [problemi-noti.md](problemi-noti.md) e questo file.
+
+Note pratiche:
+- L'utente crea i file di credenziali di prova (`.env.test.local` per Development, `.env.prod-test.local` per Production) nella cartella principale: attenzione a **spazi finali nel nome** (è successo due volte). Il file di Production va cancellato dopo le prove.
+- Una query delle impronte uguale tra Dev e Prod si ottiene anche eseguendola due volte sullo stesso progetto: confermare il progetto con un dato che differisce (conteggi).
+
+### Query delle impronte (sola lettura)
+
+Usare la versione **estesa** (con permessi): categorie colonne, policy, funzioni, trigger (`pg_get_triggerdef`), vincoli, rls_attiva, viste, bucket, permessi_tabelle (`relacl`), permessi_colonne (`attacl`), permessi_funzioni (`proacl`). Risultato al 18/11/2026 dopo la Fase 1, identico su Dev e Prod:
+
+| categoria | impronta |
+|---|---|
+| funzioni | `1dda48fb8212c5c26088be7f7a79c2a0` |
+| permessi_colonne | `9042c1b119f6323fa25fff2b82cb696b` |
+| permessi_funzioni | `1e46ab34b0ec7bf458dc0c83c1ba495b` |
+| permessi_tabelle | `c9656c552961d1208864d9b790894ba8` |
+| policy | `1c4d7465d30eadaf96bbe7488293e6a3` |
+| trigger | `6c5cc412e89e11bfdc00d78e4d4ae2c3` |
+| colonne / vincoli / viste / bucket / rls_attiva | invariati rispetto a prima della Fase 1 |
+
+### Script di prova
+
+- `scripts/sicurezza/prova-fase1.mjs` — 15 prove (A, B, C). Development: `node scripts/sicurezza/prova-fase1.mjs "$PWD" dev`. Production: scaricare prima il bundle del sito (`curl` di `https://jumpindeploy.vercel.app/` → file `/assets/*.js`) e lanciare `... "$PWD" prod <bundle.js>`. Si ferma se l'ambiente è sbagliato o se l'account non è uno studente normale; rimette a posto i dati.
+- `scripts/sicurezza/prova-fase1-storage.mjs` — prove sul bucket `badge-icon` (solo Development).
+- Usano solo la chiave pubblica e le credenziali di uno studente di prova, come farebbe un attaccante dal browser.
+
+---
+
+## Fase 1 — Sicurezza ✅ conclusa il 18/11/2026
+
+Script: `supabase/sicurezza_fase1.sql` (+ `_ripristino.sql`), `sicurezza_fase1_storage.sql` (ripristino in fondo al file), `sicurezza_fase1_password_aziende.sql` (irreversibile).
+
+| # | Problema | Correzione |
+|---|---|---|
+| A | Uno studente poteva impostarsi `is_admin = true` (dimostrato su Development) | Permessi di modifica per colonna su `profiles` + trigger `profiles_proteggi_is_admin` |
+| B | Uno studente poteva accettarsi da solo l'iscrizione | Policy separate: legge le proprie, crea solo `in_attesa`, annulla se non `rifiutata`; nessuna modifica |
+| C | Funzioni del portale aziende eseguibili da anonimi: dati di tutti gli studenti leggibili da chiunque; tabelle del portale con `USING (true)` | Esecuzione revocata (anche da `PUBLIC`); tabelle solo admin; `notify_profile_completed` solo per sé. **Portale `/azienda` disattivato** (Q27) |
+| D | Bucket `badge-icon` scrivibile da chiunque | Lettura pubblica, scrittura solo admin |
+| E | Password delle aziende (in chiaro) leggibili dagli studenti | Svuotate (2 in Production), irreversibile (Q29) |
+
+Verifiche in Production: impronte = backup prima di iniziare; verifica SQL ok; prove da anonimo ok; impronte estese = Development; 15/15 prove con studente temporaneo (poi eliminato); app controllata da admin. Nessun admin estraneo trovato.
+
+Azioni consigliate all'utente, fuori dal codice:
+- controllare in Supabase Production → Logs → API se ci sono state chiamate anonime a `get_all_talent_profiles` / `get_suggested_profiles` prima della chiusura (dati di minorenni: eventualmente coinvolgere il responsabile privacy);
+- avvisare le 2 aziende se potrebbero aver riutilizzato altrove la password del portale.
+
+---
+
+## Fase 2 — Regole del glossario (database) — da fare
+
+| # | Regola | Origine | Note |
+|---|---|---|---|
+| 0 | Creare una tantum le iscrizioni accettate per i **13 studenti dell'evento storico** in Production (avevano solo scansioni: allora le iscrizioni non esistevano). Da fare **prima** della voce 1 | Q24 | Nessun attestato collegato a quell'evento (Q25). Le notifiche le manda l'app, non il DB: l'inserimento non ne genera |
+| 1 | Scansione accettata solo con Iscrizione accettata e nei giorni dell'evento (ora italiana) | Q4, Q17 | Policy `attendances_insert_own`. Scansioni ripetute permesse |
+| 2 | Badge automatico: conta solo le Partecipazioni completate | Q5 | `assign_badge_by_event_threshold` e `count_badge_eligible_students` **non esistono nel DB** (script `badge_auto_rules.sql` mai applicato): vanno **create**, chiuse ad `anon`, con controllo admin |
+| 3 | Le stesse funzioni usano l'ora italiana | Q7 | Il DB è in UTC: usare `Europe/Rome` esplicitamente |
+| 4 | Un'iscrizione si accetta o si crea solo se ci sono posti liberi; nessun limite se `max_partecipanti` è vuoto | Q9, Q16 | Controllo nel DB (trigger), sicuro anche con due admin contemporanei |
+| 5 | Nessuna nuova Iscrizione dopo la scadenza (`scadenza_candidature`, tipo `date`) | Q10 | Ora italiana |
+| 6 | Lo studente annulla solo un'iscrizione in attesa o accettata, **prima dell'inizio** dell'evento | Q15 | La Fase 1 ha già escluso le `rifiutata`; manca il vincolo di data |
+| 7 | Materiali visibili solo con Iscrizione accettata | Q19 | Policy di lettura di `materiali_eventi` (oggi `USING (true)` per gli autenticati) |
+| 8 | File dei materiali in uno spazio privato con link temporanei | Q19 | In Production non ci sono file in `logos/materiali/`: nessuno spostamento |
+| 9 | Studenti vedono solo eventi pubblicati | Q22 | Togliere `OR stato IS NULL` da `events_select_authenticated`; 0 eventi senza stato in Production |
+| 10 | Conteggio posti tramite funzione che restituisce solo il numero | Q28 | Sostituisce la policy "Tutti leggono iscrizioni accettate per conteggio posti", che mostra a tutti chi partecipa |
+
+Dati di Production rilevanti (18/11/2026): 4 eventi, 0 iscrizioni, 54 scansioni, 13 partecipazioni completate (tutte senza iscrizione), 27 studenti. Development: 38 iscrizioni di prova.
+
+## Bug trovati durante l'analisi — da correggere
+
+- **Modifica profilo studente da admin non salvata**: `StudenteModal` aggiorna `profiles`, ma non esiste una policy UPDATE per l'admin → 0 righe aggiornate senza errore. Serve una policy admin (le colonne `school`, `dob` sono già autorizzate per colonna).
+- **Eliminazione account studente rotta**: `ProfileSettingsPage` chiama la RPC `delete_user`, che **non esiste** nel DB.
+
+## Modifiche all'interfaccia (codice) — da fare
+
+- Rinominare la sezione admin "Candidature" in "Iscrizioni" (Q2)
+- Togliere "Link a form esterna" dall'admin **e** il comportamento del pulsante "Partecipa" dello studente; togliere il riquadro "quiz/survey" (Q13)
+- Togliere la scelta della "visibilità" degli eventi (Q23)
+- Rimozione di uno studente accettato → stato `rifiutata` con messaggio dedicato (Q14)
+- Togliere il campo password delle aziende da `AggiungiAzienda` e `AziendaModal` (Q29)
+
+## Decisioni del grilling (riferimento rapido)
+
+Q1 nome ufficiale **Evento** ("Esperienza" solo etichetta) · Q2 **Iscrizione** per eventi, **Candidatura** per offerte di lavoro · Q3 Partecipazione completata = un ingresso + un'uscita in tutto l'evento (provvisoria, vedi da-definire) · Q4 vale solo con Iscrizione accettata · Q5 badge automatico solo su Partecipazioni completate · Q6 Attestato (non "certificato"); anche l'assegnazione manuale vale solo a evento concluso · Q7 Evento concluso dal giorno dopo l'ultimo giorno, ora italiana · Q9 posti mai superati · Q10 nessuna iscrizione dopo la scadenza · Q11 **Scansione** · Q12 Offerta di lavoro / Azienda / Azienda partner ("Job" solo etichetta) · Q13 form esterno tolto · Q14 rimozione = rifiutata · Q15 annullamento solo in attesa/accettata e prima dell'inizio · Q16 a posti esauriti non ci si iscrive (lista d'attesa in da-definire) · Q17 scansione valida solo nei giorni dell'evento · Q18/Q19 Materiali solo agli accettati · Q20 questioni aperte in da-definire.md · Q21 QR fotografato = limite noto (QR dinamico in futuro) · Q22 bozze visibili solo all'admin · Q23 visibilità tolta (sezione pubblica in da-definire) · Q24 iscrizioni storiche per i 13 studenti · Q25 evento storico senza attestato · Q26 prima la sicurezza · Q27 portale aziende disattivato · Q28 conteggio posti senza nomi · Q29 password aziende svuotate · Q30 verifiche in Production con impronte + studente temporaneo.
+
+Nessuna decisione ha richiesto un ADR.
