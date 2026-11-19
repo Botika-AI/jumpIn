@@ -7,6 +7,8 @@ import {
 import QRCode from 'qrcode';
 import { supabase } from '../../lib/supabase';
 import { resizeImage } from '../../lib/imageUtils';
+import { aggiornaStatoIscrizioni, notificaEsitoIscrizione } from '../../lib/iscrizioni';
+import { caricaMateriali, caricaFileMateriale, eliminaMateriale, type Materiale } from '../../lib/materiali';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -35,14 +37,6 @@ interface Evento {
   iscrizioni_count?: number;
 }
 
-interface Materiale {
-  id: string;
-  event_id: string;
-  titolo: string;
-  tipo: 'link' | 'file';
-  url: string;
-  created_at: string;
-}
 
 type IscrizioneStato = 'in_attesa' | 'accettata' | 'rifiutata';
 
@@ -469,8 +463,7 @@ const MaterialiManager: React.FC<{ eventId: string }> = ({ eventId }) => {
   const [errore, setErrore]           = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.from('materiali_eventi').select('*').eq('event_id', eventId).order('created_at')
-      .then(({ data }) => setMateriali((data ?? []) as Materiale[]));
+    caricaMateriali(eventId).then(setMateriali);
   }, [eventId]);
 
   const handleAdd = async () => {
@@ -479,27 +472,27 @@ const MaterialiManager: React.FC<{ eventId: string }> = ({ eventId }) => {
     if (tipo === 'file' && !file)       { setErrore('Seleziona un file.'); return; }
     setUploading(true); setErrore(null);
 
+    // I file vanno nello spazio privato "materiali": in `url` si salva il percorso.
     let finalUrl = url.trim();
     if (tipo === 'file' && file) {
-      const path = `materiali/${eventId}/${Date.now()}_${file.name}`;
-      const { error: upErr } = await supabase.storage.from('logos').upload(path, file, { upsert: true });
-      if (upErr) { setErrore('Errore upload: ' + upErr.message); setUploading(false); return; }
-      finalUrl = supabase.storage.from('logos').getPublicUrl(path).data.publicUrl;
+      const caricato = await caricaFileMateriale(eventId, file);
+      if ('errore' in caricato) { setErrore(caricato.errore); setUploading(false); return; }
+      finalUrl = caricato.percorso;
     }
 
-    const { data, error: dbErr } = await supabase.from('materiali_eventi')
-      .insert({ event_id: eventId, titolo: titolo.trim(), tipo, url: finalUrl })
-      .select().single();
+    const { error: dbErr } = await supabase.from('materiali_eventi')
+      .insert({ event_id: eventId, titolo: titolo.trim(), tipo, url: finalUrl });
 
     setUploading(false);
     if (dbErr) { setErrore('Errore: ' + dbErr.message); return; }
-    setMateriali(prev => [...prev, data as Materiale]);
+    setMateriali(await caricaMateriali(eventId));
     setTitolo(''); setUrl(''); setFile(null);
   };
 
-  const handleDelete = async (id: string) => {
-    await supabase.from('materiali_eventi').delete().eq('id', id);
-    setMateriali(prev => prev.filter(m => m.id !== id));
+  const handleDelete = async (m: Materiale) => {
+    const msg = await eliminaMateriale(m);
+    if (msg) { setErrore(msg); return; }
+    setMateriali(prev => prev.filter(x => x.id !== m.id));
   };
 
   return (
@@ -520,7 +513,7 @@ const MaterialiManager: React.FC<{ eventId: string }> = ({ eventId }) => {
                 className="text-xs text-orange-500 font-semibold hover:underline shrink-0">
                 {m.tipo === 'file' ? 'Scarica' : 'Apri'}
               </a>
-              <button type="button" onClick={() => handleDelete(m.id)}
+              <button type="button" onClick={() => handleDelete(m)}
                 className="text-gray-300 hover:text-red-400 transition-colors shrink-0">
                 <Trash2 size={14} />
               </button>
@@ -1172,6 +1165,7 @@ const IscrizioniView: React.FC<{
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState('');
   const [filterDate, setFilterDate]   = useState(eventDays.includes(today) ? today : eventDays[0]);
+  const [errore, setErrore]           = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -1196,36 +1190,23 @@ const IscrizioniView: React.FC<{
   const accettate = iscrizioni.filter(c => c.stato === 'accettata').length;
   const rifiutate = iscrizioni.filter(c => c.stato === 'rifiutata').length;
 
-  const sendNotifica = async (userId: string, stato: IscrizioneStato) => {
-    const accettata = stato === 'accettata';
-    const { error } = await supabase.from('notifiche').insert({
-      user_id: userId,
-      tipo: 'evento',
-      titolo: accettata ? 'Iscrizione accettata' : 'Iscrizione rifiutata',
-      corpo: accettata
-        ? `La tua iscrizione a "${nomeEvento}" è stata accettata. Ci vediamo lì!`
-        : `La tua iscrizione a "${nomeEvento}" non è stata accettata questa volta.`,
-      riferimento_id: eventId,
-    });
-    if (error) console.error('Notifica error:', error);
+  // Il DB rifiuta le accettazioni oltre i Posti: lista e notifiche solo per le righe salvate.
+  const applicaStato = async (targets: Iscrizione[], stato: IscrizioneStato) => {
+    setErrore(null);
+    const { salvati, errore: msgErrore } = await aggiornaStatoIscrizioni(targets.map(c => c.id), stato);
+    setIscrizioni(prev => prev.map(c => salvati.includes(c.id) ? { ...c, stato } : c));
+    await Promise.all(targets.filter(c => salvati.includes(c.id))
+      .map(c => notificaEsitoIscrizione(c.user_id, stato, nomeEvento, eventId)));
+    if (msgErrore) setErrore(msgErrore);
   };
 
   const updateStato = async (id: string, stato: IscrizioneStato) => {
-    await supabase.from('iscrizioni_eventi').update({ stato }).eq('id', id);
-    setIscrizioni(prev => prev.map(c => c.id === id ? { ...c, stato } : c));
-    if (stato === 'accettata' || stato === 'rifiutata') {
-      const iscrizione = iscrizioni.find(c => c.id === id);
-      if (iscrizione) await sendNotifica(iscrizione.user_id, stato);
-    }
+    const iscrizione = iscrizioni.find(c => c.id === id);
+    if (iscrizione) await applicaStato([iscrizione], stato);
   };
 
-  const bulkUpdate = async (stato: IscrizioneStato) => {
-    const targets = iscrizioni.filter(c => c.stato === 'in_attesa');
-    if (targets.length === 0) return;
-    await supabase.from('iscrizioni_eventi').update({ stato }).in('id', targets.map(c => c.id));
-    setIscrizioni(prev => prev.map(c => c.stato === 'in_attesa' ? { ...c, stato } : c));
-    await Promise.all(targets.map(c => sendNotifica(c.user_id, stato)));
-  };
+  const bulkUpdate = (stato: IscrizioneStato) =>
+    applicaStato(iscrizioni.filter(c => c.stato === 'in_attesa'), stato);
 
   const filteredCandidature = iscrizioni.filter(c => {
     if (!search) return true;
@@ -1377,6 +1358,12 @@ const IscrizioniView: React.FC<{
           ))}
         </div>
       </div>
+
+      {errore && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-3">
+          <p className="text-sm font-semibold text-red-700">{errore}</p>
+        </div>
+      )}
 
       {tab === 'candidature' ? (
         <>

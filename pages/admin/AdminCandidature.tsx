@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ArrowLeft, Check, X, Download, Calendar, Briefcase, Users, User } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { aggiornaStatoIscrizioni, notificaEsitoIscrizione } from '../../lib/iscrizioni';
 
 // ── Tipi ─────────────────────────────────────────────────────────────────────
 
@@ -146,6 +147,7 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
   const [candidature, setCandidature] = useState<Candidatura[]>([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState('');
+  const [errore, setErrore]           = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -165,22 +167,20 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
   const remaining = maxPartecipanti != null ? Math.max(0, maxPartecipanti - accettate) : null;
   const isFull    = remaining !== null && remaining <= 0;
 
+  // Salva, aggiorna la lista solo con le righe salvate davvero e notifica solo quelle.
+  const applicaStato = async (targets: Candidatura[], stato: StatoCandidatura) => {
+    setErrore(null);
+    const { salvati, errore: msgErrore } = await aggiornaStatoIscrizioni(targets.map(c => c.id), stato);
+    setCandidature(prev => prev.map(c => salvati.includes(c.id) ? { ...c, stato } : c));
+    await Promise.all(targets.filter(c => salvati.includes(c.id))
+      .map(c => notificaEsitoIscrizione(c.user_id, stato, nomeEntita, entityId)));
+    if (msgErrore) setErrore(msgErrore);
+  };
+
   const updateStato = async (id: string, stato: StatoCandidatura) => {
     if (stato === 'accettata' && isFull) return;
-    await supabase.from('iscrizioni_eventi').update({ stato }).eq('id', id);
-    setCandidature(prev => prev.map(c => c.id === id ? { ...c, stato } : c));
     const cand = candidature.find(c => c.id === id);
-    if (cand && (stato === 'accettata' || stato === 'rifiutata')) {
-      await supabase.from('notifiche').insert({
-        user_id:        cand.user_id,
-        tipo:           'evento',
-        titolo:         stato === 'accettata' ? 'Iscrizione accettata' : 'Iscrizione rifiutata',
-        corpo:          stato === 'accettata'
-          ? `La tua iscrizione a "${nomeEntita}" è stata accettata. Ci vediamo lì!`
-          : `La tua iscrizione a "${nomeEntita}" non è stata accettata questa volta.`,
-        riferimento_id: entityId,
-      });
-    }
+    if (cand) await applicaStato([cand], stato);
   };
 
   const bulkUpdate = async (stato: StatoCandidatura) => {
@@ -190,19 +190,7 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
       targets = targets.slice(0, remaining);
     }
     if (targets.length === 0) return;
-    await supabase.from('iscrizioni_eventi').update({ stato }).in('id', targets.map(c => c.id));
-    setCandidature(prev => prev.map(c => c.stato === 'in_attesa' ? { ...c, stato } : c));
-    await Promise.all(targets.map(c =>
-      supabase.from('notifiche').insert({
-        user_id:        c.user_id,
-        tipo:           'evento',
-        titolo:         stato === 'accettata' ? 'Iscrizione accettata' : 'Iscrizione rifiutata',
-        corpo:          stato === 'accettata'
-          ? `La tua iscrizione a "${nomeEntita}" è stata accettata. Ci vediamo lì!`
-          : `La tua iscrizione a "${nomeEntita}" non è stata accettata questa volta.`,
-        riferimento_id: entityId,
-      })
-    ));
+    await applicaStato(targets, stato);
   };
 
   const exportCSV = () => {
@@ -242,6 +230,12 @@ const EventoDetailView: React.FC<EventoDetailProps> = ({ entityId, titolo, nomeE
           Esporta CSV
         </button>
       </div>
+
+      {errore && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-3">
+          <p className="text-sm font-semibold text-red-700">{errore}</p>
+        </div>
+      )}
 
       {!loading && isFull && (
         <div className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3">

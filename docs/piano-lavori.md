@@ -157,14 +157,14 @@ Dati di Production rilevanti (18/11/2026): 4 eventi, 0 iscrizioni, 54 scansioni,
 ## Bug trovati durante l'analisi — da correggere
 
 - ✅ **Corretti il 19/11/2026 su Dev e Prod** (`bug_profilo_admin_elimina_account.sql`): modifica del profilo studente da admin (policy `profiles_update_admin`) ed eliminazione dell'account da parte dello studente (RPC `delete_user`).
-- **Scansione rifiutata mostrata come riuscita**: `processQrScan` (`components/IMieiPage.tsx`) non controlla l'errore dell'INSERT in `attendances`. Dopo la voce 1 il DB rifiuta le scansioni non valide, ma lo studente vede comunque "Check-in registrato!" (e `last_checkin` viene aggiornato). Va mostrato l'errore.
 
 ## Modifiche all'interfaccia (codice) — da fare
 
-- **Materiali (voci 7–8)**: `AdminEventi` deve caricare i file nel bucket privato `materiali` (percorso `{event_id}/{file}`) e salvare il percorso, non il link pubblico di `logos`; `EsperienzePage`/`IMieiPage` aprono i file con link temporanei (`createSignedUrl`). La sezione Materiali va nascosta agli studenti non accettati (il DB ora restituisce una lista vuota). Provare il link temporaneo con un file vero
-- **Conteggio posti (voce 10)**: `EsperienzePage` e `HomeDashboard` usano `rpc('posti_accettati')` invece di leggere `iscrizioni_eventi`; poi 10b al merge
+- ✅ **Errori del DB gestiti** (19/11): scansione rifiutata (`IMieiPage`), accettazione oltre i posti senza notifica sbagliata (`AdminEventi`, `AdminCandidature`, via `lib/iscrizioni.ts`), iscrizione chiusa/posti esauriti e annullamento non più possibile (`EsperienzePage`, `HomeDashboard`)
+- ✅ **Materiali (voci 7–8)** (19/11): file nel bucket privato `materiali` con link temporanei (`lib/materiali.ts`). Da fare: provare con un file vero; nascondere la sezione Materiali agli studenti non accettati (blocco grafico)
+- ✅ **Conteggio posti (voce 10)** (19/11): `EsperienzePage` e `HomeDashboard` usano `posti_accettati()`; resta la 10b al merge
 - **Posti esauriti e chiusura delle iscrizioni, anche graficamente** (richiesta dell'utente del 19/11/2026): da progettare insieme. Dopo la voce 4 il DB rifiuta iscrizioni e accettazioni oltre i posti, ma l'app non controlla l'errore: in `AdminEventi` e `AdminCandidature` l'iscrizione risulta "accettata" e parte la notifica allo studente; in `EsperienzePage`/`HomeDashboard` l'iscrizione rifiutata non mostra nulla. `AdminEventi` non controlla nemmeno i posti prima di accettare (singola e "accetta tutti"). **Scadenza delle iscrizioni**: lo studente oggi non la vede mai (`scadenza_candidature` si imposta solo in `AdminEventi`); dopo la voce 5 va mostrato "Iscrizioni aperte fino al …" / "Iscrizioni chiuse" e gestito l'errore del DB. **Annullamento**: dopo la voce 6 il DB rifiuta l'annullamento dal giorno di inizio, ma `EsperienzePage.handleCancel` non controlla l'errore e toglie comunque l'iscrizione dalla schermata (ricompare ricaricando): il pulsante "Annulla" va nascosto dall'inizio dell'evento
-- Nascondere l'assegnazione **automatica** dei badge in `AssegnazioneBadge` (badge solo manuali, decisione del 19/11/2026): oggi il pannello chiama due funzioni che non esistono nel DB e non mostra errori
+- ✅ Assegnazione **automatica** dei badge nascosta (19/11, costante `ASSEGNAZIONE_AUTOMATICA_ATTIVA` in `AssegnazioneBadge`)
 - Rinominare la sezione admin "Candidature" in "Iscrizioni" (Q2)
 - Togliere "Link a form esterna" dall'admin **e** il comportamento del pulsante "Partecipa" dello studente; togliere il riquadro "quiz/survey" (Q13)
 - Togliere la scelta della "visibilità" degli eventi (Q23)

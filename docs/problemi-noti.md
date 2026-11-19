@@ -12,7 +12,7 @@ Elenco dei problemi **noti e ricorrenti**: difetti strutturali, incoerenze e lim
 - **"Evento completato"** (ingresso + uscita in `attendances`) è ricalcolato indipendentemente in: `HomeDashboard`, `ProfileSettingsPage`, `AdminBadge`, `EsperienzePage`, `IMieiPage`.
 - **Sblocco attestato** è ricalcolato sia in `EsperienzePage` sia in `IMieiPage`.
 - **Formattazione date** (es. `toLocaleDateString` con opzioni specifiche) è copiata in più file.
-- **Accetta/rifiuta iscrizioni**: in `AdminEventi` senza controllo posti; in `AdminCandidature` con controllo posti. Il DB blocca comunque le accettazioni oltre i posti (trigger `iscrizioni_controlla_posti`), ma nessuna delle due pagine mostra l'errore: l'iscrizione appare "accettata" e parte la notifica.
+- **Accetta/rifiuta iscrizioni** in due pagine quasi uguali (`AdminEventi` → Iscrizioni e `AdminCandidature`): la logica comune è in `lib/iscrizioni.ts`, ma la schermata è duplicata.
 - **`generatePassword`**: funzione duplicata in più punti.
 
 ---

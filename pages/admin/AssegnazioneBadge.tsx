@@ -6,6 +6,10 @@ import { supabase } from '../../lib/supabase';
 
 type Mode = 'manual' | 'automatic';
 
+// Badge automatico rinviato (19/11/2026): le funzioni del DB non esistono ancora.
+// Per riattivarlo vedi docs/da-definire.md, "Badge automatico".
+const ASSEGNAZIONE_AUTOMATICA_ATTIVA = false;
+
 interface Evento { id: string; name: string }
 interface Student { id: string; first_name: string | null; last_name: string | null; email: string; school: string | null }
 
@@ -447,7 +451,7 @@ export const AssegnazioneBadge: React.FC<Props> = ({ badge, onBack }) => {
       )}
 
       {/* Segmented control */}
-      <div className="inline-flex items-center bg-[#F3F4F6] rounded-[10px] p-1 mb-6">
+      {ASSEGNAZIONE_AUTOMATICA_ATTIVA && <div className="inline-flex items-center bg-[#F3F4F6] rounded-[10px] p-1 mb-6">
         {(['manual', 'automatic'] as Mode[]).map(key => (
           <button key={key} onClick={() => setMode(key)}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
@@ -456,10 +460,10 @@ export const AssegnazioneBadge: React.FC<Props> = ({ badge, onBack }) => {
             {key === 'manual' ? 'Assegnazione Manuale' : 'Assegnazione per Obiettivo'}
           </button>
         ))}
-      </div>
+      </div>}
 
       {/* Pannello attivo */}
-      {mode === 'manual' ? (
+      {mode === 'manual' || !ASSEGNAZIONE_AUTOMATICA_ATTIVA ? (
         <ManualPanel badge={badge} state={manualState} onChange={setManualState} onSave={handleManualSaved} onBack={onBack} />
       ) : (
         <AutomaticPanel badge={badge} onSave={handleAutomaticSaved} onBack={onBack} />

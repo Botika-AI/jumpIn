@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CoverImage } from './CoverImage';
 import { Search, CalendarDays, MapPin, Users, ChevronLeft, CheckCircle2, X, BookOpen, SlidersHorizontal, ScrollText, Download, Globe } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { caricaPostiAccettati, richiediIscrizione, annullaIscrizione } from '../lib/iscrizioni';
+import { caricaMateriali } from '../lib/materiali';
 import { generateCertificatePDF } from '../lib/certificateGenerator';
 
 interface Evento {
@@ -175,8 +177,7 @@ const EventoDetail: React.FC<{
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.from('materiali_eventi').select('*').eq('event_id', ev.id).order('created_at')
-      .then(({ data }) => setMateriali((data ?? []) as any[]));
+    caricaMateriali(ev.id).then(setMateriali);
 
     supabase.from('certificati')
       .select('id, titolo, descrizione, immagine_url, campi_dinamici, visibilita')
@@ -537,14 +538,7 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange, 
         }
       });
 
-    supabase.from('iscrizioni_eventi').select('event_id').eq('stato', 'accettata')
-      .then(({ data }) => {
-        const counts: Record<string, number> = {};
-        for (const row of (data ?? []) as { event_id: string }[]) {
-          counts[row.event_id] = (counts[row.event_id] ?? 0) + 1;
-        }
-        setAcceptedCounts(counts);
-      });
+    caricaPostiAccettati().then(setAcceptedCounts);
 
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
@@ -598,20 +592,19 @@ export const EsperienzePage: React.FC<EsperienzePageProps> = ({ onDetailChange, 
     }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { error } = await supabase.from('iscrizioni_eventi')
-      .insert({ event_id: ev.id, user_id: user.id, stato: 'in_attesa' });
-    if (!error) {
-      setIscrizioni(prev => [...prev, { event_id: ev.id, stato: 'in_attesa' }]);
-      showToast('La tua richiesta di partecipazione è stata inviata');
-    }
+    const errore = await richiediIscrizione(ev.id, user.id);
+    if (errore) { showToast(errore); return; }
+    setIscrizioni(prev => [...prev, { event_id: ev.id, stato: 'in_attesa' }]);
+    showToast('La tua richiesta di partecipazione è stata inviata');
   };
 
   const handleCancel = async (ev: Evento) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from('iscrizioni_eventi').delete().eq('event_id', ev.id).eq('user_id', user.id);
-    setIscrizioni(prev => prev.filter(i => i.event_id !== ev.id));
+    const errore = await annullaIscrizione(ev.id, user.id);
     setConfirmCancel(null);
+    if (errore) { showToast(errore); return; }
+    setIscrizioni(prev => prev.filter(i => i.event_id !== ev.id));
     closeDetail();
     showToast('Iscrizione cancellata');
   };

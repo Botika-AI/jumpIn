@@ -85,6 +85,8 @@ Tutte le chiamate al DB usano RPC con `p_company_id`. Job Post, Candidature e Im
 |---|---|
 | `lib/supabase.ts` | Client Supabase principale — importato da tutto il codice attivo |
 | `lib/imageUtils.ts` | `resizeImage()` → webp |
+| `lib/iscrizioni.ts` | Iscrizioni: `richiediIscrizione` / `annullaIscrizione` (studente, con messaggi per i rifiuti del DB), `aggiornaStatoIscrizioni` + `notificaEsitoIscrizione` (admin: accetta una alla volta finché ci sono posti), `caricaPostiAccettati` (RPC `posti_accettati`) |
+| `lib/materiali.ts` | Materiali: `caricaMateriali` (file del bucket privato `materiali` con link temporanei), `caricaFileMateriale`, `eliminaMateriale` |
 | `lib/certificateGenerator.ts` | Genera PDF attestati con `jspdf`/`pdf-lib`; placeholder: `{{nome_studente}}`, `{{cognome_studente}}`, `{{nome_scuola}}`, `{{nome_evento}}`, `{{data_emissione}}` |
 
 ---
@@ -145,6 +147,8 @@ pages/
 lib/
   supabase.ts                    # Client attivo
   imageUtils.ts                  # resizeImage → webp
+  iscrizioni.ts                  # Iscrizioni: richiesta, annullamento, accettazione admin, conteggio posti
+  materiali.ts                   # Materiali: bucket privato e link temporanei
   certificateGenerator.ts        # Generatore PDF attestati
 
 supabase/

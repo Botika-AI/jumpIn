@@ -6,6 +6,7 @@ import {
   ScrollText, Download, Globe,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { caricaMateriali } from '../lib/materiali';
 import { UserProfile } from '../types';
 import QrScanner from './QRScanner';
 import { generateCertificatePDF } from '../lib/certificateGenerator';
@@ -107,7 +108,13 @@ async function processQrScan(text: string, userId: string): Promise<{ ok: boolea
   if (today < start) return { ok: false, msg: 'Evento non ancora iniziato' };
   if (today > end)   return { ok: false, msg: 'Evento terminato' };
 
-  await supabase.from('attendances').insert({ user_id: userId, event_id: eventId, type: tipo });
+  // Il database accetta la scansione solo con Iscrizione accettata e nei giorni dell'evento (ora italiana).
+  const { error } = await supabase.from('attendances').insert({ user_id: userId, event_id: eventId, type: tipo });
+  if (error) {
+    return error.code === '42501'
+      ? { ok: false, msg: 'Scansione non valida: serve un\'iscrizione accettata a questo evento, nei giorni dell\'evento' }
+      : { ok: false, msg: 'Errore durante la scansione. Riprova.' };
+  }
   await supabase.from('profiles').update({ last_checkin: new Date().toISOString() }).eq('id', userId);
 
   return { ok: true, msg: tipo === 'ingresso' ? 'Check-in registrato!' : 'Check-out registrato!' };
@@ -264,8 +271,7 @@ const DetailView: React.FC<{
   ];
 
   useEffect(() => {
-    supabase.from('materiali_eventi').select('*').eq('event_id', ev.id).order('created_at')
-      .then(({ data }) => setMateriali((data ?? []) as any[]));
+    caricaMateriali(ev.id).then(setMateriali);
 
     supabase.from('certificati')
       .select('id, titolo, descrizione, immagine_url, campi_dinamici')

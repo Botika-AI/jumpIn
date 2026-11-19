@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CalendarDays, MapPin, Users, X, Info, Globe, Sparkles } from 'lucide-react';
 import { UserProfile } from '../types';
 import { supabase } from '../lib/supabase';
+import { caricaPostiAccettati, richiediIscrizione } from '../lib/iscrizioni';
 
 interface Evento {
   id: string;
@@ -73,6 +74,7 @@ export const HomeDashboard: React.FC<Props> = ({ user, onNavigate, onOpenEvent }
   const [acceptedCounts, setAcceptedCounts]     = useState<Record<string, number>>({});
   const [confirmExp, setConfirmExp]             = useState<Evento | null>(null);
   const [toast, setToast]                       = useState<string | null>(null);
+  const [erroreIscrizione, setErroreIscrizione] = useState<string | null>(null);
   const [scrolled, setScrolled]                 = useState(false);
   const [badgeCount, setBadgeCount]             = useState(0);
   const [eventiCompletati, setEventiCompletati] = useState(0);
@@ -113,14 +115,7 @@ export const HomeDashboard: React.FC<Props> = ({ user, onNavigate, onOpenEvent }
       .order('event_date', { ascending: true }).limit(2)
       .then(({ data }) => setNonPerdereEventi((data ?? []).map((e: any) => ({ ...e, tags: e.tags ?? [] }))));
 
-    supabase.from('iscrizioni_eventi').select('event_id').eq('stato', 'accettata')
-      .then(({ data }) => {
-        const counts: Record<string, number> = {};
-        for (const row of (data ?? []) as { event_id: string }[]) {
-          counts[row.event_id] = (counts[row.event_id] ?? 0) + 1;
-        }
-        setAcceptedCounts(counts);
-      });
+    caricaPostiAccettati().then(setAcceptedCounts);
 
     supabase.auth.getUser().then(({ data: { user: u } }) => {
       if (!u) return;
@@ -154,14 +149,16 @@ export const HomeDashboard: React.FC<Props> = ({ user, onNavigate, onOpenEvent }
     }
     const { data: { user: u } } = await supabase.auth.getUser();
     if (!u) return;
-    const { error } = await supabase.from('iscrizioni_eventi')
-      .insert({ event_id: confirmExp.id, user_id: u.id, stato: 'in_attesa' });
-    if (!error) {
+    const errore = await richiediIscrizione(confirmExp.id, u.id);
+    if (errore) {
+      setErroreIscrizione(errore);
+      setTimeout(() => setErroreIscrizione(null), 4000);
+    } else {
       setIscrizioni(prev => [...prev, { event_id: confirmExp.id, stato: 'in_attesa' }]);
       setToast(confirmExp.name);
+      setTimeout(() => setToast(null), 4000);
     }
     setConfirmExp(null);
-    setTimeout(() => setToast(null), 4000);
   };
 
   const esperienzeBlock = (
@@ -311,6 +308,13 @@ export const HomeDashboard: React.FC<Props> = ({ user, onNavigate, onOpenEvent }
     <div className="min-h-full">
 
       {/* Toast */}
+      {erroreIscrizione && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm bg-white rounded-2xl shadow-xl border border-red-100 p-4 flex items-start gap-3 animate-in slide-in-from-top-2 duration-300">
+          <Info size={18} className="text-red-500 shrink-0 mt-0.5" />
+          <p className="text-xs font-semibold text-gray-700 flex-1 leading-relaxed">{erroreIscrizione}</p>
+        </div>
+      )}
+
       {toast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm bg-white rounded-2xl shadow-xl border border-gray-100 p-4 flex items-start gap-3 animate-in slide-in-from-top-2 duration-300">
           <Info size={18} className="text-teal-500 shrink-0 mt-0.5" />
