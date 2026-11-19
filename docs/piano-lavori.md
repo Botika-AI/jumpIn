@@ -19,31 +19,32 @@ Migliorare l'applicazione con una revisione completa del codice, usando le skill
 
 Le skill `grill-with-docs`, `improve-codebase-architecture` e `thermo-nuclear-code-quality-review` si avviano **solo** se l'utente scrive il comando.
 
-## Stato al 19/11/2026
+## Stato al 19/11/2026 (fine giornata) — da qui si riparte
 
-- **Branch** `refactor/review-architettura`: pushato su GitHub (non su `main`). `main` e il sito in produzione non contengono ancora nessuna modifica di codice.
-- **Database**: Fase 1 (sicurezza) applicata su Development **e** Production. Fase 2: voci 0 e 1 applicate (19/11), voci 2–3 rinviate (badge solo manuali), voci 4–9 e 10a applicate (19/11); 10b al momento del merge. **Fase 2 conclusa lato database** (salvo badge automatico rinviato).
-- **Codice dell'app**: non ancora modificato.
+- **Branch** `refactor/review-architettura`: pushato su GitHub, 19 commit davanti a `main`. **`main` e il sito in produzione non contengono ancora nessuna modifica di codice.**
+- **Database** (Dev e Prod allineati): Fase 1 ✅; Fase 2 ✅ voci 0, 1, 4–9, 10a; ⏸ voci 2–3 (badge automatico rinviato); ⏳ **10b da applicare in Production subito dopo il merge**. Bug DB ✅ (modifica profilo da admin, `delete_user`).
+- **Codice dell'app** (solo sul branch, provato su Development con Playwright il 19/11): blocco A ✅ (gestione dei rifiuti del DB, `posti_accettati`, materiali nel bucket privato, badge automatico nascosto) e blocco B ✅ (pulizie del grilling). Dettagli in "Modifiche all'interfaccia".
+- ⚠️ Finché non si fa il merge, in Production il DB applica già le nuove regole ma il sito vecchio non mostra i messaggi d'errore (es. accettazione oltre i posti → mostra "accettata"). Eventi in arrivo in Production: **Gioco Zero 1–2/12** (36 posti), **Fattore Innovazione 4/12**: pubblicare prima.
 
 ---
 
 ## Fatto
 
-1. **Glossario e regole di dominio** (sessione di grilling, decisioni Q1–Q30): [GLOSSARY.md](../GLOSSARY.md), [da-definire.md](da-definire.md) (questioni aperte), [problemi-noti.md](problemi-noti.md) aggiornato.
-2. **Verifiche del database** (solo lettura): Development e Production erano identici; impatto delle nuove regole misurato; backup delle definizioni salvato dall'utente in un CSV nella cartella Download (fuori dal repo).
-3. **Fase 1 — Sicurezza**, applicata e verificata su Development e Production il 18/11/2026 (dettagli sotto).
+1. **Glossario e regole di dominio** (grilling, Q1–Q30): [GLOSSARY.md](../GLOSSARY.md), [da-definire.md](da-definire.md), [problemi-noti.md](problemi-noti.md).
+2. **Fase 1 — Sicurezza** (18/11, Dev e Prod): dettagli sotto.
+3. **Fase 2 — Regole nel database** (19/11, Dev e Prod): tabella sotto.
+4. **Bug DB** (19/11): `profiles_update_admin`, RPC `delete_user` (`supabase/bug_profilo_admin_elimina_account.sql`).
+5. **Codice, blocchi A e B** (19/11): nuovi moduli `lib/iscrizioni.ts` e `lib/materiali.ts`; elenco in "Modifiche all'interfaccia".
 
 ---
 
 ## Prossimi passi, in ordine
 
-0. **Dal 25/11/2026 circa** (dopo qualche giorno di uso normale dell'app in produzione con le correzioni di Fase 1): cancellare `supabase/sicurezza_fase1_ripristino.sql` e il blocco "RIPRISTINO" commentato in fondo a `supabase/sicurezza_fase1_storage.sql`. Eseguiti per errore riaprirebbero le vulnerabilità A–D; restano recuperabili dalla storia di git. Prima chiedere conferma all'utente.
-1. **Fase 2 — Regole del glossario** (database): voci 0–10 sotto. Si parte dalle voci 0 e 1, collegate.
-2. **Bug** trovati durante l'analisi (sotto).
-3. **Modifiche all'interfaccia** (codice) decise nel grilling (sotto).
-4. **Codice allineato alle regole**: la logica "Partecipazione completata" e lo sblocco attestato oggi sono duplicati in più file (vedi problemi-noti.md) e vanno allineati alle nuove regole (Iscrizione accettata obbligatoria, ora italiana).
-5. **Merge su `main`** = pubblicazione in produzione: solo dopo `npm run build` ok, prove su Development e script di Fase 2 applicati in Production nell'ordine giusto. **Subito dopo il deploy**: applicare in Production `fase2_voce10b_togli_lettura_accettate.sql`.
-6. **Revisione dell'architettura**: `/improve-codebase-architecture` (ora con il glossario pronto), poi un candidato alla volta: grilling → refactoring sul branch → `/thermo-nuclear-code-quality-review` + `/code-review` sul diff.
+1. **Revisione del diff prima del merge**: l'utente lancia `/code-review` e `/security-review` (obbligatoria: tocchiamo chiamate Supabase e storage) sul branch rispetto a `main`. Correggere quello che emerge, `npm run build`, push.
+2. **Merge su `main`** = pubblicazione su Vercel. Prima: `npm run build` ok. Subito dopo il deploy: verificare il sito e applicare in Production `supabase/fase2_voce10b_togli_lettura_accettate.sql` (+ verifica in fondo al file). Poi provare il sito in Production (conteggio posti, iscrizione).
+3. **Dal 25/11/2026 circa**: cancellare `supabase/sicurezza_fase1_ripristino.sql` e il blocco "RIPRISTINO" in fondo a `supabase/sicurezza_fase1_storage.sql` (chiedere conferma all'utente).
+4. **Blocco C — grafica delle iscrizioni** (da progettare INSIEME all'utente, vedi "Modifiche all'interfaccia"): posti esauriti, "Iscrizioni aperte fino al…/chiuse", Annulla e "Inquadra QR" solo quando servono, sezione Materiali nascosta ai non accettati, toast "Iscrizione Confermata!" della Home che in realtà è una richiesta in attesa, riaccettare un'iscrizione rifiutata.
+5. **Revisione dell'architettura**: `/improve-codebase-architecture`, poi un candidato alla volta: grilling → refactoring → `/thermo-nuclear-code-quality-review` + `/code-review`. Primo candidato probabile: logica "Partecipazione completata" / sblocco attestato duplicata in 5 file, da allineare alle regole (Iscrizione accettata, ora italiana) — ex blocco D. Altri: `AdminEventi.tsx` (~1500 righe), schermate iscrizioni duplicate tra `AdminEventi` e `AdminCandidature`.
 
 ---
 
@@ -136,7 +137,7 @@ Azioni consigliate all'utente, fuori dal codice:
 
 ---
 
-## Fase 2 — Regole del glossario (database) — da fare
+## Fase 2 — Regole del glossario (database) — ✅ applicata il 19/11/2026 (salvo voci 2–3 rinviate e 10b al merge)
 
 | # | Regola | Origine | Note |
 |---|---|---|---|
@@ -154,11 +155,11 @@ Azioni consigliate all'utente, fuori dal codice:
 
 Dati di Production rilevanti (18/11/2026): 4 eventi, 0 iscrizioni, 54 scansioni, 13 partecipazioni completate (tutte senza iscrizione), 27 studenti. Development: 38 iscrizioni di prova.
 
-## Bug trovati durante l'analisi — da correggere
+## Bug trovati durante l'analisi
 
 - ✅ **Corretti il 19/11/2026 su Dev e Prod** (`bug_profilo_admin_elimina_account.sql`): modifica del profilo studente da admin (policy `profiles_update_admin`) ed eliminazione dell'account da parte dello studente (RPC `delete_user`).
 
-## Modifiche all'interfaccia (codice) — da fare
+## Modifiche all'interfaccia (codice) — ✅ fatte / ⏳ blocco C da progettare
 
 - ✅ **Errori del DB gestiti** (19/11): scansione rifiutata (`IMieiPage`), accettazione oltre i posti senza notifica sbagliata (`AdminEventi`, `AdminCandidature`, via `lib/iscrizioni.ts`), iscrizione chiusa/posti esauriti e annullamento non più possibile (`EsperienzePage`, `HomeDashboard`)
 - ✅ **Materiali (voci 7–8)** (19/11): file nel bucket privato `materiali` con link temporanei (`lib/materiali.ts`). Da fare: provare con un file vero; nascondere la sezione Materiali agli studenti non accettati (blocco grafico)
